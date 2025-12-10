@@ -104,3 +104,44 @@ Operation IN ("MailItemsAccessed", "Send", "SendAs", "SendOnBehalf")
 ```
 
 
+### Updated Lazarus Tools
+
+```
+`crowdstrike`
+(Image="*\\certutil.exe" OR Image="*\\bitsadmin.exe" OR Image="*\\mshta.exe" 
+OR Image="*\\regsvr32.exe" OR Image="*\\rundll32.exe" OR Image="*\\wmic.exe"
+OR Image="*\\powershell.exe" OR Image="*\\wscript.exe" OR Image="*\\cscript.exe")
+| search 
+    (ProcessCommandLine="*certutil* -urlcache*" OR ProcessCommandLine="*certutil* -decode*")
+    OR (ProcessCommandLine="*bitsadmin* /transfer*")
+    OR (ProcessCommandLine="*mshta* http*" OR ProcessCommandLine="*mshta* vbscript:*")
+    OR (ProcessCommandLine="*regsvr32* /s /u /i:http*")
+    OR (ProcessCommandLine="*rundll32* javascript:*" OR ProcessCommandLine="*rundll32*,a /p:*")
+    OR (ProcessCommandLine="*wmic* process call create*" AND ProcessCommandLine="*http*")
+    OR (ProcessCommandLine="*powershell*" AND ProcessCommandLine="*downloadstring*" OR ProcessCommandLine="*iex*")
+| stats count by ComputerName, Image, ProcessCommandLine, ParentImage, UserName, _time
+```
+
+### Suspicious DLL Sideloading
+
+```
+`crowdstrike`
+process_name IN ("*.dll")
+| search NOT (process_path="C:\\Windows\\System32\\*" OR process_path="C:\\Windows\\SysWOW64\\*" 
+              OR process_path="C:\\Program Files\\*" OR process_path="C:\\Program Files (x86)\\*")
+| stats count dc(src) as affected_hosts by process_name, process_path, parent_process_name
+| where affected_hosts < 5
+| sort - count
+```
+
+### Encoded Command Execution
+
+```
+`crowdstrike`
+process_name IN ("powershell.exe", "cmd.exe", "wscript.exe", "cscript.exe")
+(process="*-enc*" OR process="*-encodedcommand*" OR process="*frombase64string*" 
+ OR process="*::frombase64string*" OR process="*convert*::*base64*")
+| stats count by src, user, process_name, process, parent_process_name
+```
+
+
