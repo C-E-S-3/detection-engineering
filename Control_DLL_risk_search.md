@@ -1,6 +1,7 @@
 # Suspicious RunDLL Control_DLL Use
 
-````crowdstrike`
+```
+`crowdstrike`
 process_name="rundll32.exe"
 process="*Control_RunDLL*"
 | rex field=process "Control_RunDLL\s+(?<dll_path>[^,]+)"
