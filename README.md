@@ -14,7 +14,7 @@ detections/
 ├── execution/                     # TA0002 - PowerShell, WMI, scripting, LOLBAS
 ├── persistence/                   # TA0003 - Scheduled tasks, registry
 ├── defense_evasion/               # TA0005 - Rundll32, DLL sideloading, obfuscation
-├── credential_access/             # TA0006 - Credential dumping
+├── credential_access/             # TA0006 - Kerberos attacks, credential dumping
 ├── lateral_movement/              # TA0008 - SMB/WMI exec, admin shares
 ├── command_and_control/           # TA0011 - C2 beaconing, DNS, WordPress C2
 ├── collection/                    # TA0009 - Cryptocurrency targeting
@@ -51,7 +51,7 @@ Quick steps:
 | [Command and Control](detections/command_and_control/) | 6 | HTTPS beaconing, DNS anomalies, WordPress C2, DGA |
 | [Lateral Movement](detections/lateral_movement/) | 2 | SMB/WMI exec, admin share access, credential dumping |
 | [Collection](detections/collection/) | 1 | Cryptocurrency wallet/exchange targeting |
-| [Credential Access](detections/credential_access/) | 0 | (placeholder for future detections) |
+| [Credential Access](detections/credential_access/) | 14 | Kerberos tool fingerprinting, Kerberoasting, AS-REP Roasting, Golden/Silver Ticket, OverPass-the-Hash, ADCS abuse, brute force, encryption downgrade |
 | [Impact](detections/impact/) | 0 | (placeholder for future detections) |
 
 ## Data Sources
@@ -71,3 +71,4 @@ Detections use these Splunk ES data models and source macros:
 | `` `fortigate` `` | Source Macro | Fortigate firewall logs |
 | `` `infoblox_dns` `` | Source Macro | Infoblox DNS logs |
 | `` `zscaler_dns` `` | Source Macro | Zscaler DNS logs |
+| `` `wineventlog_security` `` | Source Macro | Windows Security Event Log (Domain Controllers) |
