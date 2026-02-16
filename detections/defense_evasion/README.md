@@ -19,6 +19,7 @@ Detections for techniques adversaries use to avoid detection, including abuse of
 | [BYOVD Vulnerable Driver Loading](byovd_vulnerable_driver_loading.md) | T1562.001, T1068 | Detection of known vulnerable kernel drivers used in Bring Your Own Vulnerable Driver attacks |
 | [BYOVD Kernel Driver Service Creation](byovd_driver_service_creation.md) | T1562.001, T1543.003 | Kernel driver service creation via sc.exe indicating potential BYOVD driver deployment |
 | [BYOVD Security Tool Process Termination](byovd_security_tool_termination.md) | T1562.001 | Rapid termination of multiple security tool processes indicating BYOVD-enabled EDR killing |
+| [Godloader Windows Defender Exclusion Manipulation](godloader_defender_exclusion_manipulation.md) | T1562.001 | PowerShell Add-MpPreference commands adding broad Defender exclusion paths |
 
 ---
 
@@ -27,6 +28,7 @@ Detections for techniques adversaries use to avoid detection, including abuse of
 | Actor | Type | TTPs | References |
 |-------|------|------|-----------|
 | Gootloader / UNC2565 | Malware Loader | Fileless execution via registry, wscript/cscript proxy execution from non-standard paths | [MITRE - Gootloader (S1138)](https://attack.mitre.org/software/S1138/) |
+| Godloader / GodLoader (Stargazer Goblin) | Malware Loader | Windows Defender exclusion path manipulation (entire C:\ drive), masquerading as Godot game engine | [Check Point - Gaming Engines: An Undetected Playground](https://research.checkpoint.com/2024/gaming-engines-an-undetected-playground-for-malware-loaders/), [Check Point - Stargazers Ghost Network](https://research.checkpoint.com/2024/stargazers-ghost-network/) |
 | Lazarus Group (HIDDEN COBRA) | Nation-State APT (DPRK) | Extensive LOLBAS usage (certutil, rundll32, mshta, regsvr32), DLL sideloading, BYOVD via FudModule rootkit | [MITRE - Lazarus Group (G0032)](https://attack.mitre.org/groups/G0032/), [AhnLab - Lazarus DLL Side-Loading](https://asec.ahnlab.com/en/57873/), [ESET - Lazarus FudModule](https://www.welivesecurity.com/2022/09/30/amazon-themed-campaigns-lazarus-netherlands-belgium/) |
 | Scattered Spider (UNC3944) | Cybercrime Group | BYOVD to disable EDR, social engineering, identity-based attacks | [MITRE - Scattered Spider (G1015)](https://attack.mitre.org/groups/G1015/), [Mandiant - Scattered Spider](https://www.mandiant.com/resources/blog/scattered-spider-advisory) |
 | BlackByte Ransomware | Ransomware Operator | BYOVD using RTCore64.sys (MSI Afterburner driver) to disable security tools | [Sophos - BlackByte BYOVD](https://news.sophos.com/en-us/2022/10/04/blackbyte-ransomware-returns/) |
