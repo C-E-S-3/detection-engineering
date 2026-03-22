@@ -34,6 +34,8 @@ Quick steps:
 
 ## Threat Actor Coverage
 
+> **See [THREAT_ACTORS.md](THREAT_ACTORS.md)** for the full threat actor reference — RaaS gang relationships, affiliate crossover, shared tooling, and tagging guidelines.
+
 | Threat Actor | Type | Detections | Key Techniques |
 |-------------|------|------------|----------------|
 | [Gootloader / UNC2565](https://attack.mitre.org/software/S1138/) | Malware Loader | 13 | SEO poisoning, JS execution, registry stuffing, fileless PowerShell, HTTPS C2 |
