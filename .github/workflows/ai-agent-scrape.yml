@@ -1,0 +1,177 @@
+###############################################################################
+# AI Agent Scraper — GitHub Actions Workflow
+#
+# What it does:
+#   1. Runs on a cron schedule (default: daily at 8 AM UTC)
+#   2. Curls a target website
+#   3. Sends the raw HTML to Claude (Anthropic API) to extract key details
+#   4. Writes the extracted data to a file in the repo
+#   5. Commits and pushes the changes automatically
+#
+# Required setup:
+#   • Add your Anthropic API key as a repository secret:
+#       Settings → Secrets and variables → Actions → New repository secret
+#       Name:  ANTHROPIC_API_KEY
+#       Value: sk-ant-...
+#
+#   • Ensure the workflow has write permissions:
+#       Settings → Actions → General → Workflow permissions
+#       Select "Read and write permissions"
+#
+# Customization:
+#   • Change TARGET_URL to the site you want to scrape
+#   • Edit the EXTRACTION_PROMPT to tell Claude what to extract
+#   • Adjust the cron schedule as needed
+###############################################################################
+
+name: AI Agent — Website Scraper
+
+on:
+  # ── Scheduled run ──────────────────────────────────────────────────────
+  schedule:
+    # Runs daily at 08:00 UTC. Customize as needed:
+    #   '*/30 * * * *'  → every 30 minutes
+    #   '0 */6 * * *'   → every 6 hours
+    #   '0 8 * * 1-5'   → weekdays at 8 AM UTC
+    - cron: '0 8 * * *'
+
+  # ── Manual trigger (for testing) ───────────────────────────────────────
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'URL to scrape (overrides default)'
+        required: false
+        type: string
+
+# ── Permissions ────────────────────────────────────────────────────────────
+permissions:
+  contents: write
+
+# ── Environment variables ──────────────────────────────────────────────────
+env:
+  #  CHANGE THESE to suit your use case
+  TARGET_URL: "https://news.ycombinator.com"
+  OUTPUT_FILE: "data/latest_scrape.md"
+  EXTRACTION_PROMPT: |
+    You are a data extraction agent. Analyze the provided HTML and extract:
+    1. The page title
+    2. The top 10 story headlines with their URLs and point counts
+    3. A brief summary of trending topics
+
+    Format your response as clean Markdown. Start with a YAML frontmatter
+    block containing `scraped_at` (ISO 8601 timestamp) and `source_url`.
+    Then provide the extracted data under clear headings.
+
+    Respond ONLY with the Markdown content — no preamble, no code fences.
+
+jobs:
+  scrape-and-extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # ── 1. Check out the repo ──────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Fetch the target website ────────────────────────────────────
+      - name: Curl target website
+        id: fetch
+        run: |
+          # Allow manual override of URL
+          URL="${{ github.event.inputs.target_url || env.TARGET_URL }}"
+          echo "Fetching: $URL"
+
+          # Curl with a real user-agent, follow redirects, 30s timeout
+          HTTP_CODE=$(curl -s -o /tmp/page.html -w "%{http_code}" \
+            -L --max-time 30 \
+            -A "Mozilla/5.0 (GitHub Actions AI Agent)" \
+            "$URL")
+
+          echo "HTTP status: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Failed to fetch $URL (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+
+          # Truncate to ~80KB to stay within Claude's context limits
+          # (raw HTML can be huge; we keep the meaningful portion)
+          head -c 80000 /tmp/page.html > /tmp/page_trimmed.html
+
+          CHAR_COUNT=$(wc -c < /tmp/page_trimmed.html)
+          echo "Fetched $CHAR_COUNT characters"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      # ── 3. Send to Claude for extraction ───────────────────────────────
+      - name: Extract data with Claude
+        id: extract
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Read the fetched HTML
+          PAGE_CONTENT=$(cat /tmp/page_trimmed.html)
+
+          # Build the JSON payload (jq handles escaping safely)
+          PAYLOAD=$(jq -n \
+            --arg model "claude-sonnet-4-20250514" \
+            --arg system "${{ env.EXTRACTION_PROMPT }}" \
+            --arg content "Here is the raw HTML from ${{ steps.fetch.outputs.url }}. Extract the requested information:\n\n$PAGE_CONTENT" \
+            '{
+              model: $model,
+              max_tokens: 4096,
+              system: $system,
+              messages: [
+                { role: "user", content: $content }
+              ]
+            }')
+
+          echo "Calling Claude API..."
+
+          RESPONSE=$(curl -s -X POST "https://api.anthropic.com/v1/messages" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -d "$PAYLOAD")
+
+          # Check for API errors
+          ERROR_TYPE=$(echo "$RESPONSE" | jq -r '.error.type // empty')
+          if [ -n "$ERROR_TYPE" ]; then
+            ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error.message')
+            echo "::error::Claude API error ($ERROR_TYPE): $ERROR_MSG"
+            exit 1
+          fi
+
+          # Extract the text response
+          EXTRACTED=$(echo "$RESPONSE" | jq -r '.content[0].text // empty')
+
+          if [ -z "$EXTRACTED" ]; then
+            echo "::error::Claude returned empty content"
+            echo "Raw response: $RESPONSE"
+            exit 1
+          fi
+
+          # Write to output file
+          mkdir -p "$(dirname "${{ env.OUTPUT_FILE }}")"
+          echo "$EXTRACTED" > "${{ env.OUTPUT_FILE }}"
+
+          LINES=$(wc -l < "${{ env.OUTPUT_FILE }}")
+          echo "Wrote $LINES lines to ${{ env.OUTPUT_FILE }}"
+
+      # ── 4. Commit and push changes ─────────────────────────────────────
+      - name: Commit and push
+        run: |
+          git config user.name "ai-agent[bot]"
+          git config user.email "ai-agent[bot]@users.noreply.github.com"
+
+          git add "${{ env.OUTPUT_FILE }}"
+
+          # Only commit if there are actual changes
+          if git diff --cached --quiet; then
+            echo "No changes detected — skipping commit."
+          else
+            TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
+            git commit -m "chore(ai-agent): scrape update $TIMESTAMP"
+            git push
+            echo "✅ Changes committed and pushed."
+          fi
