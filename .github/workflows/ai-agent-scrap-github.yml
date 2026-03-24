@@ -60,13 +60,27 @@ jobs:
             exit 1
           fi
 
-          # Truncate to ~60KB to stay within model context limits
-          head -c 60000 /tmp/page_raw.html > /tmp/page.html
+          # Strip HTML to plain text: remove scripts, styles, tags, then
+          # collapse whitespace. This shrinks a typical page from ~60KB
+          # of HTML to ~5-10KB of readable text — well under token limits.
+          sed -e 's/<script[^>]*>.*<\/script>//gi' \
+              -e 's/<style[^>]*>.*<\/style>//gi' \
+              /tmp/page_raw.html \
+            | sed -e 's/<[^>]*>//g' \
+            | sed -e 's/&nbsp;/ /g; s/&amp;/\&/g; s/&lt;/</g; s/&gt;/>/g; s/&#x27;/'"'"'/g; s/&quot;/"/g' \
+            | tr -s '[:space:]' '\n' \
+            | sed '/^$/d' \
+            > /tmp/page_text.txt
 
-          # Store the URL for later (this is safe — it's a short string)
+          # Hard cap at ~20KB of text (~5000 tokens, leaving room for
+          # the system prompt within the 8000 token limit)
+          head -c 20000 /tmp/page_text.txt > /tmp/page.html
+
+          # Store the URL for later
           echo "$URL" > /tmp/source_url.txt
 
-          echo "Fetched $(wc -c < /tmp/page.html) bytes"
+          TEXT_SIZE=$(wc -c < /tmp/page.html)
+          echo "Stripped HTML to $TEXT_SIZE bytes of plain text"
 
       # ── 3. Call GitHub Models API ──────────────────────────────────────
       #
@@ -82,7 +96,7 @@ jobs:
         run: |
           SOURCE_URL=$(cat /tmp/source_url.txt)
 
-          SYSTEM_PROMPT="You are a data extraction agent. Analyze the provided HTML and extract:
+          SYSTEM_PROMPT="You are a data extraction agent. Analyze the provided text (stripped from a web page) and extract:
           1. The page title
           2. The top 10 story headlines with their URLs and point counts
           3. A brief summary of trending topics
@@ -97,7 +111,7 @@ jobs:
           PAYLOAD=$(jq -n \
             --arg model "${{ env.AI_MODEL }}" \
             --arg system "$SYSTEM_PROMPT" \
-            --arg user "$(printf 'Extract information from this HTML (source: %s):\n\n%s' "$SOURCE_URL" "$(cat /tmp/page.html)")" \
+            --arg user "$(printf 'Extract information from this web page text (source: %s):\n\n%s' "$SOURCE_URL" "$(cat /tmp/page.html)")" \
             '{
               model: $model,
               messages: [
