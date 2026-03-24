@@ -1,5 +1,9 @@
 ###############################################################################
-# AI Agent — Website Scraper (GitHub Models)
+# AI Agent — Threat Intel Scraper (GitHub Models)
+#
+# Automated threat intelligence collection agent. Scrapes threat intel
+# sources, extracts IOCs/TTPs/threat actors via AI, and generates
+# actionable Splunk searches — committed to repo on a schedule.
 #
 # Uses GitHub Models with the built-in GITHUB_TOKEN. No API keys needed.
 # Just add `models: read` to permissions.
@@ -12,7 +16,7 @@
 # Available models: https://github.com/marketplace/models
 ###############################################################################
 
-name: AI Agent — Website Scraper (GitHub Models)
+name: AI Agent — Threat Intel Scraper (GitHub Models)
 
 on:
   schedule:
@@ -29,8 +33,8 @@ permissions:
   models: read
 
 env:
-  TARGET_URL: "https://news.ycombinator.com"
-  OUTPUT_FILE: "data/latest_scrape.md"
+  TARGET_URL: "https://www.cisa.gov/news-events/cybersecurity-advisories"
+  OUTPUT_FILE: "threat-intel/latest_report.md"
   AI_MODEL: "openai/gpt-4.1"
 
 jobs:
@@ -96,24 +100,65 @@ jobs:
         run: |
           SOURCE_URL=$(cat /tmp/source_url.txt)
 
-          SYSTEM_PROMPT="You are a data extraction agent. Analyze the provided HTML and extract:
-    1. Brief description of TTP
-    2. Any IOC such as IP address, file names, file hashes, domain names.
-    3. If new TTP's never seen before, note their uniqueness. 
-    4. Include threat actor and tooling information.
- 
-    Format your response as clean Markdown. Start with a YAML frontmatter
-    block containing `scraped_at` (ISO 8601 timestamp) and `source_url`.
-    Then provide the extracted data under clear headings.
- 
-    Respond ONLY with the Markdown content — no preamble, no code fences."
+          SYSTEM_PROMPT="You are a senior threat intelligence analyst and detection engineer with deep expertise in MITRE ATT&CK, incident response, and Splunk. Analyze the provided text (scraped from a threat intel source) and produce a structured threat intelligence report.
+
+          Extract and organize the following:
+
+          ## 1. Indicators of Compromise (IOCs)
+          Extract ALL IOCs found, categorized by type:
+          - IP addresses (IPv4/IPv6)
+          - Domains and URLs
+          - File hashes (MD5, SHA1, SHA256)
+          - Email addresses used in campaigns
+          - File names and paths
+          - Registry keys
+          - Mutex names
+          - C2 infrastructure details
+
+          ## 2. TTPs (MITRE ATT&CK Mapping)
+          Map observed techniques to MITRE ATT&CK framework:
+          - Tactic (e.g., Initial Access, Execution, Persistence)
+          - Technique ID and name (e.g., T1566.001 - Spearphishing Attachment)
+          - Brief description of how the technique was used
+
+          ## 3. Malware & Tools
+          - Malware families/names mentioned
+          - Legitimate tools abused (LOLBins, etc.)
+          - Custom tooling descriptions
+
+          ## 4. Threat Actor / Campaign Attribution
+          - Named threat groups (APT designations, aliases)
+          - Campaign names
+          - Known affiliations or motivations (espionage, financial, hacktivism)
+          - Targeted sectors and geographies
+
+          ## 5. Splunk Detection Searches
+          For each significant IOC or TTP, provide a ready-to-run Splunk search.
+          Tailor searches to common sourcetypes and index patterns:
+          - Network IOCs: use firewall, proxy, dns sourcetypes
+          - Endpoint IOCs: use Sysmon (XmlWinEventLog), CrowdStrike (crowdstrike:events:sensor), or Windows Security logs
+          - Hash lookups: search across endpoint detection sourcetypes
+          - Behavioral TTPs: write correlation searches using tstats or standard SPL
+
+          Format each search in a fenced code block with language 'spl'. Include a
+          brief comment explaining what the search detects.
+
+          ## 6. Executive Summary
+          Provide a 3-5 sentence summary of the threat landscape described in the
+          source, highlighting urgency and recommended immediate actions.
+
+          Format the full response as clean Markdown. Start with a YAML frontmatter
+          block containing: scraped_at (ISO 8601), source_url, and report_type: threat-intel.
+          If no threat intelligence content is found in the text, state that clearly
+          and note what type of content was found instead.
+          Respond ONLY with the Markdown content — no preamble, no code fences around the entire response."
 
           # Build JSON payload with jq — it handles all escaping of the
           # HTML content safely (no heredoc/delimiter issues)
           PAYLOAD=$(jq -n \
             --arg model "${{ env.AI_MODEL }}" \
             --arg system "$SYSTEM_PROMPT" \
-            --arg user "$(printf 'Extract information from this web page text (source: %s):\n\n%s' "$SOURCE_URL" "$(cat /tmp/page.html)")" \
+            --arg user "$(printf 'Analyze this threat intelligence source for IOCs, TTPs, malware, and threat actors (source: %s):\n\n%s' "$SOURCE_URL" "$(cat /tmp/page.html)")" \
             '{
               model: $model,
               messages: [
@@ -165,7 +210,7 @@ jobs:
             echo "No changes — skipping commit."
           else
             TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
-            git commit -m "chore(ai-agent): scrape update $TIMESTAMP"
+            git commit -m "threat-intel: automated scrape $TIMESTAMP"
             git push
             echo "✅ Committed and pushed."
           fi
