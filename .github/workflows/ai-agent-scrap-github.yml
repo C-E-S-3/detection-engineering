@@ -1,0 +1,132 @@
+###############################################################################
+# OPTION 1: GitHub Models — Using actions/ai-inference (Simplest)
+#
+# Uses GitHub's built-in AI inference action with the workflow's GITHUB_TOKEN.
+# No API keys, no secrets — just add `models: read` to permissions.
+#
+# Available models (as of early 2026):
+#   openai/gpt-4.1          — best for complex analysis/reasoning
+#   openai/gpt-4.1-mini     — faster, good for simpler tasks
+#   openai/gpt-4o           — multimodal, strong general purpose
+#   meta/llama-4-scout      — open source alternative
+#
+# See full list: https://github.com/marketplace/models
+#
+# Prerequisites:
+#   • GitHub Enterprise with Copilot, OR a repo with GitHub Models enabled
+#   • Workflow permissions: Settings → Actions → General →
+#       "Read and write permissions"
+###############################################################################
+
+name: AI Agent — Website Scraper (GitHub Models)
+
+on:
+  schedule:
+    - cron: '0 8 * * *'   # Daily at 08:00 UTC
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'URL to scrape (overrides default)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  models: read          # ← This is the key addition for GitHub Models
+
+env:
+  TARGET_URL: "https://news.ycombinator.com"
+  OUTPUT_FILE: "data/latest_scrape.md"
+
+jobs:
+  scrape-and-extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # ── 1. Check out the repo ──────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Fetch the target website ────────────────────────────────────
+      - name: Curl target website
+        id: fetch
+        run: |
+          URL="${{ github.event.inputs.target_url || env.TARGET_URL }}"
+          echo "Fetching: $URL"
+
+          HTTP_CODE=$(curl -s -o /tmp/page.html -w "%{http_code}" \
+            -L --max-time 30 \
+            -A "Mozilla/5.0 (GitHub Actions AI Agent)" \
+            "$URL")
+
+          echo "HTTP status: $HTTP_CODE"
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Failed to fetch $URL (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+
+          # Truncate HTML to fit model context window (~60KB is safe)
+          head -c 60000 /tmp/page.html > /tmp/page_trimmed.html
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+          # Store content for the next step via GITHUB_OUTPUT
+          # (using heredoc delimiter to handle multiline)
+          {
+            echo "page_content<<ENDOFPAGE"
+            cat /tmp/page_trimmed.html
+            echo "ENDOFPAGE"
+          } >> "$GITHUB_OUTPUT"
+
+      # ── 3. AI Extraction via GitHub Models ─────────────────────────────
+      #
+      #  actions/ai-inference handles auth via GITHUB_TOKEN automatically.
+      #  No API key secret needed!
+      #
+      - name: Extract data with AI
+        id: inference
+        uses: actions/ai-inference@v1
+        with:
+          model: openai/gpt-4.1
+          system-prompt: |
+            You are a data extraction agent. Analyze the provided HTML and extract:
+            1. The page title
+            2. The top 10 story headlines with their URLs and point counts
+            3. A brief summary of trending topics
+
+            Format your response as clean Markdown. Start with a YAML frontmatter
+            block containing `scraped_at` (current UTC timestamp) and `source_url`.
+            Then provide the extracted data under clear headings.
+
+            Respond ONLY with the Markdown content — no preamble, no code fences.
+          prompt: |
+            Here is the raw HTML from ${{ steps.fetch.outputs.url }}.
+            Extract the requested information:
+
+            ${{ steps.fetch.outputs.page_content }}
+
+      # ── 4. Write AI response to file ───────────────────────────────────
+      - name: Write extracted data
+        run: |
+          mkdir -p "$(dirname "${{ env.OUTPUT_FILE }}")"
+          cat << 'ENDOFRESPONSE' > "${{ env.OUTPUT_FILE }}"
+          ${{ steps.inference.outputs.response }}
+          ENDOFRESPONSE
+
+          echo "Wrote $(wc -l < "${{ env.OUTPUT_FILE }}") lines"
+
+      # ── 5. Commit and push ─────────────────────────────────────────────
+      - name: Commit and push
+        run: |
+          git config user.name "ai-agent[bot]"
+          git config user.email "ai-agent[bot]@users.noreply.github.com"
+          git add "${{ env.OUTPUT_FILE }}"
+
+          if git diff --cached --quiet; then
+            echo "No changes — skipping commit."
+          else
+            TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
+            git commit -m "chore(ai-agent): scrape update $TIMESTAMP"
+            git push
+            echo "✅ Committed and pushed."
+          fi
