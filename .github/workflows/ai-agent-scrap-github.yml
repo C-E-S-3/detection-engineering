@@ -96,15 +96,17 @@ jobs:
         run: |
           SOURCE_URL=$(cat /tmp/source_url.txt)
 
-          SYSTEM_PROMPT="You are a data extraction agent. Analyze the provided text (stripped from a web page) and extract:
-          1. The page title
-          2. The top 10 story headlines with their URLs and point counts
-          3. A brief summary of trending topics
-
-          Format your response as clean Markdown. Start with a YAML frontmatter
-          block containing scraped_at (ISO 8601 timestamp) and source_url.
-          Then provide the extracted data under clear headings.
-          Respond ONLY with the Markdown content — no preamble, no code fences."
+          SYSTEM_PROMPT="You are a data extraction agent. Analyze the provided HTML and extract:
+    1. Brief description of TTP
+    2. Any IOC such as IP address, file names, file hashes, domain names.
+    3. If new TTP's never seen before, note their uniqueness. 
+    4. Include threat actor and tooling information.
+ 
+    Format your response as clean Markdown. Start with a YAML frontmatter
+    block containing `scraped_at` (ISO 8601 timestamp) and `source_url`.
+    Then provide the extracted data under clear headings.
+ 
+    Respond ONLY with the Markdown content — no preamble, no code fences."
 
           # Build JSON payload with jq — it handles all escaping of the
           # HTML content safely (no heredoc/delimiter issues)
