@@ -1,28 +1,22 @@
 ###############################################################################
-# OPTION 1: GitHub Models — Using actions/ai-inference (Simplest)
+# AI Agent — Website Scraper (GitHub Models)
 #
-# Uses GitHub's built-in AI inference action with the workflow's GITHUB_TOKEN.
-# No API keys, no secrets — just add `models: read` to permissions.
-#
-# Available models (as of early 2026):
-#   openai/gpt-4.1          — best for complex analysis/reasoning
-#   openai/gpt-4.1-mini     — faster, good for simpler tasks
-#   openai/gpt-4o           — multimodal, strong general purpose
-#   meta/llama-4-scout      — open source alternative
-#
-# See full list: https://github.com/marketplace/models
+# Uses GitHub Models with the built-in GITHUB_TOKEN. No API keys needed.
+# Just add `models: read` to permissions.
 #
 # Prerequisites:
 #   • GitHub Enterprise with Copilot, OR a repo with GitHub Models enabled
 #   • Workflow permissions: Settings → Actions → General →
 #       "Read and write permissions"
+#
+# Available models: https://github.com/marketplace/models
 ###############################################################################
 
 name: AI Agent — Website Scraper (GitHub Models)
 
 on:
   schedule:
-    - cron: '0 8 * * *'   # Daily at 08:00 UTC
+    - cron: '0 8 * * *'
   workflow_dispatch:
     inputs:
       target_url:
@@ -32,11 +26,12 @@ on:
 
 permissions:
   contents: write
-  models: read          # ← This is the key addition for GitHub Models
+  models: read
 
 env:
   TARGET_URL: "https://news.ycombinator.com"
   OUTPUT_FILE: "data/latest_scrape.md"
+  AI_MODEL: "openai/gpt-4.1"
 
 jobs:
   scrape-and-extract:
@@ -50,12 +45,11 @@ jobs:
 
       # ── 2. Fetch the target website ────────────────────────────────────
       - name: Curl target website
-        id: fetch
         run: |
           URL="${{ github.event.inputs.target_url || env.TARGET_URL }}"
           echo "Fetching: $URL"
 
-          HTTP_CODE=$(curl -s -o /tmp/page.html -w "%{http_code}" \
+          HTTP_CODE=$(curl -s -o /tmp/page_raw.html -w "%{http_code}" \
             -L --max-time 30 \
             -A "Mozilla/5.0 (GitHub Actions AI Agent)" \
             "$URL")
@@ -66,56 +60,85 @@ jobs:
             exit 1
           fi
 
-          # Truncate HTML to fit model context window (~60KB is safe)
-          head -c 60000 /tmp/page.html > /tmp/page_trimmed.html
-          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          # Truncate to ~60KB to stay within model context limits
+          head -c 60000 /tmp/page_raw.html > /tmp/page.html
 
-          # Store content for the next step via GITHUB_OUTPUT
-          # (using heredoc delimiter to handle multiline)
-          {
-            echo "page_content<<ENDOFPAGE"
-            cat /tmp/page_trimmed.html
-            echo "ENDOFPAGE"
-          } >> "$GITHUB_OUTPUT"
+          # Store the URL for later (this is safe — it's a short string)
+          echo "$URL" > /tmp/source_url.txt
 
-      # ── 3. AI Extraction via GitHub Models ─────────────────────────────
+          echo "Fetched $(wc -c < /tmp/page.html) bytes"
+
+      # ── 3. Call GitHub Models API ──────────────────────────────────────
       #
-      #  actions/ai-inference handles auth via GITHUB_TOKEN automatically.
-      #  No API key secret needed!
+      #  We use the REST API directly instead of actions/ai-inference
+      #  because the ai-inference action requires passing content as a
+      #  `with:` input, which can't safely handle large HTML blobs.
+      #
+      #  Auth is still just GITHUB_TOKEN — no secrets to configure.
       #
       - name: Extract data with AI
-        id: inference
-        uses: actions/ai-inference@v1
-        with:
-          model: openai/gpt-4.1
-          system-prompt: |
-            You are a data extraction agent. Analyze the provided HTML and extract:
-            1. The page title
-            2. The top 10 story headlines with their URLs and point counts
-            3. A brief summary of trending topics
-
-            Format your response as clean Markdown. Start with a YAML frontmatter
-            block containing `scraped_at` (current UTC timestamp) and `source_url`.
-            Then provide the extracted data under clear headings.
-
-            Respond ONLY with the Markdown content — no preamble, no code fences.
-          prompt: |
-            Here is the raw HTML from ${{ steps.fetch.outputs.url }}.
-            Extract the requested information:
-
-            ${{ steps.fetch.outputs.page_content }}
-
-      # ── 4. Write AI response to file ───────────────────────────────────
-      - name: Write extracted data
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          SOURCE_URL=$(cat /tmp/source_url.txt)
+
+          SYSTEM_PROMPT="You are a data extraction agent. Analyze the provided HTML and extract:
+          1. The page title
+          2. The top 10 story headlines with their URLs and point counts
+          3. A brief summary of trending topics
+
+          Format your response as clean Markdown. Start with a YAML frontmatter
+          block containing scraped_at (ISO 8601 timestamp) and source_url.
+          Then provide the extracted data under clear headings.
+          Respond ONLY with the Markdown content — no preamble, no code fences."
+
+          # Build JSON payload with jq — it handles all escaping of the
+          # HTML content safely (no heredoc/delimiter issues)
+          PAYLOAD=$(jq -n \
+            --arg model "${{ env.AI_MODEL }}" \
+            --arg system "$SYSTEM_PROMPT" \
+            --arg user "$(printf 'Extract information from this HTML (source: %s):\n\n%s' "$SOURCE_URL" "$(cat /tmp/page.html)")" \
+            '{
+              model: $model,
+              messages: [
+                { role: "system", content: $system },
+                { role: "user",   content: $user }
+              ],
+              temperature: 0.2,
+              max_tokens: 4096
+            }')
+
+          echo "Calling GitHub Models API (model: ${{ env.AI_MODEL }})..."
+
+          RESPONSE=$(curl -s -X POST \
+            "https://models.github.ai/inference/chat/completions" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          # Check for errors
+          ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+          if [ -n "$ERROR" ]; then
+            echo "::error::GitHub Models API error: $ERROR"
+            exit 1
+          fi
+
+          # Extract the response text
+          EXTRACTED=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
+
+          if [ -z "$EXTRACTED" ]; then
+            echo "::error::Model returned empty content"
+            echo "Response: $(echo "$RESPONSE" | jq -c '.choices')"
+            exit 1
+          fi
+
+          # Write to output file
           mkdir -p "$(dirname "${{ env.OUTPUT_FILE }}")"
-          cat << 'ENDOFRESPONSE' > "${{ env.OUTPUT_FILE }}"
-          ${{ steps.inference.outputs.response }}
-          ENDOFRESPONSE
+          echo "$EXTRACTED" > "${{ env.OUTPUT_FILE }}"
+          echo "✅ Wrote $(wc -l < "${{ env.OUTPUT_FILE }}") lines to ${{ env.OUTPUT_FILE }}"
 
-          echo "Wrote $(wc -l < "${{ env.OUTPUT_FILE }}") lines"
-
-      # ── 5. Commit and push ─────────────────────────────────────────────
+      # ── 4. Commit and push ─────────────────────────────────────────────
       - name: Commit and push
         run: |
           git config user.name "ai-agent[bot]"
