@@ -1,34 +1,58 @@
 ---
-date: 2024-12-28T20:25:00Z
-source: https://cloud.google.com/blog/topics/threat-intelligence/unc6201-exploiting-dell-recoverpoint-zero-day
+scraped_at: 2024-06-10T15:30:00Z
+source_url: https://news.ycombinator.com
 ---
 
-# UNC6201 Exploiting Dell RecoverPoint Zero-Day
+# Page Title
 
-## Brief Description of TTP
+Hacker News
 
-Based on the URL structure and title, this appears to be a threat intelligence report about UNC6201, a threat actor that exploited a zero-day vulnerability in Dell RecoverPoint technology. However, the provided HTML content only contains meta tags, navigation structure, and JavaScript initialization data without the actual blog post content that would contain the detailed TTPs.
+# Top 10 Story Headlines
 
-## IOCs (Indicators of Compromise)
+1. **Hypura – A storage-tier-aware LLM inference scheduler for Apple Silicon**
+   - URL: https://github.com/t8
+   - Points: 134
 
-**Note**: The provided HTML content does not contain the actual blog post body with IOCs. The HTML appears to be the page header/navigation structure only.
+2. **Arm AGI CPU**
+   - URL: https://arm.com
+   - Points: 58
 
-No specific IOCs could be extracted from the provided HTML content as it lacks the main article body.
+3. **Apple Business**
+   - URL: https://apple.com
+   - Points: 172
 
-## New TTPs
+4. **ARM AGI CPU: Specs and SKUs**
+   - URL: https://sbcwiki.com
+   - Points: 54
 
-Cannot assess TTP uniqueness without access to the actual blog post content describing UNC6201's techniques.
+5. **No Terms. No Conditions**
+   - URL: https://notermsnoconditions.com
+   - Points: 148
 
-## Threat Actor and Tooling Information
+6. **Hypothesis, Antithesis, synthesis**
+   - URL: https://antithesis.com
+   - Points: 115
 
-**Threat Actor**: UNC6201 (based on URL title)
+7. **Tell HN: Litellm 1.82.7 and 1.82.8 on PyPI are compromised**
+   - URL: https://github.com/berriai
+   - Points: 109
 
-**Target Technology**: Dell RecoverPoint (disaster recovery/data protection solution)
+8. **Lago (YC S21) Is Hiring**
+   - URL: https://getlago.notion.site
+   - Points: (not listed)
 
-**Attack Type**: Zero-day exploitation
+9. **Show HN: Email.md – Markdown to responsive, email-safe HTML**
+   - URL: https://emailmd.dev
+   - Points: 67
 
-**Additional Context**: This appears to be a Google Cloud threat intelligence report, but the actual technical details, IOCs, and comprehensive TTP analysis would be contained in the blog post body, which is not present in the provided HTML content.
+10. **Show HN: Gemini can now natively embed video, so I built sub-second video search**
+    - URL: https://github.com/ssrajadh
+    - Points: 113
 
----
+# Brief Summary of Trending Topics
 
-**Note**: This analysis is limited due to the HTML content provided containing only the page structure and navigation elements, not the actual blog post content with threat intelligence details. To provide a complete analysis, the full article content would be needed.
+- **Apple and ARM:** Several stories focus on Apple Silicon and ARM CPUs, including new business directions and technical specs, reflecting ongoing interest in hardware innovation.
+- **AI and LLMs:** Multiple posts discuss AI applications, LLM inference scheduling, and security issues in AI-related Python packages, highlighting the sector's rapid evolution and associated risks.
+- **Security and Privacy:** Stories about compromised software packages, secure DNS deployment, and router backdoors indicate heightened concern for cybersecurity.
+- **Open Source and Developer Tools:** Posts about markdown-to-HTML tools, package managers, and Linux kernel improvements show continued enthusiasm for developer productivity and open-source projects.
+- **Tech Industry Commentary:** Discussions on business models, industry honesty, and historical retrospectives (e.g., Opera at 30) suggest a reflective mood about the direction and integrity of tech companies.
