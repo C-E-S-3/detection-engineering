@@ -1,161 +1,204 @@
 ---
-scraped_at: 2024-06-10T16:00:00Z
-source_url: https://cloud.google.com/blog/topics/threat-intelligence/brickstorm-espionage-campaign
+scraped_at: 2025-04-03T16:00:00Z
+source_url: https://cloud.google.com/blog/topics/threat-intelligence/china-nexus-exploiting-critical-ivanti-vulnerability
 report_type: threat-intel
 ---
 
-# Threat Intelligence Report: BRICKSTORM Espionage Campaign
+# Threat Intelligence Report: UNC5221 Exploitation of Ivanti Connect Secure (CVE-2025-22457)
 
 ## 1. Indicators of Compromise (IOCs)
 
-**Note:** The campaign is characterized by high operational security and minimal reuse of atomic IOCs. Most IOCs are behavioral or contextual rather than static. However, some infrastructure and file path patterns are noted.
-
-### IP Addresses
-- Example IP referenced: `10.0.0.255` (used in VAMI logs; likely internal, but indicative of appliance access patterns)
-
-### Domains and URLs
-- C2 infrastructure observed using:
-  - Cloudflare Workers
-  - Heroku applications
-  - `sslip.io`
-  - `nip.io`
-- No specific C2 domains provided; domains are unique per victim and not reused.
+### File Hashes
+| Malware Family | MD5 Hash                             | File Name/Path                  | Description                       |
+|----------------|--------------------------------------|----------------------------------|-----------------------------------|
+| TRAILBLAZE     | 4628a501088c31f53b5c9ddf6788e835     | /tmp/.i                          | In-memory dropper                |
+| BRUSHFIRE      | e5192258c27e712c7acf80303e68980b     | /tmp/.r                          | Passive backdoor                 |
+| SPAWNSNARE     | 6e01ef1367ea81994578526b3bd331d6     | /bin/dsmain                      | Kernel extractor & encryptor      |
+| SPAWNWAVE      | ce2b6a554ae46b5eb7d79ca5e7f440da     | /lib/libdsupgrade.so             | Implant utility                   |
+| SPAWNSLOTH     | 10659b392e7f5b30b375b94cae4fdca0     | /tmp/.liblogblock.so             | Log tampering utility             |
 
 ### File Names and Paths
-- `/path/to/brickstorm` (generic path for BRICKSTORM backdoor)
-- `/opt/vmware/etc/init.d/vami-lighttp` (modified for persistence)
-- `/etc/sysconfig/init` (modified for persistence)
-- `/web/saml2/sso/*` (targeted URI for credential harvesting via BRICKSTEAL filter)
+- /tmp/.i (TRAILBLAZE dropper)
+- /tmp/.r (BRUSHFIRE backdoor)
+- /bin/dsmain (SPAWNSNARE)
+- /lib/libdsupgrade.so (SPAWNWAVE)
+- /tmp/.liblogblock.so (SPAWNSLOTH)
+- /tmp/.p (PID file for web process)
+- /tmp/.m (memory map file)
+- /tmp/.w (base address of web binary)
+- /tmp/.s (base address of libssl.so)
+- /data/var/cores (core dump directory)
+
+### Domains and URLs
+- No domains or URLs provided in the report.
+
+### IP Addresses
+- No IP addresses provided in the report.
 
 ### Registry Keys
-- None specified.
+- Not applicable (Linux/edge device context).
 
-### File Hashes
-- None provided; samples are unique per victim.
+### Mutex Names
+- Not provided.
+
+### C2 Infrastructure Details
+- The BRUSHFIRE backdoor is injected as an SSL_read hook, which may use TLS connections for C2, but no explicit C2 IPs/domains are given.
+- UNC5221 leverages an obfuscation network of compromised Cyberoam appliances, QNAP devices, and ASUS routers to mask their true source.
 
 ### Email Addresses
 - None provided.
-
-### Mutex Names
-- None provided.
-
-### C2 Infrastructure Details
-- C2 via Cloudflare Workers, Heroku, and dynamic DNS services (`sslip.io`, `nip.io`).
-- No static IPs or domains reused across victims.
 
 ---
 
 ## 2. TTPs (MITRE ATT&CK Mapping)
 
-| Tactic                  | Technique ID & Name                | Description / Usage                                                                                  |
-|-------------------------|------------------------------------|------------------------------------------------------------------------------------------------------|
-| Initial Access          | T1190 - Exploit Public-Facing Application | Exploitation of zero-day vulnerabilities in network appliances for perimeter access.                |
-| Execution               | T1059 - Command and Scripting Interpreter | Use of post-exploitation scripts with anti-forensics functions.                                      |
-| Persistence             | T1547.001 - Boot or Logon Initialization Scripts | Modification of `init.d`, `rc.local`, or `systemd` files to launch BRICKSTORM on reboot.            |
-| Persistence             | T1505.003 - Server Software Component | Installation of malicious Java Servlet filter (BRICKSTEAL) in Apache Tomcat for vCenter.            |
-| Persistence             | T1505.004 - Web Shell               | Deployment of SLAYSTYLE/BEEFLUSH JSP web shell for remote command execution.                        |
-| Privilege Escalation    | T1078 - Valid Accounts              | Use of captured legitimate credentials for lateral movement and privilege escalation.               |
-| Credential Access       | T1556.003 - Credential Dumping: NTDS | Cloning Domain Controller VMs to extract Active Directory database (`ntds.dit`).                    |
-| Credential Access       | T1552.001 - Unsecured Credentials: Credentials in Files | Extraction of credentials from password vaults and PowerShell scripts.                              |
-| Defense Evasion         | T1027 - Obfuscated Files or Information | Use of Garble for obfuscation and in-memory modifications to avoid detection.                       |
-| Defense Evasion         | T1070.004 - Indicator Removal on Host | Removal of BRICKSTORM samples post-operation.                                                       |
-| Lateral Movement        | T1021.004 - SSH                     | Use of SSH with valid credentials to move between appliances and enable SSH services.               |
-| Collection              | T1114.002 - Email Collection: Mailbox | Use of Microsoft Entra ID Enterprise Applications with mail.read/full_access_as_app scopes.         |
-| Exfiltration            | T1041 - Exfiltration Over C2 Channel | Use of BRICKSTORM SOCKS proxy to tunnel and exfiltrate data.                                        |
-| Impact                  | T1529 - System Shutdown/Reboot      | Manipulation of appliance startup scripts for persistence.                                           |
+### Initial Access
+- **T1190 - Exploit Public-Facing Application**
+  - Exploitation of Ivanti Connect Secure VPN appliances via CVE-2025-22457 (buffer overflow, remote code execution).
+
+### Execution
+- **T1059.004 - Command and Scripting Interpreter: Unix Shell**
+  - Use of shell scripts to deploy malware (TRAILBLAZE dropper).
+
+- **T1106 - Native API**
+  - TRAILBLAZE and BRUSHFIRE written in bare C, using raw syscalls for injection.
+
+### Persistence
+- **T1546.015 - Event Injection: Kernel Modules and Extensions**
+  - SPAWNSNARE extracts and encrypts kernel images; SPAWNANT installs malware persistently.
+
+- **T1037.001 - Boot or Logon Initialization Scripts: Unix**
+  - SPAWNANT may drop webshells and modify initialization scripts for persistence.
+
+### Defense Evasion
+- **T1562.001 - Impair Defenses: Disable or Modify Syslog**
+  - SPAWNSLOTH disables local logging and remote syslog forwarding.
+
+- **T1564.006 - Hide Artifacts: Indicator Removal from Tools**
+  - Deletion of temporary files and core dumps to evade detection.
+
+- **T1027 - Obfuscated Files or Information**
+  - Use of Base64 encoding for in-memory dropper; obfuscation network via compromised routers/appliances.
+
+### Credential Access
+- **T1552.001 - Unsecured Credentials: Credentials in Files**
+  - Not explicitly mentioned, but possible via kernel image extraction.
+
+### Collection
+- **T1005 - Data from Local System**
+  - SPAWNSNARE extracts kernel images.
+
+### Exfiltration
+- **T1041 - Exfiltration Over C2 Channel**
+  - BRUSHFIRE backdoor sends data via SSL_write after executing shellcode.
+
+### Impact
+- **T1496 - Resource Hijacking**
+  - Not directly mentioned, but killing child processes and tampering with logs may impact system resources.
 
 ---
 
 ## 3. Malware & Tools
 
 ### Malware Families
-- **BRICKSTORM**: Go-based backdoor with SOCKS proxy functionality, deployed on Linux/BSD appliances and VMware vCenter/ESXi hosts.
-- **BRICKSTEAL**: Malicious Java Servlet filter for Apache Tomcat, used for credential harvesting.
-- **SLAYSTYLE / BEEFLUSH**: JSP web shell for remote command execution.
+- **TRAILBLAZE**: In-memory dropper, written in C, uses raw syscalls, minimal footprint.
+- **BRUSHFIRE**: Passive backdoor, SSL_read hook, executes shellcode, communicates via SSL_write.
+- **SPAWNSNARE**: Kernel extractor/encryptor utility.
+- **SPAWNWAVE**: Implant utility, evolved from SPAWNANT, overlaps with SPAWNCHIMERA and RESURGE.
+- **SPAWNSLOTH**: Log tampering utility, disables logging and syslog forwarding.
+- **SPAWNANT**: Installer for SPAWN family malware, drops webshells.
 
 ### Legitimate Tools Abused (LOLBins)
-- **sed**: Used to modify startup scripts for persistence.
-- **SSH**: Used for lateral movement and appliance access.
-- **VMware vCenter/ESXi management interfaces**: Used to clone VMs and enable SSH.
-- **Delinea (Thycotic) Secret Server**: Targeted for credential extraction.
-- **PowerShell**: Credentials harvested from scripts.
+- **dslogserver**: Targeted for log tampering.
+- **busybox**: Referenced in SPAWNSNARE YARA rule.
 
 ### Custom Tooling
-- **wssoft library**: Custom library used in newer BRICKSTORM variants.
-- **Post-exploitation scripts**: Anti-forensics and credential harvesting.
+- Shell script dropper for initial deployment.
+- Modifications to Integrity Checker Tool (ICT) for detection evasion.
 
 ---
 
 ## 4. Threat Actor / Campaign Attribution
 
-- **Threat Actor**: UNC5221 (suspected China-nexus cluster)
-- **Aliases**: Sometimes referenced as Silk Typhoon, but GTIG distinguishes between the two.
-- **Campaign Name**: BRICKSTORM
-- **Motivation**: Espionage; focus on long-term stealthy access, data theft, and potential zero-day development.
-- **Targeted Sectors**: Legal services, SaaS providers, BPOs, Technology.
-- **Geographies**: Primarily United States.
-- **Operational Security**: High; no reuse of C2 domains or malware samples, minimal security telemetry.
+### Threat Actor
+- **UNC5221**
+  - Suspected China-nexus espionage actor.
+  - History of zero-day exploitation of edge devices (Ivanti, NetScaler).
+  - Aggressive operational tempo, sophisticated custom tooling.
+
+### Campaigns
+- Exploitation of CVE-2025-22457 (Ivanti Connect Secure).
+- Prior campaigns: CVE-2025-0282, CVE-2023-46805, CVE-2024-21887, CVE-2023-4966.
+
+### Motivations
+- Espionage (targeting edge devices for persistent access).
+
+### Targeted Sectors & Geographies
+- Wide range of countries and verticals.
+- Edge devices globally (VPNs, routers, appliances).
 
 ---
 
 ## 5. Splunk Detection Searches
 
-### 5.1 Appliance Startup Script Modification (Persistence)
+### 5.1 File Hash Detection (Endpoint)
 ```spl
-# Detect suspicious modifications to appliance startup scripts (init.d, rc.local, systemd)
-index=os OR index=linux sourcetype=linux_audit OR sourcetype=syslog
-| search (command="sed" AND ("/opt/vmware/etc/init.d/vami-lighttp" OR "/etc/sysconfig/init"))
-| stats count by host, user, command, _time
+# Detect known malicious hashes on endpoints (Sysmon)
+index=endpoint sourcetype=XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+| eval md5=lower(md5)
+| search md5 IN ("4628a501088c31f53b5c9ddf6788e835", "e5192258c27e712c7acf80303e68980b", "6e01ef1367ea81994578526b3bd331d6", "ce2b6a554ae46b5eb7d79ca5e7f440da", "10659b392e7f5b30b375b94cae4fdca0")
+| table _time, host, user, md5, Image, CommandLine
+# Detects execution or presence of files matching known malware hashes.
 ```
-*Detects use of `sed` to modify startup scripts for persistence.*
 
-### 5.2 Suspicious SSH Enablement via VAMI
+### 5.2 Suspicious File Creation (Linux/Edge Device)
 ```spl
-# Detect SSH enablement actions via VMware Appliance Management Interface (VAMI)
-index=vmware sourcetype=vami_logs
-| search "PUT /rest/appliance/access/ssh"
-| stats count by src_ip, dest_ip, user, _time
+# Detect suspicious file creation in /tmp and /lib directories (Sysmon or Linux audit logs)
+index=endpoint sourcetype=linux_audit OR sourcetype=XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+| search (file_path="/tmp/.i" OR file_path="/tmp/.r" OR file_path="/bin/dsmain" OR file_path="/lib/libdsupgrade.so" OR file_path="/tmp/.liblogblock.so")
+| table _time, host, user, file_path, action
+# Detects creation or modification of files associated with malware families.
 ```
-*Detects SSH service enablement on vCenter/ESXi appliances.*
 
-### 5.3 Web Shell Access (SLAYSTYLE/BEEFLUSH)
+### 5.3 Log Tampering Detection
 ```spl
-# Detect access to suspicious JSP web shells on vCenter servers
-index=web sourcetype=tomcat_access OR sourcetype=apache_access
-| search uri_path="/web/saml2/sso/" OR uri_path="*.jsp"
-| stats count by src_ip, uri_path, user, _time
+# Detect disabling of syslog or tampering with dslogserver process (Sysmon or Linux audit logs)
+index=endpoint sourcetype=linux_audit OR sourcetype=XmlWinEventLog:Microsoft-Windows-Sysmon/Operational
+| search (process_name="dslogserver" OR file_path="/tmp/.liblogblock.so")
+| table _time, host, user, process_name, file_path, action
+# Detects activity targeting log server processes or log tampering utilities.
 ```
-*Detects access to web shell URIs and credential harvesting endpoints.*
 
-### 5.4 VM Cloning Events (Credential Dumping)
+### 5.4 Exploitation Attempt Detection (Network)
 ```spl
-# Detect VM cloning activity in vSphere VPXD logs
-index=vmware sourcetype=vpxd_logs
-| search "VirtualMachine.clone" OR "VmClonedEvent"
-| stats count by user, vm_name, _time
+# Detect exploitation attempts against Ivanti Connect Secure VPN (firewall/proxy logs)
+index=network sourcetype=firewall OR sourcetype=proxy
+| search (dest_port=443 AND dest_ip IN (list_of_vpn_appliance_ips))
+| stats count by src_ip, dest_ip, dest_port, uri_path, user_agent
+| where count > threshold
+# Detects anomalous access patterns to VPN appliances, possibly indicative of exploitation.
 ```
-*Detects cloning of sensitive VMs, which may indicate credential dumping.*
 
-### 5.5 Microsoft Entra ID Mailbox Access
+### 5.5 Core Dump and Anomaly Detection
 ```spl
-# Detect suspicious mailbox access via Enterprise Applications (mail.read/full_access_as_app)
-index=m365 sourcetype=ual
-| search (operation="Mail.Read" OR operation="full_access_as_app")
-| stats count by user, app_id, mailbox, _time
+# Detect creation of core dumps in /data/var/cores (Linux audit logs)
+index=endpoint sourcetype=linux_audit
+| search file_path="/data/var/cores"
+| table _time, host, user, file_path, action
+# Detects creation or deletion of core dumps, which may indicate post-exploitation activity.
 ```
-*Detects mailbox access using high-privilege application scopes.*
 
-### 5.6 C2 Infrastructure Patterns (sslip.io, nip.io)
+### 5.6 TLS Certificate Anomaly Detection
 ```spl
-# Detect DNS queries or network connections to dynamic DNS C2 domains
-index=network sourcetype=dns OR sourcetype=proxy
-| search (query="*.sslip.io" OR query="*.nip.io")
-| stats count by src_ip, dest_domain, _time
+# Detect anomalous client TLS certificates presented to VPN appliance (network logs)
+index=network sourcetype=ssl
+| stats count by src_ip, dest_ip, ssl_subject, ssl_issuer
+| where ssl_subject matches suspicious pattern OR count > threshold
+# Detects unusual client certificates, possibly used for C2 or lateral movement.
 ```
-*Detects connections to C2 domains using dynamic DNS services.*
 
 ---
 
 ## 6. Executive Summary
 
-The BRICKSTORM espionage campaign, attributed to UNC5221 and suspected China-nexus threat clusters, targets US-based legal, SaaS, BPO, and technology sectors with highly evasive tactics. The actor exploits zero-day vulnerabilities in network appliances, deploys the BRICKSTORM backdoor for persistent access, and leverages advanced anti-forensics and credential harvesting techniques. Operational security is extremely high, with no reuse of C2 domains or malware samples, making detection reliant on behavioral TTPs rather than atomic IOCs. Organizations should immediately reevaluate their threat models for appliances, conduct TTP-based hunts, and monitor for suspicious modifications to startup scripts, SSH enablement, web shell activity, and anomalous mailbox access. The urgency is elevated due to the actor's long dwell times and stealthy lateral movement capabilities.
+UNC5221, a suspected China-nexus espionage actor, is actively exploiting a critical buffer overflow vulnerability (CVE-2025-22457) in Ivanti Connect Secure VPN appliances, enabling remote code execution and deployment of custom malware. The campaign leverages newly identified malware families (TRAILBLAZE, BRUSHFIRE) and the SPAWN ecosystem, employing sophisticated defense evasion and log tampering techniques. UNC5221's operations demonstrate a persistent focus on edge devices, using both zero-day and n-day vulnerabilities, and masking their activity through compromised routers and appliances. Immediate action is recommended: organizations should patch affected Ivanti appliances, monitor for IOCs and anomalous activity, and review logging and core dump files for signs of compromise. The urgency is high, as exploitation is ongoing and targets critical infrastructure globally.
