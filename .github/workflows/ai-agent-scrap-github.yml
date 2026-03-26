@@ -33,7 +33,7 @@ on:
   repository_dispatch:
     types: [threat-intel-scrape]
 
-  # ── Keep manual trigger for testing ────────────────────────────────────
+  # ── Manual trigger for testing ─────────────────────────────────────────
   workflow_dispatch:
     inputs:
       target_url:
@@ -47,8 +47,29 @@ permissions:
 
 env:
   TARGET_URL: "https://www.cisa.gov/news-events/cybersecurity-advisories"
-  OUTPUT_FILE: "threat-intel/latest_report.md"
-  AI_MODEL: "openai/gpt-4.1"
+
+  # ── Model config ─────────────────────────────────────────────────────
+  # Pick a model available in your Enterprise org. Common options:
+  #   openai/gpt-4o        ← broadest Enterprise availability (recommended)
+  #   openai/gpt-4o-mini   ← faster/cheaper, smaller context
+  #   openai/gpt-4.1       ← newer, but may not be approved in your org yet
+  #   openai/gpt-4.1-mini  ← newer mini variant
+  #
+  # To see what's available, ask your GitHub admin or call:
+  #   GET https://models.github.ai/catalog/models
+  #
+  AI_MODEL: "openai/gpt-4o"
+
+  # ── Endpoint config ──────────────────────────────────────────────────
+  # Enterprise orgs may need the org-scoped endpoint:
+  #   https://models.github.ai/orgs/YOUR_ORG/inference/chat/completions
+  #
+  # Public (works for personal repos & some Enterprise setups):
+  #   https://models.github.ai/inference/chat/completions
+  #
+  # Uncomment the one that works for you:
+  MODELS_ENDPOINT: "https://models.github.ai/inference/chat/completions"
+  # MODELS_ENDPOINT: "https://models.github.ai/orgs/YOUR_ORG_NAME/inference/chat/completions"
 
 jobs:
   scrape-and-extract:
@@ -63,7 +84,7 @@ jobs:
       # ── 2. Fetch the target website ────────────────────────────────────
       - name: Curl target website
         run: |
-          URL="${{ github.event.inputs.target_url || env.TARGET_URL }}"
+          URL="${{ github.event.client_payload.target_url || github.event.inputs.target_url || env.TARGET_URL }}"
           echo "Fetching: $URL"
 
           HTTP_CODE=$(curl -s -o /tmp/page_raw.html -w "%{http_code}" \
@@ -111,20 +132,25 @@ jobs:
           echo "$URL_SLUG" > /tmp/url_slug.txt
           echo "$DATESTAMP" > /tmp/datestamp.txt
 
-
-      # ── 3. Call GitHub Models API ──────────────────────────────────────
+      # ── 3. Call GitHub Models API & write report ───────────────────────
       #
       #  We use the REST API directly instead of actions/ai-inference
       #  because the ai-inference action requires passing content as a
-      #  `with:` input, which can't safely handle large HTML blobs.
+      #  `with:` input, which can't safely handle large text blobs.
       #
       #  Auth is still just GITHUB_TOKEN — no secrets to configure.
       #
-      - name: Extract data with AI
+      #  IMPORTANT: The file write MUST happen in this same step because
+      #  shell variables (like $EXTRACTED) don't cross step boundaries
+      #  in GitHub Actions.
+      #
+      - name: Extract data with AI and write report
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           SOURCE_URL=$(cat /tmp/source_url.txt)
+          URL_SLUG=$(cat /tmp/url_slug.txt)
+          DATESTAMP=$(cat /tmp/datestamp.txt)
 
           SYSTEM_PROMPT="You are a senior threat intelligence analyst and detection engineer with deep expertise in MITRE ATT&CK, incident response, and Splunk. Analyze the provided text (scraped from a threat intel source) and produce a structured threat intelligence report.
 
@@ -179,8 +205,7 @@ jobs:
           and note what type of content was found instead.
           Respond ONLY with the Markdown content — no preamble, no code fences around the entire response."
 
-          # Build JSON payload with jq — it handles all escaping of the
-          # HTML content safely (no heredoc/delimiter issues)
+          # Build JSON payload with jq — it handles all escaping safely
           PAYLOAD=$(jq -n \
             --arg model "${{ env.AI_MODEL }}" \
             --arg system "$SYSTEM_PROMPT" \
@@ -196,9 +221,10 @@ jobs:
             }')
 
           echo "Calling GitHub Models API (model: ${{ env.AI_MODEL }})..."
+          echo "Endpoint: ${{ env.MODELS_ENDPOINT }}"
 
           RESPONSE=$(curl -s -X POST \
-            "https://models.github.ai/inference/chat/completions" \
+            "${{ env.MODELS_ENDPOINT }}" \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Content-Type: application/json" \
@@ -220,48 +246,36 @@ jobs:
             exit 1
           fi
 
-          # Write to output file
-          mkdir -p "$(dirname "${{ env.OUTPUT_FILE }}")"
-          echo "$EXTRACTED" > "${{ env.OUTPUT_FILE }}"
-          echo "✅ Wrote $(wc -l < "${{ env.OUTPUT_FILE }}") lines to ${{ env.OUTPUT_FILE }}"
-
-            # ── 4. Write extracted data with unique filename ───────────────────
-      - name: Write extracted data
-        run: |
-          URL_SLUG=$(cat /tmp/url_slug.txt)
-          DATESTAMP=$(cat /tmp/datestamp.txt)
+          # Write to uniquely-named output file (MUST be in this step
+          # because $EXTRACTED only exists in this shell process)
           OUTPUT_DIR="threat-intel"
           OUTPUT_PATH="${OUTPUT_DIR}/${DATESTAMP}_${URL_SLUG}.md"
 
           mkdir -p "$OUTPUT_DIR"
-          echo "$EXTRACTED" > "$OUTPUT_PATH" 2>/dev/null || true
-
-          # Fallback: if EXTRACTED isn't in env, read from prior step
-          # (this handles the variable not crossing step boundaries)
+          echo "$EXTRACTED" > "$OUTPUT_PATH"
           echo "$OUTPUT_PATH" > /tmp/output_path.txt
-          echo "✅ Output file: $OUTPUT_PATH"
+          echo "✅ Wrote $(wc -l < "$OUTPUT_PATH") lines to $OUTPUT_PATH"
 
-      # ── 5. Commit and push ─────────────────────────────────────────────
+      # ── 4. Commit and push ─────────────────────────────────────────────
       - name: Commit and push
         run: |
-          URL_SLUG=$(cat /tmp/url_slug.txt)
-          DATESTAMP=$(cat /tmp/datestamp.txt)
           SOURCE_URL=$(cat /tmp/source_url.txt)
-          OUTPUT_DIR="threat-intel"
-          OUTPUT_PATH="${OUTPUT_DIR}/${DATESTAMP}_${URL_SLUG}.md"
+          DATESTAMP=$(cat /tmp/datestamp.txt)
+          OUTPUT_PATH=$(cat /tmp/output_path.txt)
 
           git config user.name "ai-agent[bot]"
           git config user.email "ai-agent[bot]@users.noreply.github.com"
-          git add "$OUTPUT_DIR/"
+          git add threat-intel/
 
           if git diff --cached --quiet; then
             echo "No changes — skipping commit."
           else
-            # Extract a title from the first H1/H2 in the markdown, or fall back to slug
+            # Extract a title from the first H1/H2 in the markdown,
+            # or fall back to the URL slug
             TITLE=$(grep -m1 '^##\? ' "$OUTPUT_PATH" \
               | sed 's/^##\? //' \
               | cut -c1-72)
-            TITLE="${TITLE:-$URL_SLUG}"
+            TITLE="${TITLE:-$(cat /tmp/url_slug.txt)}"
 
             git commit -m "threat-intel: ${TITLE}" \
               -m "Source: ${SOURCE_URL}" \
