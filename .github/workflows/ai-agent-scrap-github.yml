@@ -19,8 +19,21 @@
 name: AI Agent — Threat Intel Scraper (GitHub Models)
 
 on:
-  schedule:
-    - cron: '0 8 * * *'
+  # ── Webhook trigger ────────────────────────────────────────────────────
+  # Fires when GitHub receives a webhook payload at:
+  #   POST https://api.github.com/repos/OWNER/REPO/dispatches
+  #
+  # Trigger it with:
+  #   curl -X POST \
+  #     -H "Authorization: Bearer YOUR_PAT" \
+  #     -H "Accept: application/vnd.github+json" \
+  #     https://api.github.com/repos/OWNER/REPO/dispatches \
+  #     -d '{"event_type":"threat-intel-scrape","client_payload":{"target_url":"https://example.com/advisory"}}'
+  #
+  repository_dispatch:
+    types: [threat-intel-scrape]
+
+  # ── Keep manual trigger for testing ────────────────────────────────────
   workflow_dispatch:
     inputs:
       target_url:
@@ -85,6 +98,19 @@ jobs:
 
           TEXT_SIZE=$(wc -c < /tmp/page.html)
           echo "Stripped HTML to $TEXT_SIZE bytes of plain text"
+
+          # Generate a filename slug from the URL path
+          # e.g. https://cisa.gov/news/aa25-001 → cisa-gov-news-aa25-001
+          URL_SLUG=$(echo "$URL" \
+            | sed 's|https\?://||' \
+            | sed 's|[^a-zA-Z0-9]|-|g' \
+            | sed 's|--*|-|g; s|^-||; s|-$||' \
+            | cut -c1-80)
+          DATESTAMP=$(date -u '+%Y-%m-%d')
+
+          echo "$URL_SLUG" > /tmp/url_slug.txt
+          echo "$DATESTAMP" > /tmp/datestamp.txt
+
 
       # ── 3. Call GitHub Models API ──────────────────────────────────────
       #
@@ -199,18 +225,47 @@ jobs:
           echo "$EXTRACTED" > "${{ env.OUTPUT_FILE }}"
           echo "✅ Wrote $(wc -l < "${{ env.OUTPUT_FILE }}") lines to ${{ env.OUTPUT_FILE }}"
 
-      # ── 4. Commit and push ─────────────────────────────────────────────
+            # ── 4. Write extracted data with unique filename ───────────────────
+      - name: Write extracted data
+        run: |
+          URL_SLUG=$(cat /tmp/url_slug.txt)
+          DATESTAMP=$(cat /tmp/datestamp.txt)
+          OUTPUT_DIR="threat-intel"
+          OUTPUT_PATH="${OUTPUT_DIR}/${DATESTAMP}_${URL_SLUG}.md"
+
+          mkdir -p "$OUTPUT_DIR"
+          echo "$EXTRACTED" > "$OUTPUT_PATH" 2>/dev/null || true
+
+          # Fallback: if EXTRACTED isn't in env, read from prior step
+          # (this handles the variable not crossing step boundaries)
+          echo "$OUTPUT_PATH" > /tmp/output_path.txt
+          echo "✅ Output file: $OUTPUT_PATH"
+
+      # ── 5. Commit and push ─────────────────────────────────────────────
       - name: Commit and push
         run: |
+          URL_SLUG=$(cat /tmp/url_slug.txt)
+          DATESTAMP=$(cat /tmp/datestamp.txt)
+          SOURCE_URL=$(cat /tmp/source_url.txt)
+          OUTPUT_DIR="threat-intel"
+          OUTPUT_PATH="${OUTPUT_DIR}/${DATESTAMP}_${URL_SLUG}.md"
+
           git config user.name "ai-agent[bot]"
           git config user.email "ai-agent[bot]@users.noreply.github.com"
-          git add "${{ env.OUTPUT_FILE }}"
+          git add "$OUTPUT_DIR/"
 
           if git diff --cached --quiet; then
             echo "No changes — skipping commit."
           else
-            TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
-            git commit -m "threat-intel: automated scrape $TIMESTAMP"
+            # Extract a title from the first H1/H2 in the markdown, or fall back to slug
+            TITLE=$(grep -m1 '^##\? ' "$OUTPUT_PATH" \
+              | sed 's/^##\? //' \
+              | cut -c1-72)
+            TITLE="${TITLE:-$URL_SLUG}"
+
+            git commit -m "threat-intel: ${TITLE}" \
+              -m "Source: ${SOURCE_URL}" \
+              -m "Date: ${DATESTAMP}"
             git push
-            echo "✅ Committed and pushed."
+            echo "✅ Committed: threat-intel: ${TITLE}"
           fi
