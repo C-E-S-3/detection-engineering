@@ -58,7 +58,7 @@ env:
   # To see what's available, ask your GitHub admin or call:
   #   GET https://models.github.ai/catalog/models
   #
-  AI_MODEL: "openai/gpt-4o"
+  AI_MODEL: "openai/gpt-4.1"
 
   # ── Endpoint config ──────────────────────────────────────────────────
   # Enterprise orgs may need the org-scoped endpoint:
