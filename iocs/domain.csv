@@ -1,0 +1,2 @@
+indicator,source,date_added,context
+https://fs-loader.com/script/,https://www.bleepingcomputer.com/news/security/backdoored-telnyx-pypi-package-pushes-malware-hidden-in-wav-audio/,2026-03-27,Remote C2 server hosting malicious WAV files
