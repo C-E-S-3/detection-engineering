@@ -1,0 +1,4 @@
+ioc_type,indicator,threat_actor,malware_family,description,source_report
+DOMAIN,reactcdn.windowserrorapis.com,UNC6586,SNOWLIGHT,SNOWLIGHT C2 and payload staging server,react2shell-cve-2025-55182
+DOMAIN,scan.aquasecurtiy.org,Unknown,Trivy-Action Stealer,Typosquatted exfiltration domain (supply chain attack),trivy-action-supply-chain
+DOMAIN,tdtqy-oyaaa-aaaae-af2dq-cai.raw.icp0.io,Unknown,Trivy-Action Stealer,C2 hosted on Internet Computer blockchain,trivy-action-supply-chain

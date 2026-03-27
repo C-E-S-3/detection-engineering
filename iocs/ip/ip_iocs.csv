@@ -1,0 +1,4 @@
+ioc_type,indicator,threat_actor,malware_family,description,source_report
+IP,82.163.22.139,UNC5454,SNOWLIGHT,SNOWLIGHT C2 server,react2shell-cve-2025-55182
+IP,216.158.232.43,UNC5454,XMRIG,Staging server for cryptocurrency miner downloader script,react2shell-cve-2025-55182
+IP,45.76.155.14,UNC6588,COMPOOD,COMPOOD C2 and payload staging server,react2shell-cve-2025-55182
