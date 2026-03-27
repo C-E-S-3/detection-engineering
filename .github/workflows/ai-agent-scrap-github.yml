@@ -58,7 +58,7 @@ env:
   # To see what's available, ask your GitHub admin or call:
   #   GET https://models.github.ai/catalog/models
   #
-  AI_MODEL: "openai/gpt-4.1"
+  AI_MODEL: "openai/gpt-4o"
 
   # ── Endpoint config ──────────────────────────────────────────────────
   # Enterprise orgs may need the org-scoped endpoint:
@@ -67,7 +67,6 @@ env:
   # Public (works for personal repos & some Enterprise setups):
   #   https://models.github.ai/inference/chat/completions
   #
-  # Uncomment the one that works for you:
   MODELS_ENDPOINT: "https://models.github.ai/inference/chat/completions"
   # MODELS_ENDPOINT: "https://models.github.ai/orgs/YOUR_ORG_NAME/inference/chat/completions"
 
@@ -98,9 +97,7 @@ jobs:
             exit 1
           fi
 
-          # Strip HTML to plain text: remove scripts, styles, tags, then
-          # collapse whitespace. This shrinks a typical page from ~60KB
-          # of HTML to ~5-10KB of readable text — well under token limits.
+          # Strip HTML to plain text
           sed -e 's/<script[^>]*>.*<\/script>//gi' \
               -e 's/<style[^>]*>.*<\/style>//gi' \
               /tmp/page_raw.html \
@@ -110,18 +107,16 @@ jobs:
             | sed '/^$/d' \
             > /tmp/page_text.txt
 
-          # Hard cap at ~20KB of text (~5000 tokens, leaving room for
-          # the system prompt within the 8000 token limit)
+          # Hard cap at ~20KB (~5000 tokens)
           head -c 20000 /tmp/page_text.txt > /tmp/page.html
 
-          # Store the URL for later
+          # Store metadata in files
           echo "$URL" > /tmp/source_url.txt
 
           TEXT_SIZE=$(wc -c < /tmp/page.html)
           echo "Stripped HTML to $TEXT_SIZE bytes of plain text"
 
-          # Generate a filename slug from the URL path
-          # e.g. https://cisa.gov/news/aa25-001 → cisa-gov-news-aa25-001
+          # Generate filename slug
           URL_SLUG=$(echo "$URL" \
             | sed 's|https\?://||' \
             | sed 's|[^a-zA-Z0-9]|-|g' \
@@ -132,138 +127,156 @@ jobs:
           echo "$URL_SLUG" > /tmp/url_slug.txt
           echo "$DATESTAMP" > /tmp/datestamp.txt
 
-      # ── 3. Call GitHub Models API & write report ───────────────────────
+      # ── 3. Build the API request payload ───────────────────────────────
       #
-      #  We use the REST API directly instead of actions/ai-inference
-      #  because the ai-inference action requires passing content as a
-      #  `with:` input, which can't safely handle large text blobs.
+      #  Uses Python to build the JSON payload. This completely eliminates
+      #  shell quoting/interpolation issues — Python's json.dumps handles
+      #  all escaping correctly no matter what characters are in the
+      #  scraped text or webhook URL (ampersands, quotes, backticks, etc.)
       #
-      #  Auth is still just GITHUB_TOKEN — no secrets to configure.
+      - name: Build API payload
+        run: |
+          python3 << 'PYTHON_SCRIPT'
+          import json
+
+          with open("/tmp/source_url.txt") as f:
+              source_url = f.read().strip()
+
+          with open("/tmp/page.html") as f:
+              page_content = f.read()
+
+          system_prompt = (
+              "You are a senior threat intelligence analyst and detection engineer "
+              "with deep expertise in MITRE ATT&CK, incident response, and Splunk. "
+              "Analyze the provided text (scraped from a threat intel source) and "
+              "produce a structured threat intelligence report.\n\n"
+              "Extract and organize the following:\n\n"
+              "## 1. Indicators of Compromise (IOCs)\n"
+              "Extract ALL IOCs found, categorized by type:\n"
+              "- IP addresses (IPv4/IPv6)\n"
+              "- Domains and URLs\n"
+              "- File hashes (MD5, SHA1, SHA256)\n"
+              "- Email addresses used in campaigns\n"
+              "- File names and paths\n"
+              "- Registry keys\n"
+              "- Mutex names\n"
+              "- C2 infrastructure details\n\n"
+              "## 2. TTPs (MITRE ATT&CK Mapping)\n"
+              "Map observed techniques to MITRE ATT&CK framework:\n"
+              "- Tactic (e.g., Initial Access, Execution, Persistence)\n"
+              "- Technique ID and name (e.g., T1566.001 - Spearphishing Attachment)\n"
+              "- Brief description of how the technique was used\n\n"
+              "## 3. Malware & Tools\n"
+              "- Malware families/names mentioned\n"
+              "- Legitimate tools abused (LOLBins, etc.)\n"
+              "- Custom tooling descriptions\n\n"
+              "## 4. Threat Actor / Campaign Attribution\n"
+              "- Named threat groups (APT designations, aliases)\n"
+              "- Campaign names\n"
+              "- Known affiliations or motivations (espionage, financial, hacktivism)\n"
+              "- Targeted sectors and geographies\n\n"
+              "## 5. Splunk Detection Searches\n"
+              "For each significant IOC or TTP, provide a ready-to-run Splunk search.\n"
+              "Tailor searches to common sourcetypes and index patterns:\n"
+              "- Network IOCs: use firewall, proxy, dns sourcetypes\n"
+              "- Endpoint IOCs: use Sysmon (XmlWinEventLog), CrowdStrike "
+              "(crowdstrike:events:sensor), or Windows Security logs\n"
+              "- Hash lookups: search across endpoint detection sourcetypes\n"
+              "- Behavioral TTPs: write correlation searches using tstats or standard SPL\n\n"
+              "Format each search in a fenced code block with language 'spl'. Include a "
+              "brief comment explaining what the search detects.\n\n"
+              "## 6. Executive Summary\n"
+              "Provide a 3-5 sentence summary of the threat landscape described in the "
+              "source, highlighting urgency and recommended immediate actions.\n\n"
+              "Format the full response as clean Markdown. Start with a YAML frontmatter "
+              "block containing: scraped_at (ISO 8601), source_url, and report_type: threat-intel.\n"
+              "If no threat intelligence content is found in the text, state that clearly "
+              "and note what type of content was found instead.\n"
+              "Respond ONLY with the Markdown content - no preamble, no code fences around "
+              "the entire response."
+          )
+
+          user_prompt = (
+              f"Analyze this threat intelligence source for IOCs, TTPs, malware, "
+              f"and threat actors (source: {source_url}):\n\n{page_content}"
+          )
+
+          payload = {
+              "model": "${{ env.AI_MODEL }}",
+              "messages": [
+                  {"role": "system", "content": system_prompt},
+                  {"role": "user", "content": user_prompt}
+              ],
+              "temperature": 0.2,
+              "max_tokens": 4096
+          }
+
+          with open("/tmp/api_payload.json", "w") as f:
+              json.dump(payload, f)
+
+          print(f"Payload written ({len(user_prompt)} chars in user prompt)")
+          PYTHON_SCRIPT
+
+      # ── 4. Call GitHub Models API & write report ───────────────────────
       #
-      #  IMPORTANT: The file write MUST happen in this same step because
-      #  shell variables (like $EXTRACTED) don't cross step boundaries
-      #  in GitHub Actions.
+      #  Sends the pre-built JSON file with -d @file — no shell
+      #  interpolation touches the payload at all.
+      #  Writes response to a file and parses with jq from the file.
       #
-      - name: Extract data with AI and write report
+      - name: Call AI and write report
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          SOURCE_URL=$(cat /tmp/source_url.txt)
           URL_SLUG=$(cat /tmp/url_slug.txt)
           DATESTAMP=$(cat /tmp/datestamp.txt)
-
-          SYSTEM_PROMPT="You are a senior threat intelligence analyst and detection engineer with deep expertise in MITRE ATT&CK, incident response, and Splunk. Analyze the provided text (scraped from a threat intel source) and produce a structured threat intelligence report.
-
-          Extract and organize the following:
-
-          ## 1. Indicators of Compromise (IOCs)
-          Extract ALL IOCs found, categorized by type:
-          - IP addresses (IPv4/IPv6)
-          - Domains and URLs
-          - File hashes (MD5, SHA1, SHA256)
-          - Email addresses used in campaigns
-          - File names and paths
-          - Registry keys
-          - Mutex names
-          - C2 infrastructure details
-
-          ## 2. TTPs (MITRE ATT&CK Mapping)
-          Map observed techniques to MITRE ATT&CK framework:
-          - Tactic (e.g., Initial Access, Execution, Persistence)
-          - Technique ID and name (e.g., T1566.001 - Spearphishing Attachment)
-          - Brief description of how the technique was used
-
-          ## 3. Malware & Tools
-          - Malware families/names mentioned
-          - Legitimate tools abused (LOLBins, etc.)
-          - Custom tooling descriptions
-
-          ## 4. Threat Actor / Campaign Attribution
-          - Named threat groups (APT designations, aliases)
-          - Campaign names
-          - Known affiliations or motivations (espionage, financial, hacktivism)
-          - Targeted sectors and geographies
-
-          ## 5. Splunk Detection Searches
-          For each significant IOC or TTP, provide a ready-to-run Splunk search.
-          Tailor searches to common sourcetypes and index patterns:
-          - Network IOCs: use firewall, proxy, dns sourcetypes
-          - Endpoint IOCs: use Sysmon (XmlWinEventLog), CrowdStrike (crowdstrike:events:sensor), or Windows Security logs
-          - Hash lookups: search across endpoint detection sourcetypes
-          - Behavioral TTPs: write correlation searches using tstats or standard SPL
-
-          Format each search in a fenced code block with language 'spl'. Include a
-          brief comment explaining what the search detects.
-
-          ## 6. Executive Summary
-          Provide a 3-5 sentence summary of the threat landscape described in the
-          source, highlighting urgency and recommended immediate actions.
-
-          Format the full response as clean Markdown. Start with a YAML frontmatter
-          block containing: scraped_at (ISO 8601), source_url, and report_type: threat-intel.
-          If no threat intelligence content is found in the text, state that clearly
-          and note what type of content was found instead.
-          Respond ONLY with the Markdown content — no preamble, no code fences around the entire response."
-
-                   # Build the user prompt as a file first to avoid any shell
-          # interpolation issues with special characters in URLs or HTML
-          printf 'Analyze this threat intelligence source for IOCs, TTPs, malware, and threat actors (source: %s):\n\n' "$SOURCE_URL" > /tmp/user_prompt.txt
-          cat /tmp/page.html >> /tmp/user_prompt.txt
-
-          # Build JSON payload using --rawfile so jq reads the file
-          # directly — no shell expansion, no subshell, no parse errors
-          PAYLOAD=$(jq -n \
-            --arg model "${{ env.AI_MODEL }}" \
-            --arg system "$SYSTEM_PROMPT" \
-            --rawfile user /tmp/user_prompt.txt \
-            '{
-              model: $model,
-              messages: [
-                { role: "system", content: $system },
-                { role: "user",   content: $user }
-              ],
-              temperature: 0.2,
-              max_tokens: 4096
-            }')
-
+          SOURCE_URL=$(cat /tmp/source_url.txt)
 
           echo "Calling GitHub Models API (model: ${{ env.AI_MODEL }})..."
           echo "Endpoint: ${{ env.MODELS_ENDPOINT }}"
 
-          RESPONSE=$(curl -s -X POST \
+          # Send pre-built JSON file — curl reads it directly, no shell in the middle
+          curl -s -o /tmp/api_response.json -X POST \
             "${{ env.MODELS_ENDPOINT }}" \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "$PAYLOAD")
+            -d @/tmp/api_payload.json
 
-          # Check for errors
-          ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+          # Verify we got valid JSON back (not an HTML error page)
+          if ! jq empty /tmp/api_response.json 2>/dev/null; then
+            echo "::error::API returned non-JSON response:"
+            echo "--- First 500 chars ---"
+            head -c 500 /tmp/api_response.json
+            echo ""
+            exit 1
+          fi
+
+          # Check for API errors
+          ERROR=$(jq -r '.error.message // empty' /tmp/api_response.json)
           if [ -n "$ERROR" ]; then
             echo "::error::GitHub Models API error: $ERROR"
             exit 1
           fi
 
           # Extract the response text
-          EXTRACTED=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
+          EXTRACTED=$(jq -r '.choices[0].message.content // empty' /tmp/api_response.json)
 
           if [ -z "$EXTRACTED" ]; then
             echo "::error::Model returned empty content"
-            echo "Response: $(echo "$RESPONSE" | jq -c '.choices')"
+            jq -c '.choices' /tmp/api_response.json
             exit 1
           fi
 
-          # Write to uniquely-named output file (MUST be in this step
-          # because $EXTRACTED only exists in this shell process)
+          # Write to uniquely-named output file
           OUTPUT_DIR="threat-intel"
           OUTPUT_PATH="${OUTPUT_DIR}/${DATESTAMP}_${URL_SLUG}.md"
 
           mkdir -p "$OUTPUT_DIR"
           echo "$EXTRACTED" > "$OUTPUT_PATH"
           echo "$OUTPUT_PATH" > /tmp/output_path.txt
-          echo "✅ Wrote $(wc -l < "$OUTPUT_PATH") lines to $OUTPUT_PATH"
+          echo "Wrote $(wc -l < "$OUTPUT_PATH") lines to $OUTPUT_PATH"
 
-      # ── 4. Commit and push ─────────────────────────────────────────────
+      # ── 5. Commit and push ─────────────────────────────────────────────
       - name: Commit and push
         run: |
           SOURCE_URL=$(cat /tmp/source_url.txt)
@@ -277,8 +290,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes — skipping commit."
           else
-            # Extract a title from the first H1/H2 in the markdown,
-            # or fall back to the URL slug
             TITLE=$(grep -m1 '^##\? ' "$OUTPUT_PATH" \
               | sed 's/^##\? //' \
               | cut -c1-72)
@@ -288,5 +299,5 @@ jobs:
               -m "Source: ${SOURCE_URL}" \
               -m "Date: ${DATESTAMP}"
             git push
-            echo "✅ Committed: threat-intel: ${TITLE}"
+            echo "Committed: threat-intel: ${TITLE}"
           fi
