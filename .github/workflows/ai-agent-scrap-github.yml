@@ -45,6 +45,10 @@ permissions:
   contents: write
   models: read
 
+concurrency:
+  group: threat-intel-scrape
+  cancel-in-progress: false
+
 env:
   TARGET_URL: "https://www.cisa.gov/news-events/cybersecurity-advisories"
 
