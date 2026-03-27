@@ -302,6 +302,10 @@ jobs:
             git commit -m "threat-intel: ${TITLE}" \
               -m "Source: ${SOURCE_URL}" \
               -m "Date: ${DATESTAMP}"
+
+            # Pull any commits from concurrent runs before pushing
+            git pull --rebase origin main
             git push
             echo "Committed: threat-intel: ${TITLE}"
           fi
+
