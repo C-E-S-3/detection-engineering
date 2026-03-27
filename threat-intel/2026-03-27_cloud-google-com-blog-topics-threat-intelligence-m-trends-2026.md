@@ -8,155 +8,145 @@ report_type: threat-intel
 # Threat Intelligence Report: M-Trends 2026
 
 ## 1. Indicators of Compromise (IOCs)
+
 ### IP Addresses
-- None mentioned.
+- None observed.
 
 ### Domains and URLs
-- None mentioned.
+- None observed.
 
 ### File Hashes
-- None mentioned.
+- None observed.
 
 ### Email Addresses
-- None mentioned.
+- None observed.
 
 ### File Names and Paths
-- None mentioned.
+- None observed.
 
 ### Registry Keys
-- None mentioned.
+- None observed.
 
 ### Mutex Names
-- None mentioned.
+- None observed.
 
 ### C2 Infrastructure Details
-- None mentioned.
+- None observed.
+
+---
 
 ## 2. TTPs (MITRE ATT&CK Mapping)
+
 ### Initial Access
 - **T1190 - Exploit Public-Facing Application**  
-  Exploits remained the most common initial infection vector, accounting for 32% of intrusions globally.
+  Exploits remain the most common initial infection vector, accounting for 32% of intrusions globally.
 - **T1566.002 - Spearphishing via Service**  
   Highly interactive voice phishing surged to 11%, targeting IT help desks to bypass MFA and gain access to SaaS environments.
 
+### Execution
+- **T1203 - Exploitation for Client Execution**  
+  Exploitation of zero-day vulnerabilities, including edge devices and network appliances, with a mean time to exploit of -7 days.
+
 ### Persistence
 - **T1505.003 - Web Shell**  
-  Threat actors deploy custom in-memory malware like BRICKSTORM onto edge devices for deep persistence.
-- **T1556.004 - Abusing Authentication Processes**  
-  Attackers exploit misconfigured Active Directory Certificate Services templates to create admin accounts that bypass password rotation.
+  Deployment of custom in-memory malware like BRICKSTORM backdoor on network appliances for extreme persistence.
+- **T1078.003 - Valid Accounts: Local Accounts**  
+  Exploitation of Active Directory Certificate Services templates to create admin accounts bypassing password rotation.
 
 ### Defense Evasion
-- **T1070.004 - File Deletion**  
-  Ransomware groups actively delete backup objects from cloud storage to prevent recovery.
+- **T1553.002 - Subvert Trust Controls**  
+  Harvesting long-lived OAuth tokens and session cookies to bypass defenses and pivot into downstream environments.
 - **T1027 - Obfuscated Files or Information**  
-  Malware families like PROMPTFLUX query large language models (LLMs) mid-execution to evade detection.
-
-### Credential Access
-- **T1557.002 - Adversary-in-the-Middle**  
-  Adversaries leverage native packet-capturing functionality on edge devices to intercept plaintext credentials.
+  Use of AI-powered malware families like PROMPTFLUX and PROMPTSTEAL to evade detection.
 
 ### Impact
 - **T1486 - Data Encrypted for Impact**  
   Ransomware groups encrypt hypervisor datastores, rendering associated virtual machines inoperable.
-- **T1490 - Inhibit System Recovery**  
-  Attackers destroy backup infrastructure and virtualization management planes to deny recovery.
+- **T1485 - Data Destruction**  
+  Systemic destruction of backup infrastructure and virtualization management planes to deny recovery.
+
+---
 
 ## 3. Malware & Tools
+
 ### Malware Families
-- **REDBIKE (Akira)**  
-  Ransomware targeting backup infrastructure and virtualization management planes.
-- **AGENDA (Qilin)**  
-  Similar ransomware group with destructive tactics.
-- **BRICKSTORM**  
-  In-memory malware deployed on edge devices for persistence.
-- **PROMPTFLUX**  
-  Malware querying LLMs for evasion.
-- **QUIETVAULT**  
-  Credential stealer targeting local AI command-line tools.
+- **REDBIKE (Akira)**: Ransomware targeting backup infrastructure and virtualization management planes.
+- **AGENDA (Qilin)**: Ransomware with similar destructive tactics.
+- **BRICKSTORM**: Custom in-memory malware targeting edge devices for extreme persistence.
+- **PROMPTFLUX**: AI-powered malware querying LLMs mid-execution for evasion.
+- **PROMPTSTEAL**: AI-powered malware used for intellectual property theft.
+- **QUIETVAULT**: Credential stealer leveraging local AI command-line tools.
 
 ### Legitimate Tools Abused
-- **OAuth Tokens and Session Cookies**  
-  Harvested for bypassing defenses and pivoting into downstream environments.
+- **OAuth Tokens**: Harvested for unauthorized access.
+- **Session Cookies**: Used to bypass authentication mechanisms.
 
 ### Custom Tooling
-- **Custom In-Memory Malware**  
-  Used for persistence on edge devices lacking traditional security telemetry.
+- **In-memory malware**: Designed for edge devices with minimal onboard storage, evading traditional security tooling.
+
+---
 
 ## 4. Threat Actor / Campaign Attribution
+
 ### Named Threat Groups
-- **UNC3944**  
-  Known for targeting IT help desks to bypass MFA and compromise SaaS environments.
-- **UNC6201**  
-  Exploits edge devices and zero-days for espionage and persistence.
-- **UNC5807**  
-  Similar tactics targeting edge devices.
+- **UNC3944**: Known for voice phishing targeting IT help desks to bypass MFA.
+- **UNC6201**: Exploiting edge devices and zero-days for extreme persistence.
+- **UNC5807**: Similar tactics targeting VPNs and routers.
 
 ### Campaign Names
-- None explicitly named.
+- **ShinyHunters-Branded SaaS Data Theft**: Focused on SaaS environments and OAuth token abuse.
 
 ### Known Affiliations or Motivations
-- **Cyber Espionage**  
-  Groups optimizing for extreme persistence and intelligence gathering.
-- **Cyber Crime**  
-  Groups specializing in ransomware and recovery denial.
+- **Cyber Espionage**: Targeting edge devices for persistence and intelligence gathering.
+- **Financial Gain**: Ransomware operations optimized for recovery denial.
 
 ### Targeted Sectors and Geographies
-- **High Tech Sector** (17%)  
-  Most frequently targeted industry in 2025.
-- **Financial Sector** (14.6%)  
-  Previously the top target but now second.
+- **High-Tech Sector**: Most frequently targeted (17% of incidents).
+- **Financial Sector**: Second most targeted (14.6% of incidents).
+
+---
 
 ## 5. Splunk Detection Searches
-### Detect Exploits as Initial Infection Vector
-```spl
-index=firewall OR index=proxy OR index=dns
-sourcetype=network_traffic
-| search "exploit" OR "public-facing application"
-| stats count by src_ip, dest_ip, dest_port, signature
-| where count > 10
-```
-*Detects exploit attempts against public-facing applications.*
 
-### Detect Voice Phishing Activity
+### Detect OAuth Token Harvesting
 ```spl
-index=voip OR index=call_logs
-sourcetype=voip_logs
-| search "help desk" OR "MFA bypass"
-| stats count by caller_id, recipient_id, call_duration
-| where call_duration > 300
+index=proxy OR index=firewall sourcetype=pan:traffic OR sourcetype=bluecoat:proxy
+| search "OAuth" OR "token"
+| stats count by src_ip, dest_ip, dest_port, uri
+| table src_ip, dest_ip, dest_port, uri, count
 ```
-*Identifies suspicious voice phishing targeting IT help desks.*
+*Comment: Detects OAuth token-related activity in network traffic.*
 
-### Detect Ransomware Backup Deletion
+### Detect Voice Phishing Attempts
 ```spl
-index=cloud_storage
-sourcetype=storage_logs
-| search "delete backup" OR "remove snapshot"
-| stats count by user, action, resource
-| where action="delete"
+index=crowdstrike:events:sensor OR index=XmlWinEventLog sourcetype=WinEventLog:Security
+| search EventCode=4624 AccountName="helpdesk" AuthenticationPackageName="Interactive"
+| stats count by AccountName, src_ip, dest_ip
+| table AccountName, src_ip, dest_ip, count
 ```
-*Flags malicious deletion of backup objects in cloud environments.*
+*Comment: Flags interactive logins potentially linked to voice phishing targeting IT help desks.*
 
-### Detect BRICKSTORM Malware Persistence
+### Detect Ransomware Targeting Hypervisors
 ```spl
-index=network_devices
-sourcetype=device_logs
-| search "packet capture" OR "plaintext credentials"
-| stats count by device_ip, action
-| where action="capture"
+index=vmware sourcetype=vmware:logs
+| search "datastore" AND ("encrypt" OR "delete")
+| stats count by vm_name, user, action
+| table vm_name, user, action, count
 ```
-*Monitors for unauthorized packet capturing on edge devices.*
+*Comment: Monitors VMware logs for encryption or deletion of datastores.*
 
-### Detect OAuth Token Abuse
+### Detect BRICKSTORM Malware on Edge Devices
 ```spl
-index=saas_logs
-sourcetype=application_logs
-| search "OAuth token" OR "session cookie"
-| stats count by user, action, resource
-| where action="access"
+index=network sourcetype=cisco:ios OR sourcetype=juniper:logs
+| search "packet capture" AND ("malware" OR "BRICKSTORM")
+| stats count by src_ip, dest_ip, action
+| table src_ip, dest_ip, action, count
 ```
-*Detects suspicious use of OAuth tokens and session cookies.*
+*Comment: Identifies suspicious packet capture activity linked to BRICKSTORM malware.*
+
+---
 
 ## 6. Executive Summary
-The M-Trends 2026 report highlights significant shifts in the cyber threat landscape, including the rise of ransomware targeting recovery capabilities and espionage groups leveraging edge devices for extreme persistence. Adversaries are increasingly using voice phishing and exploiting SaaS integrations to bypass defenses. Organizations must prioritize behavioral anomaly detection, extend log retention policies, and isolate critical control planes to counter these evolving threats. Immediate actions include restructuring response playbooks to treat low-impact alerts as critical indicators and implementing continuous identity verification mechanisms.
+
+The M-Trends 2026 report highlights a rapidly evolving threat landscape characterized by increased adversary specialization, collaboration, and technological sophistication. Key trends include the rise of voice phishing, destructive ransomware targeting recovery capabilities, and extreme persistence via edge devices and zero-day exploits. Organizations must prioritize behavioral anomaly detection, extend log retention policies, and isolate critical control planes to mitigate these threats effectively. Immediate action is recommended to address visibility gaps and enhance resilience against advanced adversary tactics.
 ```
