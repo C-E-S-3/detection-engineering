@@ -205,11 +205,17 @@ jobs:
           and note what type of content was found instead.
           Respond ONLY with the Markdown content — no preamble, no code fences around the entire response."
 
-          # Build JSON payload with jq — it handles all escaping safely
+                   # Build the user prompt as a file first to avoid any shell
+          # interpolation issues with special characters in URLs or HTML
+          printf 'Analyze this threat intelligence source for IOCs, TTPs, malware, and threat actors (source: %s):\n\n' "$SOURCE_URL" > /tmp/user_prompt.txt
+          cat /tmp/page.html >> /tmp/user_prompt.txt
+
+          # Build JSON payload using --rawfile so jq reads the file
+          # directly — no shell expansion, no subshell, no parse errors
           PAYLOAD=$(jq -n \
             --arg model "${{ env.AI_MODEL }}" \
             --arg system "$SYSTEM_PROMPT" \
-            --arg user "$(printf 'Analyze this threat intelligence source for IOCs, TTPs, malware, and threat actors (source: %s):\n\n%s' "$SOURCE_URL" "$(cat /tmp/page.html)")" \
+            --rawfile user /tmp/user_prompt.txt \
             '{
               model: $model,
               messages: [
@@ -219,6 +225,7 @@ jobs:
               temperature: 0.2,
               max_tokens: 4096
             }')
+
 
           echo "Calling GitHub Models API (model: ${{ env.AI_MODEL }})..."
           echo "Endpoint: ${{ env.MODELS_ENDPOINT }}"
