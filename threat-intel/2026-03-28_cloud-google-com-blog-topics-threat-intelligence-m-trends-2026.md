@@ -7,105 +7,121 @@ report_type: threat-intel
 ## 1. Indicators of Compromise (IOCs)
 
 ### IP Addresses
-- None identified
+- None identified.
 
 ### Domains/URLs
-- None identified
+- None identified.
 
 ### File Hashes
-- None identified
+- None identified.
 
 ### Email Addresses
-- None identified
+- None identified.
 
 ### File Names/Paths
-- None identified
+- None identified.
 
 ### Registry Keys
-- None identified
+- None identified.
 
 ### Mutex Names
-- None identified
+- None identified.
 
 ### C2 Infrastructure
-- None identified
+- None identified.
 
 ## 2. TTPs (MITRE ATT&CK Mapping)
 
 ### Initial Access
-- **T1190: Exploit Public-Facing Application**: Exploits remained the most common initial infection vector, accounting for 32% of intrusions.
-- **T1566.002: Spearphishing via Service**: Highly interactive voice phishing surged to 11%, becoming the second-most common initial infection vector.
-- **T1078: Valid Accounts**: Threat actors used stolen credentials, including OAuth tokens and session cookies, to gain access to SaaS environments.
+- **T1190: Exploit Public-Facing Application**
+  - Exploits remain the most common initial infection vector, accounting for 32% of intrusions.
+- **T1566.002: Spearphishing via Service**
+  - High-interaction voice phishing (vishing) increased to 11%, becoming the second most common initial infection vector.
+- **T1078: Valid Accounts**
+  - Threat actors are using compromised credentials, including OAuth tokens and session cookies, to gain unauthorized access to systems.
 
 ### Persistence
-- **T1505.003: Server Software Component**: Custom in-memory malware like BRICKSTORM was deployed on network appliances to achieve persistence.
-- **T1098.003: Additional Cloud Credentials**: Attackers exploited misconfigured Active Directory Certificate Services templates to create admin accounts bypassing password rotation.
-
-### Defense Evasion
-- **T1562.001: Disable or Modify Tools**: Attackers actively deleted backup objects from cloud storage.
-- **T1070.004: File Deletion**: Backup infrastructure and virtualization management planes were targeted to destroy recovery capabilities.
+- **T1098: Account Manipulation**
+  - Attackers exploit misconfigured Active Directory Certificate Services templates to create admin accounts that bypass password rotation.
+- **T1547: Boot or Logon Autostart Execution**
+  - Deployment of in-memory malware like BRICKSTORM on network appliances for extreme persistence.
 
 ### Credential Access
-- **T1557.002: Man-in-the-Middle**: Adversaries leveraged native packet-capturing functionality on edge devices to intercept plaintext credentials.
+- **T1552: Unsecured Credentials**
+  - Threat actors steal hard-coded keys and personal access tokens from third-party SaaS vendors.
+- **T1557.002: Man-in-the-Middle: ARP Cache Poisoning**
+  - Adversaries leverage native packet-capturing functionality on network devices to intercept sensitive data and plaintext credentials.
 
 ### Impact
-- **T1486: Data Encrypted for Impact**: Ransomware operators encrypted hypervisor datastores, rendering virtual machines inoperable.
-- **T1490: Inhibit System Recovery**: Backup environments were targeted to prevent recovery.
+- **T1485: Data Destruction**
+  - Ransomware groups actively destroy backup infrastructure and virtualization management planes to prevent recovery.
+- **T1486: Data Encrypted for Impact**
+  - Attackers encrypt hypervisor datastores, rendering all associated virtual machines inoperable.
 
 ## 3. Malware & Tools
-- **BRICKSTORM**: Custom in-memory malware deployed on network appliances for persistence.
-- **QUIETVAULT**: Credential stealer targeting local AI command-line tools to extract sensitive data.
-- **PROMPTFLUX** and **PROMPTSTEAL**: Malware families leveraging AI to evade detection.
+- **BRICKSTORM**: Custom in-memory malware deployed on network appliances for extreme persistence.
+- **QUIETVAULT**: Credential stealer that executes predefined prompts to search for configuration files on local machines.
+- **PROMPTFLUX** and **PROMPTSTEAL**: Malware families that query large language models (LLMs) mid-execution to evade detection.
 
 ## 4. Threat Actor / Campaign Attribution
-- **UNC3944**: Known for targeting IT help desks to bypass MFA and gain SaaS access.
+- **UNC3944**: Known for targeting IT help desks to bypass MFA and gain access to SaaS environments.
 - **UNC6201** and **UNC5807**: Espionage groups targeting edge and core network devices for extreme persistence.
-- **REDBIKE (Akira)** and **AGENDA (Qilin)**: Ransomware groups targeting backup and virtualization infrastructure.
+- **REDBIKE (Akira)** and **AGENDA (Qilin)**: Ransomware groups targeting backup infrastructure and virtualization management planes.
 
 ## 5. Splunk Detection Searches
 
-### Detecting Voice Phishing Activity
-```spl
-index=voip_logs sourcetype=voip:events
-| search "interactive voice phishing"
-| stats count by caller_id, destination_number, duration
-| where duration > 300
-```
-*Comment: Identifies potential voice phishing calls lasting longer than 5 minutes.*
+### Behavioral TTPs
 
-### Monitoring OAuth Token Usage
+#### Detecting Exploitation of Public-Facing Applications
 ```spl
-index=auth_logs sourcetype=oauth:events
-| search "token_usage"
-| stats count by user, token_id, src_ip
+index=web sourcetype=webserver
+| search "POST" OR "GET"
+| stats count by src_ip, uri_path
+| where count > 100
+| table src_ip, uri_path, count
+```
+# This search identifies IPs making excessive requests to public-facing applications, which could indicate exploitation attempts.
+
+#### Detecting Vishing Attempts
+```spl
+index=voip sourcetype=voip:logs
+| search "call" AND "failed authentication"
+| stats count by src_ip, dest_number
 | where count > 10
+| table src_ip, dest_number, count
 ```
-*Comment: Detects abnormal OAuth token usage patterns.*
+# This search identifies repeated failed authentication attempts via voice calls, which could indicate vishing attempts.
 
-### Detecting Backup Deletion Commands
+#### Detecting OAuth Token Abuse
 ```spl
-index=cloud_logs sourcetype=cloud:admin
-| search "delete backup"
-| stats count by user, resource_name, src_ip
-| where count > 5
+index=auth sourcetype=auth_logs
+| search "OAuth" AND "token" AND "access"
+| stats count by user, src_ip, action
+| where action="token_used"
+| table user, src_ip, action
 ```
-*Comment: Flags suspicious deletion of backup objects in cloud environments.*
+# This search identifies suspicious OAuth token usage.
 
-### Identifying Hypervisor Datastore Encryption
+#### Detecting Backup Infrastructure Targeting
 ```spl
-index=vmware_logs sourcetype=vmware:events
-| search "datastore encryption"
-| stats count by vm_name, user, src_ip
+index=backup sourcetype=backup:logs
+| search "delete" OR "modify"
+| stats count by user, action, target
+| where action IN ("delete", "modify")
+| table user, action, target
 ```
-*Comment: Monitors for encryption activities targeting hypervisor datastores.*
+# This search identifies unauthorized deletion or modification of backup objects.
 
-### Detecting Packet-Capturing on Edge Devices
+#### Detecting Anomalous SaaS Token Usage
 ```spl
-index=network_logs sourcetype=network:device
-| search "packet capture"
-| stats count by device_ip, user, command
+index=saas sourcetype=saas:logs
+| search "token" AND "access"
+| stats count by user, token_id, action
+| where action="bulk_operation"
+| table user, token_id, action
 ```
-*Comment: Detects unauthorized use of packet-capturing functionality on network devices.*
+# This search identifies anomalous bulk operations using SaaS integration tokens.
 
 ## 6. Executive Summary
-The M-Trends 2026 report highlights significant advancements in adversary tactics, including the rise of voice phishing, the use of AI in malware, and the targeting of edge devices for extreme persistence. Ransomware operators are evolving their tactics to destroy recovery capabilities, while espionage groups exploit zero-day vulnerabilities to establish long-term persistence. Organizations are advised to prioritize behavioral anomaly detection, extend log retention policies, and secure critical infrastructure to mitigate these evolving threats.
+
+The M-Trends 2026 report highlights significant shifts in the cyber threat landscape, including the rise of voice phishing (vishing) as a major initial access vector and the evolution of ransomware tactics to target recovery capabilities. Espionage groups are increasingly exploiting edge devices and zero-day vulnerabilities to establish extreme persistence, while cybercriminals are leveraging AI to enhance attack effectiveness. Organizations are advised to adopt behavioral anomaly detection, extend log retention, and implement strict access controls to mitigate these evolving threats.
