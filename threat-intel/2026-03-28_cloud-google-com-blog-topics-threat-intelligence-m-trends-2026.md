@@ -32,85 +32,92 @@ report_type: threat-intel
 
 ## 2. TTPs (MITRE ATT&CK Mapping)
 
-### Tactics and Techniques
+### Initial Access
+- **T1190: Exploit Public-Facing Application**
+  - Exploits remain the most common initial infection vector, accounting for 32% of intrusions.
+- **T1566.002: Spearphishing via Service**
+  - Surge in highly interactive voice phishing (vishing) targeting IT help desks to bypass MFA and gain access to SaaS environments.
+- **T1078: Valid Accounts**
+  - Attackers leveraging stolen OAuth tokens, session cookies, and hard-coded keys to gain unauthorized access to SaaS environments.
 
-- **Tactic: Initial Access**
-  - **Technique ID:** T1190 (Exploit Public-Facing Application)
-    - **Description:** Exploits remain the most common initial infection vector, accounting for 32% of intrusions in 2025.
-  - **Technique ID:** T1566.002 (Spearphishing via Service)
-    - **Description:** Surge in highly interactive voice phishing (vishing) targeting IT help desks to bypass MFA and gain access to SaaS environments.
-  - **Technique ID:** T1078 (Valid Accounts)
-    - **Description:** Threat actors are harvesting long-lived OAuth tokens and session cookies to bypass authentication mechanisms.
+### Persistence
+- **T1505.003: Server Software Component**
+  - Deployment of in-memory malware like BRICKSTORM on edge devices for extreme persistence.
+- **T1098: Account Manipulation**
+  - Exploitation of misconfigured Active Directory Certificate Services templates to create admin accounts that bypass password rotation.
 
-- **Tactic: Persistence**
-  - **Technique ID:** T1505.003 (Server Software Component: Web Shell)
-    - **Description:** Deployment of custom, in-memory malware like BRICKSTORM on edge devices to establish deep persistence.
+### Credential Access
+- **T1552.001: Credentials In Files**
+  - Harvesting long-lived OAuth tokens and session cookies.
+- **T1557.002: Adversary-in-the-Middle**
+  - Leveraging native packet-capturing functionality on edge devices to intercept sensitive data and plaintext credentials.
 
-- **Tactic: Impact**
-  - **Technique ID:** T1486 (Data Encrypted for Impact)
-    - **Description:** Ransomware operators targeting backup infrastructure, identity services, and virtualization management planes to destroy recovery capabilities.
-
-- **Tactic: Credential Access**
-  - **Technique ID:** T1552 (Unsecured Credentials)
-    - **Description:** Threat actors steal hard-coded keys and personal access tokens from SaaS vendors to pivot into downstream environments.
+### Impact
+- **T1486: Data Encrypted for Impact**
+  - Ransomware groups encrypting hypervisor datastores to render associated virtual machines inoperable.
+- **T1490: Inhibit System Recovery**
+  - Targeting backup infrastructure, identity services, and virtualization management planes to destroy recovery capabilities.
 
 ## 3. Malware & Tools
 
-- **BRICKSTORM:** Custom in-memory malware deployed on edge devices to establish deep persistence.
-- **PROMPTFLUX and PROMPTSTEAL:** Malware families leveraging AI and large language models (LLMs) to evade detection.
-- **QUIETVAULT:** Credential stealer that executes predefined prompts to search for configuration files on targeted machines.
+- **BRICKSTORM**: Custom in-memory malware deployed on network appliances for deep persistence.
+- **REDBIKE (Akira)**: Ransomware targeting backup infrastructure and virtualization management planes.
+- **AGENDA (Qilin)**: Ransomware targeting backup environments and hypervisor datastores.
+- **QUIETVAULT**: Credential stealer that checks for local AI command-line tools to execute predefined prompts for configuration file searches.
+- **PROMPTFLUX** and **PROMPTSTEAL**: Malware families leveraging large language models (LLMs) for detection evasion.
 
 ## 4. Threat Actor / Campaign Attribution
 
-- **UNC3944:** Known for targeting IT help desks to bypass MFA and gain access to SaaS environments.
-- **UNC6201 and UNC5807:** Espionage groups targeting edge and core network devices for extreme persistence.
-- **REDBIKE (Akira) and AGENDA (Qilin):** Ransomware groups targeting backup infrastructure and virtualization management planes.
+- **UNC3944**: Known for targeting IT help desks to bypass MFA and gain access to SaaS environments.
+- **UNC6201 and UNC5807**: Espionage groups targeting edge and core network devices for extreme persistence.
+- **REDBIKE (Akira)** and **AGENDA (Qilin)**: Ransomware groups focusing on recovery denial by targeting backup infrastructure and virtualization management planes.
 
 ## 5. Splunk Detection Searches
 
-### Detecting OAuth Token Harvesting
+### Detecting OAuth Token and Session Cookie Harvesting
 ```spl
 index=proxy OR index=web
-| search "OAuth" AND "token"
+| search uri_path="*/oauth2/token" OR uri_path="*/session/cookie"
 | stats count by src_ip, dest_ip, uri_path, user_agent
 | where count > 10
-| table src_ip, dest_ip, uri_path, user_agent
+| table src_ip, dest_ip, uri_path, user_agent, count
 ```
 
-### Detecting Voice Phishing Activity
+### Detecting Ransomware Targeting Hypervisor Datastores
 ```spl
-index=voip OR index=call_logs
-| search "help desk" OR "MFA" OR "password reset"
-| stats count by caller_id, callee_id, call_duration
-| where call_duration > 300
-| table caller_id, callee_id, call_duration
-```
-
-### Detecting In-Memory Malware (BRICKSTORM)
-```spl
-index=sysmon EventCode=10
-| search "in-memory" AND "BRICKSTORM"
-| stats count by ComputerName, ProcessName, ProcessID
-| table _time, ComputerName, ProcessName, ProcessID
-```
-
-### Detecting Ransomware Targeting Backup Infrastructure
-```spl
-index=wineventlog EventCode=4663
-| search Object_Type="File" AND Access_Mask="DELETE"
-| stats count by ComputerName, Object_Name, Access_Mask
-| table _time, ComputerName, Object_Name, Access_Mask
-```
-
-### Detecting Suspicious SaaS Token Usage
-```spl
-index=saas_logs
-| search "token" AND "access"
-| stats count by user, action, app_name
+index=vmware OR index=virtualization
+| search "datastore" AND ("encrypt" OR "delete")
+| stats count by host, user, command, _time
 | where count > 5
-| table _time, user, action, app_name
+| table host, user, command, _time, count
+```
+
+### Detecting Edge Device Packet Capturing
+```spl
+index=network
+| search "packet capture" OR "pcap" OR "tcpdump"
+| stats count by src_ip, dest_ip, process_name, _time
+| where count > 5
+| table src_ip, dest_ip, process_name, _time, count
+```
+
+### Detecting Voice Phishing Attempts
+```spl
+index=voip OR index=telephony
+| search "call" AND ("help desk" OR "password reset" OR "MFA")
+| stats count by caller_id, callee_id, call_duration, _time
+| where call_duration > 60
+| table caller_id, callee_id, call_duration, _time
+```
+
+### Detecting BRICKSTORM Malware on Edge Devices
+```spl
+index=network OR index=firewall
+| search "BRICKSTORM" OR "in-memory malware"
+| stats count by src_ip, dest_ip, file_name, process_name, _time
+| table src_ip, dest_ip, file_name, process_name, _time
 ```
 
 ## 6. Executive Summary
 
-The M-Trends 2026 report highlights significant shifts in adversary tactics, including the rise of voice phishing, the use of AI-driven malware, and the targeting of edge devices for extreme persistence. Ransomware operators are increasingly focusing on destroying recovery capabilities, while espionage groups exploit zero-day vulnerabilities to establish long-term footholds. Organizations are advised to prioritize behavioral anomaly detection, extend log retention, and adopt robust identity verification measures to counter these evolving threats. Immediate action is recommended to address these advanced tactics and protect critical infrastructure.
+The M-Trends 2026 report highlights significant advancements in adversary tactics, including a rise in dwell times, increased use of voice phishing, and the evolution of ransomware into a recovery denial model. Sophisticated threat actors are leveraging edge devices and zero-day vulnerabilities to establish extreme persistence, while cybercriminals are accelerating the attack lifecycle through pre-staged malware and rapid hand-offs. Organizations are advised to prioritize behavioral anomaly detection, extend log retention, and secure critical control planes to counter these emerging threats effectively.
