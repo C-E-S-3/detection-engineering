@@ -33,73 +33,73 @@ report_type: threat-intel
 ## 2. TTPs (MITRE ATT&CK Mapping)
 
 ### Initial Access
-- **T1190: Exploit Public-Facing Application**: Exploits were the most common initial infection vector, accounting for 32% of intrusions in 2025.
-- **T1566.002: Spearphishing via Service**: Highly interactive voice phishing (vishing) surged to 11%, becoming the second most common initial infection vector.
-- **T1078: Valid Accounts**: Prior compromise was the third-most common initial infection vector globally (10%) and the top vector in ransomware operations (30%).
+- **T1190: Exploit Public-Facing Application**: Exploits remain the most common initial infection vector, accounting for 32% of intrusions.
+- **T1566.002: Spearphishing via Service**: Increased use of highly interactive voice phishing (vishing) to bypass MFA and gain access to SaaS environments.
+- **T1078: Valid Accounts**: Threat actors are leveraging stolen credentials, including OAuth tokens and session cookies, to gain unauthorized access to SaaS environments.
 
 ### Persistence
-- **T1505.003: Server Software Component - Web Shell**: Threat actors deploy custom in-memory malware like the BRICKSTORM backdoor directly onto network appliances for deep persistence.
-- **T1098.003: Additional Cloud Credentials**: Attackers steal hard-coded keys and personal access tokens from third-party SaaS vendors to pivot into downstream environments.
+- **T1505.003: Web Shell**: Threat actors deploy custom in-memory malware like the BRICKSTORM backdoor on network appliances to achieve persistence.
+- **T1098: Account Manipulation**: Exploiting misconfigured Active Directory Certificate Services templates to create admin accounts that bypass password rotation.
 
 ### Defense Evasion
-- **T1556.004: Network Sniffing**: Adversaries leverage native packet-capturing functionality on edge devices to intercept sensitive data and plaintext credentials.
-- **T1558.004: Steal or Forge Authentication Certificates**: Exploiting misconfigured Active Directory Certificate Services templates to create admin accounts that bypass password rotation.
+- **T1556.004: Network Sniffing**: Leveraging native packet-capturing functionality on edge devices to intercept sensitive data and credentials.
+- **T1557.002: Man-in-the-Middle**: Exploiting zero-day vulnerabilities in edge devices to intercept network traffic.
 
 ### Impact
-- **T1486: Data Encrypted for Impact**: Ransomware operators encrypt hypervisor datastores, rendering associated virtual machines inoperable.
-- **T1485: Data Destruction**: Ransomware groups actively destroy backup infrastructure and virtualization management planes to prevent recovery.
+- **T1486: Data Encrypted for Impact**: Ransomware groups encrypting hypervisor datastores to render all associated virtual machines inoperable.
+- **T1485: Data Destruction**: Ransomware operators actively targeting backup infrastructure and deleting backup objects from cloud storage.
 
 ## 3. Malware & Tools
-- **BRICKSTORM**: A custom in-memory backdoor deployed on network appliances for extreme persistence.
-- **PROMPTFLUX** and **PROMPTSTEAL**: Malware families leveraging AI/LLMs to evade detection.
-- **QUIETVAULT**: Credential stealer that executes predefined prompts to search for configuration files on compromised machines.
+- **BRICKSTORM**: Custom in-memory backdoor deployed on network appliances for extreme persistence.
+- **QUIETVAULT**: Credential stealer that targets local AI command-line tools to extract configuration files.
+- **PROMPTFLUX** and **PROMPTSTEAL**: Malware families leveraging large language models (LLMs) to evade detection.
 
 ## 4. Threat Actor / Campaign Attribution
 - **UNC3944**: Known for targeting IT help desks to bypass MFA and gain access to SaaS environments.
-- **UNC6201** and **UNC5807**: Espionage groups targeting edge and core network devices for extreme persistence.
-- **REDBIKE (Akira)** and **AGENDA (Qilin)**: Ransomware groups focusing on recovery denial by targeting backup infrastructure and virtualization management planes.
+- **UNC6201** and **UNC5807**: Espionage groups targeting edge and core network devices like VPNs and routers for extreme persistence.
+- **REDBIKE (Akira)** and **AGENDA (Qilin)**: Ransomware groups targeting backup infrastructure and virtualization management planes.
 
 ## 5. Splunk Detection Searches
 
-### Detecting BRICKSTORM Backdoor on Network Appliances
+### Detecting Voice Phishing Attempts
 ```spl
-index=network_logs sourcetype=network:device
-| search "BRICKSTORM"
-| stats count by src_ip, dest_ip, dest_port
-| table src_ip, dest_ip, dest_port, count
+index=voip_logs sourcetype=voip:logs "call setup" AND "unknown number"
+| stats count by src_ip, dest_ip, caller_id
+| where count > 10
+| table src_ip, dest_ip, caller_id, count
 ```
 
-### Detecting OAuth Token and Session Cookie Harvesting
+### Detecting OAuth Token and Session Cookie Abuse
 ```spl
-index=proxy_logs OR index=web_logs
-| search "OAuth" OR "session cookie"
-| stats count by src_ip, dest_ip, uri_path
-| table src_ip, dest_ip, uri_path, count
+index=web_logs sourcetype=web:proxy "OAuth" OR "session cookie"
+| stats count by user, src_ip, dest_ip, uri
+| where count > 5
+| table user, src_ip, dest_ip, uri, count
 ```
 
-### Detecting Exploitation of Active Directory Certificate Services
+### Detecting Exploitation of Public-Facing Applications
 ```spl
-index=windows_logs EventCode=4662
-| search "Certificate Services" "Admin Accounts"
-| stats count by user, host, message
-| table user, host, message, count
+index=web_logs sourcetype=web:access "POST" AND ("/wp-admin" OR "/login")
+| stats count by src_ip, uri, user_agent
+| where count > 10
+| table src_ip, uri, user_agent, count
 ```
 
-### Detecting Hypervisor Datastore Encryption
+### Detecting Backup Infrastructure Targeting
 ```spl
-index=vmware_logs sourcetype=vmware:esxi
-| search "datastore encryption" OR "hypervisor attack"
-| stats count by host, message
-| table host, message, count
+index=backup_logs sourcetype=backup:events "delete" OR "remove" OR "purge"
+| stats count by user, src_ip, dest_ip, action
+| where count > 5
+| table user, src_ip, dest_ip, action, count
 ```
 
-### Detecting Voice Phishing (Vishing) Attempts
+### Detecting Edge Device Exploitation
 ```spl
-index=voip_logs sourcetype=voip:call_logs
-| search "interactive voice" OR "vishing"
-| stats count by caller_id, callee_id, duration
-| table caller_id, callee_id, duration, count
+index=network_logs sourcetype=network:firewall "VPN" OR "router" AND "packet capture"
+| stats count by src_ip, dest_ip, action
+| where count > 5
+| table src_ip, dest_ip, action, count
 ```
 
 ## 6. Executive Summary
-The M-Trends 2026 report highlights significant shifts in the cyber threat landscape, including the rise of highly interactive voice phishing (vishing) and the evolution of ransomware into recovery denial attacks. Threat actors are increasingly targeting edge devices and exploiting zero-day vulnerabilities to establish extreme persistence. Additionally, adversaries are leveraging AI to evade detection and accelerate attack lifecycles. Organizations must adopt behavioral anomaly detection, extend log retention policies, and implement strict identity verification measures to counter these advanced threats. Immediate action is recommended to enhance visibility, secure critical infrastructure, and prepare for AI-driven threats.
+The M-Trends 2026 report highlights significant shifts in the cyber threat landscape, including the rise of voice phishing (vishing) as a major initial access vector and the evolution of ransomware tactics to target backup infrastructure and virtualization management planes. Espionage groups are increasingly exploiting zero-day vulnerabilities in edge devices for extreme persistence, while cybercriminals are leveraging AI to enhance their attack capabilities. Organizations are advised to adopt behavioral anomaly detection, extend log retention policies, and implement strict access controls to counter these emerging threats. Immediate action is recommended to address these evolving tactics and bolster resilience against sophisticated adversaries.
