@@ -1,8 +1,10 @@
 ---
-scraped_at: "2026-01-12T00:00:00Z"
-source_url: "https://cloud.google.com/blog/topics/threat-intelligence/auditing-salesforce-aura-data-exposure/"
+scraped_at: 2026-01-12T00:00:00Z
+source_url: https://cloud.google.com/blog/topics/threat-intelligence/auditing-salesforce-aura-data-exposure/
 report_type: threat-intel
 ---
+
+# Threat Intelligence Report: Auditing Salesforce Aura for Data Exposure
 
 ## 1. Indicators of Compromise (IOCs)
 
@@ -16,75 +18,81 @@ report_type: threat-intel
 - None identified
 
 ### Other IOCs
-- `serviceComponent://ui.force.components.controllers.hostConfig.HostConfigController/ACTION$getConfigData` (Aura method for retrieving backend Salesforce database objects)
-- `serviceComponent://ui.force.components.controllers.lists.selectableListDataProvider.SelectableListDataProviderController/ACTION$getItems` (Aura method for retrieving object records with sorting capabilities)
-- `serviceComponent://ui.force.components.controllers.lists.listViewPickerDataProvider.ListViewPickerDataProviderController/ACTION$getInitialListViews` (Aura method for identifying Record List components)
-- `serviceComponent://ui.communities.components.aura.components.communitySetup.cmc.CMCAppController/ACTION$getAppBootstrapData` (Aura method for retrieving home URLs)
-- `apex://applauncher.LoginFormController/ACTION$getIsSelfRegistrationEnabled` (Aura method for checking self-registration status)
-- `apex://applauncher.LoginFormController/ACTION$getSelfRegistrationUrl` (Aura method for retrieving self-registration URL)
+- **Aura Method**: `serviceComponent://ui.force.components.controllers.hostConfig.HostConfigController/ACTION$getConfigData`
+  - **Context**: Used to retrieve a list of objects from the backend Salesforce database.
+- **Aura Method**: `serviceComponent://ui.force.components.controllers.lists.selectableListDataProvider.SelectableListDataProviderController/ACTION$getItems`
+  - **Context**: Used to retrieve records for a specific object, with the ability to bypass Salesforce's 2,000-record limit using the `sortBy` parameter.
+- **Aura Method**: `serviceComponent://ui.force.components.controllers.lists.listViewPickerDataProvider.ListViewPickerDataProviderController/ACTION$getInitialListViews`
+  - **Context**: Used to check if an object has an associated Record List component.
+- **Aura Method**: `serviceComponent://ui.communities.components.aura.components.communitySetup.cmc.CMCAppController/ACTION$getAppBootstrapData`
+  - **Context**: Used to retrieve a list of Home URLs, which may include administrative or configuration panels.
+- **Aura Methods**: `apex://applauncher.LoginFormController/ACTION$getIsSelfRegistrationEnabled` and `apex://applauncher.LoginFormController/ACTION$getSelfRegistrationUrl`
+  - **Context**: Used to check if self-registration is enabled and retrieve the self-registration URL.
 
 ## 2. TTPs (MITRE ATT&CK Mapping)
 
-### Tactic: Initial Access
-- **T1190 - Exploit Public-Facing Application**: Exploiting misconfigured Salesforce Aura endpoints to gain unauthorized access to sensitive data.
+- **Tactic**: Initial Access
+  - **Technique ID**: T1078.003 (Valid Accounts: Local Accounts)
+    - **Description**: Exploiting misconfigured Salesforce self-registration to gain unauthorized access to accounts.
 
-### Tactic: Discovery
-- **T1087 - Account Discovery**: Using the `getIsSelfRegistrationEnabled` and `getSelfRegistrationUrl` methods to identify self-registration status and URLs.
-- **T1213 - Data from Information Repositories**: Using GraphQL API and Aura methods to retrieve sensitive data from Salesforce objects.
+- **Tactic**: Collection
+  - **Technique ID**: T1530 (Data from Cloud Storage Object)
+    - **Description**: Exploiting Salesforce Aura misconfigurations to retrieve sensitive data, such as credit card numbers, identity documents, and health information.
 
-### Tactic: Collection
-- **T1530 - Data from Cloud Storage Object**: Exploiting misconfigured Salesforce Aura endpoints to retrieve sensitive data such as credit card numbers, identity documents, and health information.
+- **Tactic**: Discovery
+  - **Technique ID**: T1087.002 (Account Discovery: Domain Accounts)
+    - **Description**: Using Salesforce Aura methods to enumerate user accounts and associated data.
 
-### Tactic: Defense Evasion
-- **T1070.004 - File Deletion**: Potential for attackers to use Salesforce's "boxcar'ing" mechanism to bundle multiple actions into a single request, potentially evading detection.
+- **Tactic**: Data Exfiltration
+  - **Technique ID**: T1020 (Automated Exfiltration)
+    - **Description**: Using Salesforce Aura methods and GraphQL to retrieve and exfiltrate large volumes of data, bypassing record retrieval limits.
 
 ## 3. Malware & Tools
 
-- **AuraInspector**: An open-source tool released by Mandiant to identify and audit access control misconfigurations in Salesforce Aura.
+- **Tool**: AuraInspector
+  - **Description**: An open-source command-line tool developed by Mandiant to identify and audit access control misconfigurations in the Salesforce Aura framework.
 
 ## 4. Threat Actor / Campaign Attribution
 
-- **Threat Actor**: Not specified.
+- **Threat Actor**: Not explicitly attributed to a specific group.
 - **Campaign Name**: Not specified.
-- **Motivations**: Likely financial gain through unauthorized access to sensitive data such as credit card numbers, identity documents, and health information.
-- **Targeted Sectors/Geographies**: Organizations using Salesforce Experience Cloud, particularly those handling sensitive data.
+- **Motivations**: Likely financial gain through unauthorized access to sensitive data, including credit card numbers, identity documents, and health information.
+- **Targeted Sectors/Geographies**: Organizations using Salesforce Experience Cloud, particularly those with misconfigured access controls.
 
 ## 5. Splunk Detection Searches
 
 ### Detecting Unauthorized Access to Aura Methods
 ```spl
-index=web sourcetype=access_combined
-| search "POST /aura" "serviceComponent://ui.force.components.controllers.hostConfig.HostConfigController/ACTION$getConfigData"
-| stats count by clientip, uri, user
-| table clientip, uri, user, count
+index=network sourcetype="http:json" 
+| spath input=_raw output=actions
+| search actions{}.descriptor IN ("serviceComponent://ui.force.components.controllers.hostConfig.HostConfigController/ACTION$getConfigData", 
+                                  "serviceComponent://ui.force.components.controllers.lists.selectableListDataProvider.SelectableListDataProviderController/ACTION$getItems", 
+                                  "serviceComponent://ui.force.components.controllers.lists.listViewPickerDataProvider.ListViewPickerDataProviderController/ACTION$getInitialListViews", 
+                                  "serviceComponent://ui.communities.components.aura.components.communitySetup.cmc.CMCAppController/ACTION$getAppBootstrapData", 
+                                  "apex://applauncher.LoginFormController/ACTION$getIsSelfRegistrationEnabled", 
+                                  "apex://applauncher.LoginFormController/ACTION$getSelfRegistrationUrl")
+| table _time, src_ip, actions{}.descriptor, actions{}.params
 ```
+*This search detects network traffic containing requests to the identified Salesforce Aura methods.*
 
-### Detecting Bulk Actions in Salesforce Aura
+### Detecting Large Data Exfiltration via GraphQL
 ```spl
-index=web sourcetype=access_combined
-| search "POST /aura" "actions" "id" "descriptor"
-| rex field=_raw "\"actions\":\[(?<actions>.*?)\]"
-| eval action_count=mvcount(split(actions, "{"))
-| where action_count > 100
-| table _time, clientip, action_count
+index=network sourcetype="http:json" uri_path="/services/data/v*/graphql"
+| spath input=_raw output=query
+| search query="*"
+| stats count by src_ip, uri_path, query
+| where count > 2000
 ```
+*This search identifies potential data exfiltration attempts using the GraphQL API to retrieve large volumes of records.*
 
-### Detecting GraphQL API Usage
+### Detecting Self-Registration Exploitation
 ```spl
-index=web sourcetype=access_combined
-| search "POST /services/data/vXX.X/graphql"
-| stats count by clientip, uri, user
-| table clientip, uri, user, count
+index=network sourcetype="http:json" uri_path="/apex/LoginFormController/ACTION$getSelfRegistrationUrl"
+| stats count by src_ip, uri_path
+| where count > 1
 ```
-
-### Detecting Self-Registration Enumeration
-```spl
-index=web sourcetype=access_combined
-| search "POST /aura" "apex://applauncher.LoginFormController/ACTION$getIsSelfRegistrationEnabled"
-| stats count by clientip, uri, user
-| table clientip, uri, user, count
-```
+*This search identifies repeated attempts to access the self-registration URL, which may indicate exploitation.*
 
 ## 6. Executive Summary
 
-On January 12, 2026, Mandiant released a new open-source tool, AuraInspector, to identify and audit access control misconfigurations in Salesforce's Aura framework. The report highlights several new techniques, including the use of GraphQL APIs and Aura methods, to exploit misconfigurations in Salesforce Experience Cloud applications. These techniques can allow unauthorized access to sensitive data, such as credit card numbers and identity documents, and bypass Salesforce's 2,000-record retrieval limit. Organizations using Salesforce should immediately review their access control configurations and consider using tools like AuraInspector to identify and mitigate potential vulnerabilities.
+Mandiant has released a new open-source tool, AuraInspector, to help organizations identify and audit access control misconfigurations in Salesforce Aura. These misconfigurations can expose sensitive data, such as credit card numbers and identity documents, to unauthorized users. The report highlights a previously undocumented technique using GraphQL to bypass Salesforce's 2,000-record retrieval limit, as well as methods to identify misconfigured objects and administrative URLs. Organizations using Salesforce Experience Cloud should immediately review their access control configurations and implement the recommended mitigations to prevent unauthorized data access.
