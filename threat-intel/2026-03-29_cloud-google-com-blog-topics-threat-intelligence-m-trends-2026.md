@@ -1,115 +1,104 @@
 ---
-  scraped_at: "2026-03-23T00:00:00Z"
-  source_url: "https://cloud.google.com/blog/topics/threat-intelligence/m-trends-2026/"
-  report_type: threat-intel
+scraped_at: "2026-03-23T00:00:00Z"
+source_url: "https://cloud.google.com/blog/topics/threat-intelligence/m-trends-2026/"
+report_type: threat-intel
 ---
 
 ## 1. Indicators of Compromise (IOCs)
 
 ### IP Addresses
-- None identified
+- No new IP addresses identified.
 
 ### Domains/URLs
-- None identified
+- No new domains/URLs identified.
 
 ### File Hashes
-- None identified
+- No new file hashes identified.
 
-### Email Addresses
-- None identified
-
-### File Names/Paths
-- None identified
-
-### Registry Keys
-- None identified
-
-### Mutex Names
-- None identified
-
-### C2 Infrastructure
-- None identified
+### Other IOCs
+- No other IOCs identified.
 
 ## 2. TTPs (MITRE ATT&CK Mapping)
 
 ### Initial Access
 - **T1190: Exploit Public-Facing Application**: Exploits remained the most common initial infection vector, accounting for 32% of intrusions.
-- **T1566.002: Spearphishing via Service**: Highly interactive voice phishing surged to 11%, becoming the second-most common initial infection vector.
-- **T1078: Valid Accounts**: Threat actors used compromised credentials, including hard-coded keys and personal access tokens, to gain access to SaaS environments.
+- **T1566.002: Spearphishing Link**: Highly interactive voice phishing (vishing) surged to 11%, becoming the second-most common initial infection vector.
+- **T1078: Valid Accounts**: Prior compromise was the third-most common initial infection vector globally (10%) and the top vector in ransomware operations (30%).
 
 ### Persistence
-- **T1505.003: Web Shell**: Threat actors deployed custom in-memory malware like the BRICKSTORM backdoor on network appliances for deep persistence.
-- **T1098.004: Credential Switching**: Exploitation of misconfigured Active Directory Certificate Services templates to create admin accounts that bypass password rotation.
+- **T1505.003: Web Shell**: Adversaries pre-stage secondary group malware or tunnels during the initial infection.
+- **T1505.003: Web Shell**: Deployment of custom, in-memory malware like the BRICKSTORM backdoor on network appliances for deep persistence.
+
+### Credential Access
+- **T1552.001: Credentials in Files**: Threat actors steal hard-coded keys and personal access tokens from compromised third-party SaaS vendors.
+- **T1557.002: Adversary-in-the-Middle**: Adversaries use native packet-capturing functionality on edge devices to intercept sensitive data and plaintext credentials.
 
 ### Defense Evasion
-- **T1556.004: Network Sniffing**: Adversaries leveraged native packet-capturing functionality on edge devices to intercept sensitive data and plaintext credentials.
-- **T1558.003: Steal Application Access Token**: Threat actors harvested OAuth tokens and session cookies to bypass standard defenses.
+- **T1556.004: Network Sniffing**: Adversaries leverage native packet-capturing functionality on edge devices to evade detection.
+- **T1556.005: Network Device Authentication**: Exploitation of misconfigured Active Directory Certificate Services templates to create admin accounts that bypass password rotation.
 
 ### Impact
-- **T1486: Data Encrypted for Impact**: Ransomware groups targeted backup infrastructure and virtualization management planes to encrypt data and destroy recovery capabilities.
-- **T1485: Data Destruction**: Attackers actively deleted backup objects from cloud storage and targeted virtualization storage layers to render virtual machines inoperable.
+- **T1486: Data Encrypted for Impact**: Ransomware groups encrypt hypervisor datastores to render associated virtual machines inoperable.
+- **T1485: Data Destruction**: Ransomware groups destroy backup infrastructure and delete backup objects from cloud storage to prevent recovery.
 
 ## 3. Malware & Tools
-- **BRICKSTORM**: Custom in-memory backdoor deployed on network appliances for deep persistence.
-- **PROMPTFLUX** and **PROMPTSTEAL**: Malware families leveraging AI to evade detection.
-- **QUIETVAULT**: Credential stealer that executes predefined prompts to search for configuration files on compromised systems.
+
+- **BRICKSTORM**: A custom, in-memory backdoor deployed on network appliances for extreme persistence.
+- **PROMPTFLUX**: Malware leveraging large language models (LLMs) mid-execution to evade detection.
+- **PROMPTSTEAL**: Malware leveraging LLMs for evasion.
+- **QUIETVAULT**: Credential stealer targeting local AI command-line tools to search for configuration files.
 
 ## 4. Threat Actor / Campaign Attribution
-- **UNC3944**: Known for targeting IT help desks to bypass MFA and gain initial access to SaaS environments.
-- **UNC6201** and **UNC5807**: Espionage groups targeting edge and core network devices for extreme persistence.
-- **REDBIKE (Akira)** and **AGENDA (Qilin)**: Ransomware groups targeting backup infrastructure and virtualization management planes.
+
+- **UNC3944**: Known for targeting IT help desks to bypass MFA and gain access to SaaS environments.
+- **UNC6201**: Targets edge and core network devices for extreme persistence.
+- **UNC5807**: Focuses on exploiting edge devices and leveraging zero-day vulnerabilities.
+- **REDBIKE (Akira)**: Ransomware group targeting backup infrastructure and virtualization management planes.
+- **AGENDA (Qilin)**: Ransomware group employing destructive tactics.
 
 ## 5. Splunk Detection Searches
 
-### Detecting OAuth Token Harvesting
+### Detecting Exploitation of Public-Facing Applications
 ```spl
-index=proxy sourcetype=bluecoat:proxysg OR sourcetype=squid
-| search "Authorization: Bearer"
-| stats count by src_ip, dest_ip, dest_port, uri_path, user
-| where count > 10
-| table src_ip, dest_ip, dest_port, uri_path, user
+index=web proxy
+| search "POST" OR "GET"
+| stats count by uri_path, src_ip, http_user_agent
+| where count > 100
 ```
-*Comment: This search identifies anomalous OAuth token usage patterns by analyzing HTTP headers for repeated token usage.*
 
-### Detecting Backup Object Deletion in Cloud Storage
+### Detecting Voice Phishing (Vishing) Activity
 ```spl
-index=aws sourcetype=aws:cloudtrail
-| search eventName=DeleteObject
-| stats count by userIdentity.arn, requestParameters.bucketName, requestParameters.key
-| where count > 5
-| table userIdentity.arn, requestParameters.bucketName, requestParameters.key
+index=telephony_logs
+| search "interactive voice" OR "vishing"
+| stats count by caller_id, callee_id, call_duration
+| where call_duration > 300
 ```
-*Comment: This search detects suspicious deletion of backup objects in AWS S3 buckets.*
 
-### Detecting Exploitation of Active Directory Certificate Services
+### Detecting Misconfigured Active Directory Certificate Services
 ```spl
-index=wineventlog sourcetype=XmlWinEventLog:Security EventCode=4670
-| search ObjectName="*Certificate Templates*"
-| stats count by SubjectUserName, ObjectName, AccessMask
-| where AccessMask="WRITE_OWNER"
-| table SubjectUserName, ObjectName, AccessMask
+index=windows
+sourcetype=XmlWinEventLog:Security
+EventCode=4769
+| stats count by TargetUserName, ServiceName, TicketOptions
+| where TicketOptions="0x40810000"
 ```
-*Comment: This search identifies unauthorized modifications to Active Directory Certificate Services templates.*
 
-### Detecting In-Memory Malware on Network Appliances
+### Detecting BRICKSTORM Backdoor Activity
 ```spl
-index=network sourcetype=firewall OR sourcetype=network:traffic
-| search "BRICKSTORM"
-| stats count by src_ip, dest_ip, dest_port, signature
-| table src_ip, dest_ip, dest_port, signature
+index=network
+| search "packet capture" OR "BRICKSTORM"
+| stats count by src_ip, dest_ip, protocol
+| where protocol="TCP" AND count > 100
 ```
-*Comment: This search identifies network traffic associated with the BRICKSTORM backdoor.*
 
-### Detecting Voice Phishing Attempts
+### Detecting OAuth Token Abuse
 ```spl
-index=voip sourcetype=cisco:callmanager
-| search "caller_id"="*" AND "call_type"="incoming"
-| stats count by caller_id, call_type
-| where count > 10
-| table caller_id, call_type
+index=saas_logs
+| search "OAuth token" OR "session cookie"
+| stats count by user, app, action
+| where action="access" AND user="unknown"
 ```
-*Comment: This search identifies potential voice phishing attempts by analyzing high-frequency incoming calls.*
 
 ## 6. Executive Summary
 
-The M-Trends 2026 report highlights significant shifts in the cyber threat landscape, including the rise of voice phishing, the collapse of the "hand-off" window in cybercrime operations, and the evolution of ransomware into recovery denial attacks. Sophisticated threat actors are increasingly targeting edge devices and leveraging zero-day vulnerabilities for extreme persistence, while also exploiting SaaS environments via stolen OAuth tokens and session cookies. Organizations are advised to prioritize behavioral anomaly detection, extend log retention policies, and treat low-impact alerts as critical indicators to counter these advanced threats. Immediate action is recommended to secure critical control planes, isolate backup environments, and implement continuous identity verification to mitigate risks.
+The M-Trends 2026 report highlights significant advancements in adversary tactics, including the rise of voice phishing (vishing), extreme persistence on edge devices, and destructive ransomware operations. Key malware families such as BRICKSTORM and PROMPTFLUX demonstrate the increasing sophistication of attackers. Organizations are urged to adopt behavioral anomaly detection, extend log retention, and secure critical control planes to mitigate these threats. Immediate action is recommended to address visibility gaps and enhance resilience against evolving adversary techniques.
