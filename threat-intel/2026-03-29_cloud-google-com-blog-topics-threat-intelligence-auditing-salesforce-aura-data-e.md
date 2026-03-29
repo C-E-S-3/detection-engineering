@@ -16,98 +16,94 @@ report_type: threat-intel
 - None identified
 
 ### Other IOCs
-- None identified
+- `serviceComponent://ui.force.components.controllers.hostConfig.HostConfigController/ACTION$getConfigData` (Aura method for retrieving backend Salesforce database objects)
+- `serviceComponent://ui.force.components.controllers.lists.selectableListDataProvider.SelectableListDataProviderController/ACTION$getItems` (Aura method for retrieving object records)
+- `serviceComponent://ui.force.components.controllers.lists.listViewPickerDataProvider.ListViewPickerDataProviderController/ACTION$getInitialListViews` (Aura method for identifying Record List components)
+- `serviceComponent://ui.communities.components.aura.components.communitySetup.cmc.CMCAppController/ACTION$getAppBootstrapData` (Aura method for retrieving Home URLs)
+- `apex://applauncher.LoginFormController/ACTION$getIsSelfRegistrationEnabled` (Aura method for checking self-registration status)
+- `apex://applauncher.LoginFormController/ACTION$getSelfRegistrationUrl` (Aura method for retrieving self-registration URL)
 
 ## 2. TTPs (MITRE ATT&CK Mapping)
 
-### Tactic: Collection
-- **Technique ID**: T1530
-  **Technique Name**: Data from Cloud Storage Object
-  **Description**: The Salesforce Aura framework allows attackers to exploit misconfigured access controls to retrieve sensitive data such as credit card numbers, identity documents, and health information.
+- **Tactic: Initial Access**
+  - **Technique: Exploit Public-Facing Application (T1190)**
+    - Exploitation of Salesforce Aura misconfigurations to access sensitive data such as credit card numbers, identity documents, and health information.
 
-### Tactic: Collection
-- **Technique ID**: T1530
-  **Technique Name**: Data from Cloud Storage Object
-  **Description**: The `getConfigData` Aura method can be used to retrieve a list of objects from the backend Salesforce database.
+- **Tactic: Collection**
+  - **Technique: Data from Information Repositories (T1213)**
+    - Abuse of Salesforce Aura methods (e.g., `getConfigData`, `getItems`) to retrieve sensitive data from Salesforce objects.
 
-### Tactic: Collection
-- **Technique ID**: T1530
-  **Technique Name**: Data from Cloud Storage Object
-  **Description**: The `getItems` Aura method can be used to retrieve records for specific objects, with the ability to bypass Salesforce's 2,000-record limit using the `sortBy` parameter.
+- **Tactic: Discovery**
+  - **Technique: Application Window Discovery (T1010)**
+    - Use of Aura methods to identify accessible Record List components and Home URLs.
 
-### Tactic: Collection
-- **Technique ID**: T1530
-  **Technique Name**: Data from Cloud Storage Object
-  **Description**: The `getInitialListViews` Aura method can be used to identify the presence of Record Lists, which may expose sensitive data if access controls are misconfigured.
-
-### Tactic: Collection
-- **Technique ID**: T1530
-  **Technique Name**: Data from Cloud Storage Object
-  **Description**: The `getAppBootstrapData` Aura method can be used to retrieve Home URLs, which may lead to sensitive administration or configuration panels.
-
-### Tactic: Credential Access
-- **Technique ID**: T1539
-  **Technique Name**: Steal Web Session Cookie
-  **Description**: The `getIsSelfRegistrationEnabled` and `getSelfRegistrationUrl` Aura methods can be used to identify if self-registration is enabled and retrieve the self-registration URL, potentially allowing attackers to create accounts and gain unauthorized access.
-
-### Tactic: Collection
-- **Technique ID**: T1530
-  **Technique Name**: Data from Cloud Storage Object
-  **Description**: The GraphQL Aura controller can be used to bypass the 2,000-record limit and retrieve all records tied to an object, provided the object is misconfigured.
+- **Tactic: Credential Access**
+  - **Technique: Exploitation for Credential Access (T1212)**
+    - Abuse of self-registration misconfigurations to gain unauthorized access to Salesforce instances.
 
 ## 3. Malware & Tools
 
-- **AuraInspector**: An open-source command-line tool developed by Mandiant to identify and audit access control misconfigurations in Salesforce Aura.
+- **AuraInspector**: An open-source tool released by Mandiant to identify and audit access control misconfigurations in Salesforce Aura.
 
 ## 4. Threat Actor / Campaign Attribution
 
 - **Threat Actor**: Not specified
 - **Campaign Name**: Not specified
-- **Motivations**: Exploitation of Salesforce Aura misconfigurations to gain unauthorized access to sensitive data, including credit card numbers, identity documents, and health information.
-- **Targeted Sectors/Geographies**: Organizations using Salesforce Experience Cloud, particularly those with misconfigured access controls.
+- **Motivations**: Likely financial gain through unauthorized access to sensitive data such as credit card numbers, identity documents, and health information.
+- **Targeted Sectors/Geographies**: Organizations using Salesforce Experience Cloud, potentially across various sectors.
 
 ## 5. Splunk Detection Searches
 
-### Detecting Misuse of `getConfigData` Aura Method
+### Detecting Usage of Specific Aura Methods
+
+#### Search for `getConfigData` Method Usage
 ```spl
-index=network sourcetype=http
-| search "POST /aura" "serviceComponent://ui.force.components.controllers.hostConfig.HostConfigController/ACTION$getConfigData"
-| stats count by src_ip, http_user_agent
-| table src_ip, http_user_agent, count
+index=your_index sourcetype="your_sourcetype" 
+| spath input=_raw output=actions
+| search actions.descriptor="serviceComponent://ui.force.components.controllers.hostConfig.HostConfigController/ACTION$getConfigData"
+| table _time, src_ip, user, actions
 ```
 
-### Detecting Misuse of `getItems` Aura Method
+#### Search for `getItems` Method Usage
 ```spl
-index=network sourcetype=http
-| search "POST /aura" "serviceComponent://ui.force.components.controllers.lists.selectableListDataProvider.SelectableListDataProviderController/ACTION$getItems"
-| stats count by src_ip, http_user_agent
-| table src_ip, http_user_agent, count
+index=your_index sourcetype="your_sourcetype" 
+| spath input=_raw output=actions
+| search actions.descriptor="serviceComponent://ui.force.components.controllers.lists.selectableListDataProvider.SelectableListDataProviderController/ACTION$getItems"
+| table _time, src_ip, user, actions
 ```
 
-### Detecting Misuse of `getInitialListViews` Aura Method
+#### Search for `getInitialListViews` Method Usage
 ```spl
-index=network sourcetype=http
-| search "POST /aura" "serviceComponent://ui.force.components.controllers.lists.listViewPickerDataProvider.ListViewPickerDataProviderController/ACTION$getInitialListViews"
-| stats count by src_ip, http_user_agent
-| table src_ip, http_user_agent, count
+index=your_index sourcetype="your_sourcetype" 
+| spath input=_raw output=actions
+| search actions.descriptor="serviceComponent://ui.force.components.controllers.lists.listViewPickerDataProvider.ListViewPickerDataProviderController/ACTION$getInitialListViews"
+| table _time, src_ip, user, actions
 ```
 
-### Detecting Misuse of `getAppBootstrapData` Aura Method
+#### Search for `getAppBootstrapData` Method Usage
 ```spl
-index=network sourcetype=http
-| search "POST /aura" "serviceComponent://ui.communities.components.aura.components.communitySetup.cmc.CMCAppController/ACTION$getAppBootstrapData"
-| stats count by src_ip, http_user_agent
-| table src_ip, http_user_agent, count
+index=your_index sourcetype="your_sourcetype" 
+| spath input=_raw output=actions
+| search actions.descriptor="serviceComponent://ui.communities.components.aura.components.communitySetup.cmc.CMCAppController/ACTION$getAppBootstrapData"
+| table _time, src_ip, user, actions
 ```
 
-### Detecting Misuse of GraphQL Aura Controller
+#### Search for Self-Registration Methods Usage
 ```spl
-index=network sourcetype=http
-| search "POST /graphql" "GraphQL Aura controller"
-| stats count by src_ip, http_user_agent
-| table src_ip, http_user_agent, count
+index=your_index sourcetype="your_sourcetype" 
+| spath input=_raw output=actions
+| search actions.descriptor IN ("apex://applauncher.LoginFormController/ACTION$getIsSelfRegistrationEnabled", "apex://applauncher.LoginFormController/ACTION$getSelfRegistrationUrl")
+| table _time, src_ip, user, actions
+```
+
+### Detecting GraphQL API Usage
+```spl
+index=your_index sourcetype="your_sourcetype" 
+| spath input=_raw output=actions
+| search actions.descriptor="GraphQL"
+| table _time, src_ip, user, actions
 ```
 
 ## 6. Executive Summary
 
-Mandiant has released a new open-source tool, AuraInspector, to identify and audit access control misconfigurations in Salesforce Aura. The report highlights several previously undocumented techniques, including the misuse of Aura methods (`getConfigData`, `getItems`, `getInitialListViews`, `getAppBootstrapData`) and the GraphQL Aura controller to exploit misconfigurations and retrieve sensitive data. These techniques can lead to unauthorized access to sensitive information such as credit card numbers, identity documents, and health information. Organizations using Salesforce Experience Cloud should immediately review their access control configurations and implement the recommended mitigations to secure their environments.
+Mandiant has released a new open-source tool, AuraInspector, to identify and audit access control misconfigurations in Salesforce Aura. The report highlights several previously undocumented techniques, including the abuse of Salesforce Aura methods and the GraphQL API, which can be exploited to bypass record retrieval limits and access sensitive data. Organizations using Salesforce Experience Cloud are advised to review their access control configurations, disable self-registration if not required, and monitor for unauthorized use of specific Aura methods and GraphQL queries. Immediate action is recommended to mitigate potential data exposure risks.
