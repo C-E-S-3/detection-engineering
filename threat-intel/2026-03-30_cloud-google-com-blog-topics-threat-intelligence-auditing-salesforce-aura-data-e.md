@@ -6,99 +6,86 @@ report_type: threat-intel
 
 ## 1. Indicators of Compromise (IOCs)
 
-### IP Addresses
-_None identified_
-
 ### Domains/URLs
-- None identified
+- None identified.
 
 ### File Hashes
-_None identified_
+- None identified.
 
-### Email Addresses
-_None identified_
+### IP Addresses
+- None identified.
 
-### File Names/Paths
-_None identified_
-
-### Registry Keys
-_None identified_
-
-### Mutex Names
-_None identified_
-
-### C2 Infrastructure
-_None identified_
+### Other IOCs
+- None identified.
 
 ## 2. TTPs (MITRE ATT&CK Mapping)
 
-- **Tactic: Initial Access (TA0001)**
-  - **Technique: Exploit Public-Facing Application (T1190)**
-    - Exploitation of Salesforce Aura misconfigurations to gain unauthorized access to sensitive data such as credit card numbers, identity documents, and health information.
+### Tactics and Techniques
+- **Tactic:** Collection
+  - **Technique ID:** T1530
+  - **Technique Name:** Data from Cloud Storage Object
+  - **Description:** Exploiting misconfigurations in Salesforce Aura to retrieve sensitive data such as credit card numbers, identity documents, and health information.
 
-- **Tactic: Collection (TA0009)**
-  - **Technique: Data from Information Repositories (T1213)**
-    - Use of Salesforce Aura methods like `getConfigData` and `getItems` to retrieve sensitive data from Salesforce objects.
-  - **Technique: Automated Collection (T1119)**
-    - Abuse of Salesforce Aura's "boxcar'ing" mechanism to bulk retrieve records for multiple objects in a single request.
+- **Tactic:** Discovery
+  - **Technique ID:** T1087.002
+  - **Technique Name:** Account Discovery: Domain Accounts
+  - **Description:** Using Salesforce Aura methods to enumerate accounts and retrieve object records.
 
-- **Tactic: Discovery (TA0007)**
-  - **Technique: Application Window Discovery (T1010)**
-    - Use of `getInitialListViews` Aura method to identify accessible Record Lists and associated objects.
-  - **Technique: Application Discovery (T1010)**
-    - Use of `getAppBootstrapData` Aura method to identify home URLs leading to administrative or configuration panels.
+- **Tactic:** Collection
+  - **Technique ID:** T1074.001
+  - **Technique Name:** Data Staged: Local Data Staging
+  - **Description:** Leveraging GraphQL API to bypass Salesforce’s 2,000-record retrieval limit and collect large datasets.
 
-- **Tactic: Credential Access (TA0006)**
-  - **Technique: Account Manipulation (T1098)**
-    - Exploitation of misconfigured self-registration settings to create unauthorized accounts with elevated access.
-
-- **Tactic: Collection (TA0009)**
-  - **Technique: Data from Information Repositories (T1213)**
-    - Use of GraphQL API to bypass Salesforce's 2,000-record retrieval limit and access additional records.
+- **Tactic:** Defense Evasion
+  - **Technique ID:** T1562.001
+  - **Technique Name:** Impair Defenses: Disable or Modify Tools
+  - **Description:** Exploiting misconfigured access controls to bypass standard Salesforce object sharing rules.
 
 ## 3. Malware & Tools
 
+### Tools
 - **AuraInspector**: An open-source tool released by Mandiant to identify and audit access control misconfigurations in Salesforce Aura.
 
 ## 4. Threat Actor / Campaign Attribution
-
-- **Threat Actor**: Not explicitly attributed to a specific group.
-- **Campaign Name**: Not specified.
-- **Motivations**: Likely financial gain or data theft, targeting organizations using Salesforce Experience Cloud.
-- **Targeted Sectors/Geographies**: Organizations leveraging Salesforce Experience Cloud, potentially across multiple sectors.
+- **Threat Actor:** Not explicitly attributed.
+- **Campaign Name:** Not specified.
+- **Motivations:** Likely financial or espionage-related, targeting sensitive data such as credit card numbers, identity documents, and health information.
+- **Targeted Sectors/Geographies:** Organizations using Salesforce Experience Cloud, potentially across various industries.
 
 ## 5. Splunk Detection Searches
 
-### Detecting Misuse of Aura Methods
-```spl
-index=proxy sourcetype=bluecoat | rex field=uri_path "(?<method>serviceComponent://[^"]+)" | search method="*Aura*" | stats count by method, src_ip, user
-```
-*Comment: This search identifies requests to Salesforce Aura methods, including `getConfigData`, `getItems`, and others, which could indicate potential misuse.*
+### Behavioral TTPs
 
-### Detecting GraphQL API Usage
+#### Detecting Misconfigured Aura Methods
 ```spl
-index=proxy sourcetype=bluecoat uri_path="*/graphql" | stats count by src_ip, user, uri_path
+index=web sourcetype="http:access" uri_path="/aura" http_method=POST
+| spath input=_raw output=actions
+| search actions="*getConfigData*" OR actions="*getItems*" OR actions="*getInitialListViews*"
+| stats count by clientip, uri_path, actions
+| where count > 10
 ```
-*Comment: This search identifies usage of the GraphQL API, which could be abused to bypass Salesforce record limits.*
+*Comment:* Detects repeated use of misconfigured Aura methods such as `getConfigData`, `getItems`, and `getInitialListViews`.
 
-### Detecting Bulk Actions via Boxcar'ing
+#### Detecting GraphQL API Abuse
 ```spl
-index=proxy sourcetype=bluecoat uri_path="*/aura" http_method=POST | rex field=_raw "Content-Length: (?<content_length>\d+)" | where content_length > 100000 | stats count by src_ip, user, content_length
+index=web sourcetype="http:access" uri_path="/graphql" http_method=POST
+| spath input=_raw output=query
+| search query="*{*}" AND query="*records*"
+| stats count by clientip, uri_path, query
+| where count > 5
 ```
-*Comment: This search identifies large POST requests to the Salesforce Aura endpoint, which may indicate abuse of the boxcar'ing mechanism.*
+*Comment:* Identifies potential abuse of the GraphQL API to retrieve large datasets.
 
-### Detecting Access to Home URLs
+#### Detecting Bulk Actions in Salesforce Aura
 ```spl
-index=proxy sourcetype=bluecoat uri_path="*/recordlist/*" OR uri_path="*/s/recordlist/*" | stats count by src_ip, user, uri_path
+index=web sourcetype="http:access" uri_path="/aura" http_method=POST
+| spath input=_raw output=actions
+| search actions="*bulk*"
+| stats count by clientip, uri_path, actions
+| where count > 50
 ```
-*Comment: This search identifies access to Salesforce Record List URLs, which may indicate unauthorized access to sensitive data.*
-
-### Detecting Self-Registration Abuse
-```spl
-index=proxy sourcetype=bluecoat uri_path="*/applauncher.LoginFormController/ACTION*" | stats count by src_ip, user, uri_path
-```
-*Comment: This search identifies requests to the `getIsSelfRegistrationEnabled` and `getSelfRegistrationUrl` methods, which could indicate attempts to exploit self-registration misconfigurations.*
+*Comment:* Flags excessive bulk actions in Salesforce Aura, which may indicate misuse.
 
 ## 6. Executive Summary
 
-On January 12, 2026, Mandiant released a detailed report on Salesforce Aura framework misconfigurations, highlighting significant risks of unauthorized data access. The report introduces a new open-source tool, AuraInspector, designed to identify and audit these misconfigurations. Key techniques include exploiting Aura methods like `getConfigData` and `getItems`, abusing the GraphQL API to bypass Salesforce's 2,000-record limit, and leveraging misconfigured self-registration settings to create unauthorized accounts. Organizations using Salesforce Experience Cloud are advised to immediately review and secure their access control configurations, disable unnecessary endpoints, and monitor for suspicious activity using the provided detection searches.
+Mandiant has released a new open-source tool, AuraInspector, to help organizations identify and audit access control misconfigurations in Salesforce Aura. These misconfigurations can expose sensitive data such as credit card numbers and health information. Additionally, attackers can exploit Salesforce Aura’s GraphQL API to bypass record retrieval limits and collect large datasets. Organizations using Salesforce Experience Cloud should immediately review their access control configurations, disable self-registration if not required, and monitor for suspicious activity involving Aura methods and GraphQL API endpoints.
