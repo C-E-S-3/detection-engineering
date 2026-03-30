@@ -1,95 +1,101 @@
 ---
-scraped_at: "2026-01-12T00:00:00Z"
-source_url: "https://cloud.google.com/blog/topics/threat-intelligence/auditing-salesforce-aura-data-exposure/"
+scraped_at: 2026-01-12T00:00:00Z
+source_url: https://cloud.google.com/blog/topics/threat-intelligence/auditing-salesforce-aura-data-exposure/
 report_type: threat-intel
 ---
 
 ## 1. Indicators of Compromise (IOCs)
 
+### IP Addresses
+No new IP addresses identified.
+
 ### Domains/URLs
-- None identified
+No new domains or URLs identified.
 
 ### File Hashes
-- None identified
-
-### IP Addresses
-- None identified
+No new file hashes identified.
 
 ### Other IOCs
-- `serviceComponent://ui.force.components.controllers.hostConfig.HostConfigController/ACTION$getConfigData`: Used to retrieve backend Salesforce database object configurations.
-- `serviceComponent://ui.force.components.controllers.lists.selectableListDataProvider.SelectableListDataProviderController/ACTION$getItems`: Used to retrieve records for specific objects.
-- `serviceComponent://ui.force.components.controllers.lists.listViewPickerDataProvider.ListViewPickerDataProviderController/ACTION$getInitialListViews`: Used to check if an object has an associated record list component.
-- `serviceComponent://ui.communities.components.aura.components.communitySetup.cmc.CMCAppController/ACTION$getAppBootstrapData`: Used to retrieve home URLs for administration or configuration panels.
-- `apex://applauncher.LoginFormController/ACTION$getIsSelfRegistrationEnabled`: Used to check if self-registration is enabled.
-- `apex://applauncher.LoginFormController/ACTION$getSelfRegistrationUrl`: Used to retrieve the self-registration URL.
+- **Aura Endpoint**: `serviceComponent://ui.force.components.controllers.hostConfig.HostConfigController/ACTION$getConfigData`
+  - Context: Used to retrieve a list of objects in the backend Salesforce database.
+- **Aura Endpoint**: `serviceComponent://ui.force.components.controllers.lists.selectableListDataProvider.SelectableListDataProviderController/ACTION$getItems`
+  - Context: Used to retrieve records for specific objects in Salesforce.
+- **Aura Endpoint**: `serviceComponent://ui.force.components.controllers.lists.listViewPickerDataProvider.ListViewPickerDataProviderController/ACTION$getInitialListViews`
+  - Context: Used to check if an object has an associated record list component.
+- **Aura Endpoint**: `serviceComponent://ui.communities.components.aura.components.communitySetup.cmc.CMCAppController/ACTION$getAppBootstrapData`
+  - Context: Used to retrieve home URLs for administration or configuration panels.
+- **Aura Endpoint**: `apex://applauncher.LoginFormController/ACTION$getIsSelfRegistrationEnabled`
+  - Context: Used to check if self-registration is enabled.
+- **Aura Endpoint**: `apex://applauncher.LoginFormController/ACTION$getSelfRegistrationUrl`
+  - Context: Used to retrieve the self-registration URL.
 
 ## 2. TTPs (MITRE ATT&CK Mapping)
 
-- **Tactic: Initial Access**
-  - **Technique ID: T1078.003 (Valid Accounts: Cloud Accounts)**
-    - **Description:** Exploiting misconfigured Salesforce Aura endpoints to gain unauthorized access to sensitive data.
+- **Tactic**: Initial Access
+  - **Technique**: Exploit Public-Facing Application (T1190)
+    - **Description**: Exploiting misconfigured Salesforce Aura endpoints to access sensitive data or administrative panels.
 
-- **Tactic: Discovery**
-  - **Technique ID: T1087 (Account Discovery)**
-    - **Description:** Using Aura methods to retrieve user account information and associated records.
+- **Tactic**: Collection
+  - **Technique**: Data from Information Repositories (T1213)
+    - **Description**: Using misconfigured Aura endpoints to retrieve sensitive records, including credit card numbers, identity documents, and health information.
 
-- **Tactic: Collection**
-  - **Technique ID: T1213 (Data from Information Repositories)**
-    - **Description:** Leveraging GraphQL API to bypass Salesforce's 2,000-record retrieval limit and access sensitive data.
+- **Tactic**: Discovery
+  - **Technique**: Application Window Discovery (T1010)
+    - **Description**: Using the `getInitialListViews` Aura method to identify accessible record lists.
 
-- **Tactic: Credential Access**
-  - **Technique ID: T1552.001 (Unsecured Credentials: Credentials In Files)**
-    - **Description:** Identifying misconfigured access controls that expose sensitive data such as credit card numbers and identity documents.
+- **Tactic**: Credential Access
+  - **Technique**: Account Discovery (T1087)
+    - **Description**: Exploiting self-registration endpoints to create unauthorized accounts.
 
 ## 3. Malware & Tools
 
-- **AuraInspector**: An open-source tool released by Mandiant to identify and audit access control misconfigurations within the Salesforce Aura framework.
+- **Tool**: AuraInspector
+  - **Description**: Open-source command-line tool released by Mandiant to identify and audit access control misconfigurations in Salesforce Aura.
 
 ## 4. Threat Actor / Campaign Attribution
 
-- **Threat Actor:** Mandiant Offensive Security Services (OSS) identified these techniques during engagements. No specific threat actor or campaign attribution is provided in the source.
-- **Targeted Sectors:** Organizations using Salesforce Experience Cloud, particularly those handling sensitive data such as credit card numbers, identity documents, and health information.
+- **Threat Actor**: Not specified.
+- **Campaign Name**: Not specified.
+- **Motivations**: Likely financial gain or data theft, targeting sensitive information such as credit card numbers, identity documents, and health information stored in Salesforce.
+- **Targeted Sectors/Geographies**: Organizations using Salesforce Experience Cloud, potentially across multiple sectors.
 
 ## 5. Splunk Detection Searches
 
-### Detecting Unauthorized Access to Aura Endpoints
+### Detecting Access to `getConfigData` Aura Endpoint
 ```spl
-index=proxy_logs
-| search uri_path="/aura" AND (uri_query="*getConfigData*" OR uri_query="*getItems*" OR uri_query="*getInitialListViews*" OR uri_query="*getAppBootstrapData*" OR uri_query="*getIsSelfRegistrationEnabled*" OR uri_query="*getSelfRegistrationUrl*")
-| stats count by src_ip, uri_path, uri_query
-| table src_ip, uri_path, uri_query, count
+index=proxy OR index=web
+| search uri_path="*/serviceComponent://ui.force.components.controllers.hostConfig.HostConfigController/ACTION$getConfigData"
+| stats count by src_ip, user, uri_path
 ```
-*Comment: This search identifies access to Salesforce Aura endpoints that may indicate unauthorized data retrieval attempts.*
 
-### Detecting Bulk Actions in Salesforce Aura
+### Detecting Access to `getItems` Aura Endpoint
 ```spl
-index=proxy_logs
-| search uri_path="/aura" AND uri_query="*actions*"
-| rex field=uri_query "actions":\[(?<actions>.*?)\]
-| eval action_count=mvcount(split(actions, "},"))
-| where action_count > 100
-| table src_ip, uri_path, action_count
+index=proxy OR index=web
+| search uri_path="*/serviceComponent://ui.force.components.controllers.lists.selectableListDataProvider.SelectableListDataProviderController/ACTION$getItems"
+| stats count by src_ip, user, uri_path
 ```
-*Comment: This search detects bulk actions exceeding the recommended limit of 100 actions per request.*
 
-### Monitoring GraphQL API Usage
+### Detecting Access to `getInitialListViews` Aura Endpoint
 ```spl
-index=proxy_logs
-| search uri_path="/graphql" AND method="POST"
-| stats count by src_ip, uri_path, method
-| table src_ip, uri_path, method, count
+index=proxy OR index=web
+| search uri_path="*/serviceComponent://ui.force.components.controllers.lists.listViewPickerDataProvider.ListViewPickerDataProviderController/ACTION$getInitialListViews"
+| stats count by src_ip, user, uri_path
 ```
-*Comment: This search identifies usage of the GraphQL API, which could be used to bypass Salesforce's record retrieval limits.*
 
-### Detecting Self-Registration Page Access
+### Detecting Access to `getAppBootstrapData` Aura Endpoint
 ```spl
-index=proxy_logs
-| search uri_path="/applauncher.LoginFormController" AND (uri_query="*getIsSelfRegistrationEnabled*" OR uri_query="*getSelfRegistrationUrl*")
-| stats count by src_ip, uri_path, uri_query
-| table src_ip, uri_path, uri_query, count
+index=proxy OR index=web
+| search uri_path="*/serviceComponent://ui.communities.components.aura.components.communitySetup.cmc.CMCAppController/ACTION$getAppBootstrapData"
+| stats count by src_ip, user, uri_path
 ```
-*Comment: This search identifies attempts to access self-registration-related methods in Salesforce.*
+
+### Detecting Access to Self-Registration Endpoints
+```spl
+index=proxy OR index=web
+| search uri_path="*/apex://applauncher.LoginFormController/ACTION$getIsSelfRegistrationEnabled" OR uri_path="*/apex://applauncher.LoginFormController/ACTION$getSelfRegistrationUrl"
+| stats count by src_ip, user, uri_path
+```
 
 ## 6. Executive Summary
 
-Mandiant has released a new open-source tool, AuraInspector, to help organizations identify and audit access control misconfigurations in Salesforce's Aura framework. The report highlights several previously undocumented techniques, including the use of GraphQL to bypass Salesforce's 2,000-record retrieval limit and the exploitation of misconfigured Aura endpoints to access sensitive data. Organizations using Salesforce Experience Cloud should immediately review their access control configurations, disable self-registration if not required, and monitor for unauthorized access to Salesforce endpoints using the provided Splunk detection searches.
+Mandiant has released a new open-source tool, AuraInspector, to identify and audit access control misconfigurations in Salesforce Aura. These misconfigurations can expose sensitive data, such as credit card numbers and identity documents, to unauthorized users. The report highlights several previously undocumented techniques, including the use of GraphQL to bypass Salesforce's 2,000-record retrieval limit and the exploitation of misconfigured Aura endpoints to access sensitive data and administrative panels. Organizations using Salesforce Experience Cloud should immediately review their access control configurations, disable self-registration if not required, and monitor for unauthorized access to critical endpoints.
