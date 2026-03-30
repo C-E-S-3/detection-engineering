@@ -1,94 +1,116 @@
 ---
-scraped_at: "2026-01-12T00:00:00Z"
-source_url: "https://cloud.google.com/blog/topics/threat-intelligence/auditing-salesforce-aura-data-exposure/"
-report_type: threat-intel
+  scraped_at: "2026-01-12T00:00:00Z"
+  source_url: "https://cloud.google.com/blog/topics/threat-intelligence/auditing-salesforce-aura-data-exposure/"
+  report_type: threat-intel
 ---
 
 ## 1. Indicators of Compromise (IOCs)
 
-No specific IOCs (IP addresses, domains, hashes, etc.) were identified in the source content.
+### Domains/URLs
+- None identified
+
+### IP Addresses
+- None identified
+
+### File Hashes
+- None identified
+
+### Email Addresses
+- None identified
+
+### File Names/Paths
+- None identified
+
+### Registry Keys
+- None identified
+
+### Mutex Names
+- None identified
+
+### C2 Infrastructure
+- None identified
 
 ## 2. TTPs (MITRE ATT&CK Mapping)
 
-### Tactics and Techniques Identified:
+### Tactic: Collection (TA0009)
+- **Technique ID**: T1530 - Data from Cloud Storage Object
+  - **Description**: Misconfigured Salesforce Aura endpoints allow unauthorized access to sensitive data, such as credit card numbers, identity documents, and health information.
 
-- **Tactic: Initial Access**
-  - **Technique ID:** T1078.003 (Valid Accounts: Local Accounts)
-    - **Description:** Exploiting misconfigured access controls in Salesforce Aura framework to gain unauthorized access to sensitive data such as credit card numbers, identity documents, and health information.
+### Tactic: Discovery (TA0007)
+- **Technique ID**: T1592 - Gather Victim Host Information
+  - **Description**: Attackers can use the `getConfigData` Aura method to retrieve a list of objects used in the backend Salesforce database.
 
-- **Tactic: Discovery**
-  - **Technique ID:** T1592 (Gather Victim Host Information)
-    - **Description:** Using the `getConfigData` Aura method to retrieve a list of objects used in the backend Salesforce database.
+- **Technique ID**: T1592.002 - Network Share Discovery
+  - **Description**: Misconfigured access controls allow attackers to retrieve records for Salesforce objects using the `getItems` Aura method.
 
-  - **Technique ID:** T1596.001 (Search Open Websites/Domains: Open Websites/Domains)
-    - **Description:** Leveraging the `CMCAppController/ACTION$getAppBootstrapData` Aura method to identify home URLs, including administrative or configuration panels for third-party Salesforce modules.
+### Tactic: Collection (TA0009)
+- **Technique ID**: T1530 - Data from Cloud Storage Object
+  - **Description**: Attackers can use the `sortBy` parameter in the `getItems` Aura method to bypass Salesforce's 2,000-record retrieval limit.
 
-- **Tactic: Collection**
-  - **Technique ID:** T1530 (Data from Cloud Storage Object)
-    - **Description:** Using the `getItems` Aura method with the `sortBy` parameter to bypass Salesforce's 2,000-record retrieval limit and access additional records.
+### Tactic: Initial Access (TA0001)
+- **Technique ID**: T1078 - Valid Accounts
+  - **Description**: Attackers can exploit misconfigured self-registration settings to create authenticated accounts and gain access to sensitive data.
 
-  - **Technique ID:** T1530 (Data from Cloud Storage Object)
-    - **Description:** Exploiting the GraphQL Aura controller to retrieve all records tied to a misconfigured Salesforce object, bypassing the 2,000-record limit.
+### Tactic: Discovery (TA0007)
+- **Technique ID**: T1590 - Gather Victim Network Information
+  - **Description**: Attackers can use the `getAppBootstrapData` Aura method to retrieve administrative or configuration panel URLs for third-party Salesforce modules.
 
-- **Tactic: Credential Access**
-  - **Technique ID:** T1556.004 (Credential API Hooking)
-    - **Description:** Using the `LoginFormController` methods `getIsSelfRegistrationEnabled` and `getSelfRegistrationUrl` to identify and exploit self-registration functionality for unauthorized account creation.
+### Tactic: Collection (TA0009)
+- **Technique ID**: T1530 - Data from Cloud Storage Object
+  - **Description**: Attackers can use the GraphQL Aura controller to retrieve all records tied to an object, bypassing the 2,000-record limit.
 
 ## 3. Malware & Tools
-
-- **Tool:** AuraInspector
-  - **Description:** An open-source, command-line tool developed by Mandiant to identify and audit access control misconfigurations in Salesforce Aura.
+- **Tool**: AuraInspector
+  - **Description**: Open-source command-line tool released by Mandiant to identify and audit access control misconfigurations in Salesforce Aura.
 
 ## 4. Threat Actor / Campaign Attribution
-
-- **Attribution:** No specific threat actor or campaign was identified in the source.
-- **Motivation:** Likely opportunistic attackers exploiting misconfigurations to gain unauthorized access to sensitive Salesforce data.
-- **Targeted Sectors:** Organizations using Salesforce Experience Cloud.
+- **Threat Actor**: None explicitly named
+- **Campaign**: None explicitly named
+- **Motivations**: Likely data theft, unauthorized access to sensitive information, and potential abuse of misconfigured Salesforce environments.
+- **Targeted Sectors/Geographies**: Organizations using Salesforce Experience Cloud, potentially across various industries.
 
 ## 5. Splunk Detection Searches
 
-### Detecting Misuse of Aura Methods
-
-#### Search for `getConfigData` Method Usage
+### Detecting Misconfigured Aura Endpoints
 ```spl
-index=proxy OR index=web
-| search uri_path="/Aura" AND http_method="POST"
-| spath input=_raw path="actions{}.descriptor"
-| search "actions{}.descriptor"="serviceComponent://ui.force.components.controllers.hostConfig.HostConfigController/ACTION$getConfigData"
-| table _time, src_ip, uri_path, http_method, "actions{}.descriptor"
+index=proxy_logs
+| search uri_path="*/serviceComponent://ui.force.components.controllers.hostConfig.HostConfigController/ACTION$getConfigData"
+| stats count by src_ip, uri_path, http_user_agent
+| rename src_ip as "Source IP", uri_path as "Requested URI", http_user_agent as "User Agent"
 ```
-*Comment: Detects unauthorized use of the `getConfigData` Aura method.*
 
-#### Search for `getItems` Method with `sortBy` Parameter
+### Detecting Excessive Record Retrieval via Aura
 ```spl
-index=proxy OR index=web
-| search uri_path="/Aura" AND http_method="POST"
-| spath input=_raw path="actions{}.params.sortBy"
-| search "actions{}.params.sortBy"="*"
-| table _time, src_ip, uri_path, http_method, "actions{}.params.sortBy"
+index=proxy_logs
+| search uri_path="*/serviceComponent://ui.force.components.controllers.lists.selectableListDataProvider.SelectableListDataProviderController/ACTION$getItems"
+| stats count by src_ip, uri_path, http_user_agent
+| where count > 2000
+| rename src_ip as "Source IP", uri_path as "Requested URI", http_user_agent as "User Agent"
 ```
-*Comment: Detects attempts to bypass record limits using the `sortBy` parameter in the `getItems` method.*
 
-#### Search for GraphQL Aura Controller Usage
+### Detecting GraphQL API Misuse
 ```spl
-index=proxy OR index=web
-| search uri_path="/Aura" AND http_method="POST"
-| spath input=_raw path="actions{}.descriptor"
-| search "actions{}.descriptor"="serviceComponent://ui.force.components.controllers.graphql.GraphQLController/ACTION$query"
-| table _time, src_ip, uri_path, http_method, "actions{}.descriptor"
+index=proxy_logs
+| search uri_path="*/graphql"
+| stats count by src_ip, uri_path, http_user_agent
+| rename src_ip as "Source IP", uri_path as "Requested URI", http_user_agent as "User Agent"
 ```
-*Comment: Detects usage of the GraphQL Aura controller for data retrieval.*
 
-#### Search for Self-Registration Methods
+### Detecting Access to Self-Registration URLs
 ```spl
-index=proxy OR index=web
-| search uri_path="/Aura" AND http_method="POST"
-| spath input=_raw path="actions{}.descriptor"
-| search "actions{}.descriptor"="apex://applauncher.LoginFormController/ACTION$getIsSelfRegistrationEnabled" OR "actions{}.descriptor"="apex://applauncher.LoginFormController/ACTION$getSelfRegistrationUrl"
-| table _time, src_ip, uri_path, http_method, "actions{}.descriptor"
+index=proxy_logs
+| search uri_path="*/applauncher.LoginFormController/ACTION$getSelfRegistrationUrl"
+| stats count by src_ip, uri_path, http_user_agent
+| rename src_ip as "Source IP", uri_path as "Requested URI", http_user_agent as "User Agent"
 ```
-*Comment: Detects attempts to identify and exploit self-registration functionality.*
+
+### Detecting Access to Administrative URLs
+```spl
+index=proxy_logs
+| search uri_path="*/ui.communities.components.aura.components.communitySetup.cmc.CMCAppController/ACTION$getAppBootstrapData"
+| stats count by src_ip, uri_path, http_user_agent
+| rename src_ip as "Source IP", uri_path as "Requested URI", http_user_agent as "User Agent"
+```
 
 ## 6. Executive Summary
-
-Mandiant has released AuraInspector, an open-source tool designed to identify and audit access control misconfigurations in Salesforce Aura. The report highlights several techniques attackers could use to exploit these misconfigurations, including the misuse of Aura methods (`getConfigData`, `getItems`, and GraphQL controllers) to retrieve sensitive records and bypass Salesforce's 2,000-record limit. Additionally, attackers could exploit self-registration functionality to create unauthorized accounts. Organizations using Salesforce should immediately review their access control configurations, disable unnecessary self-registration, and monitor for suspicious activity using the provided detection searches.
+Mandiant has released AuraInspector, an open-source tool to identify and audit access control misconfigurations in Salesforce Aura. These misconfigurations can expose sensitive data, such as credit card numbers and identity documents, to unauthorized users. Attackers can exploit the Aura framework's methods to bypass Salesforce's 2,000-record retrieval limit and access administrative URLs. Organizations using Salesforce Experience Cloud should immediately audit their configurations, disable self-registration if not required, and monitor for suspicious activity targeting Aura endpoints and GraphQL APIs.
