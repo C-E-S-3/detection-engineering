@@ -1,15 +1,15 @@
 ---
-scraped_at: 2026-01-12T00:00:00Z
-source_url: https://cloud.google.com/blog/topics/threat-intelligence/auditing-salesforce-aura-data-exposure/
+scraped_at: "2026-01-12T00:00:00Z"
+source_url: "https://cloud.google.com/blog/topics/threat-intelligence/auditing-salesforce-aura-data-exposure/"
 report_type: threat-intel
 ---
 
 ## 1. Indicators of Compromise (IOCs)
 
-### IP Addresses
+### Domains/URLs
 - None identified
 
-### Domains/URLs
+### IP Addresses
 - None identified
 
 ### File Hashes
@@ -32,76 +32,67 @@ report_type: threat-intel
 
 ## 2. TTPs (MITRE ATT&CK Mapping)
 
-### Tactic: Initial Access
-- **Technique ID**: T1190 (Exploit Public-Facing Application)
-  - **Description**: Misconfigured Salesforce Aura endpoints can allow unauthorized access to sensitive data, including credit card numbers and identity documents.
+### Tactics and Techniques
+- **Tactic:** Collection
+  - **Technique ID:** T1213.003
+  - **Technique Name:** Data from Information Repositories: Cloud Storage
+  - **Description:** Misconfigured Salesforce Aura endpoints allow unauthorized access to sensitive data such as credit card numbers, identity documents, and health information.
 
-### Tactic: Collection
-- **Technique ID**: T1213 (Data from Information Repositories)
-  - **Description**: Exploitation of misconfigured Aura methods (e.g., `getConfigData`, `getItems`) to retrieve sensitive records from Salesforce databases.
+- **Tactic:** Discovery
+  - **Technique ID:** T1087.002
+  - **Technique Name:** Account Discovery: Domain Accounts
+  - **Description:** Use of the `getConfigData` and `getItems` Aura methods to retrieve sensitive Salesforce object records.
 
-### Tactic: Discovery
-- **Technique ID**: T1087.002 (Account Discovery: Domain Accounts)
-  - **Description**: Using the `getInitialListViews` Aura method to identify accessible record lists and associated objects.
-
-### Tactic: Exfiltration
-- **Technique ID**: T1041 (Exfiltration Over C2 Channel)
-  - **Description**: Leveraging GraphQL APIs to exfiltrate large volumes of data from misconfigured Salesforce objects.
+- **Tactic:** Exfiltration
+  - **Technique ID:** T1020
+  - **Technique Name:** Automated Exfiltration
+  - **Description:** Exploitation of GraphQL API to bypass Salesforce's 2,000-record retrieval limit and exfiltrate large datasets.
 
 ## 3. Malware & Tools
 
 ### Tools
-- **AuraInspector**: An open-source tool developed by Mandiant to identify and audit access control misconfigurations in Salesforce Aura.
+- **AuraInspector:** Open-source tool released by Mandiant to identify and audit access control misconfigurations in Salesforce Aura.
+
+### Techniques
+- Abuse of Salesforce Aura methods (`getConfigData`, `getItems`, `getInitialListViews`, etc.) to retrieve sensitive data.
+- Exploitation of GraphQL API for large-scale data retrieval.
 
 ## 4. Threat Actor / Campaign Attribution
 
-- **Threat Actor**: Not explicitly mentioned.
-- **Campaign Name**: Not explicitly mentioned.
-- **Motivations**: Likely financial gain through unauthorized access to sensitive data such as credit card numbers, identity documents, and health information.
-- **Targeted Sectors**: Organizations using Salesforce Experience Cloud, particularly those with misconfigured access controls.
+- **Threat Actor:** Not explicitly attributed to a specific group.
+- **Campaign Name:** None identified.
+- **Motivations:** Likely financial gain or espionage, given the sensitivity of the data exposed (e.g., credit card numbers, identity documents).
+- **Targeted Sectors:** Organizations using Salesforce Experience Cloud, particularly those handling sensitive customer data.
 
 ## 5. Splunk Detection Searches
 
-### Detecting Misconfigured Aura Endpoints
+### Detecting Misuse of Aura Methods
 ```spl
-index=web proxy
-| search uri_path="/aura" AND http_method=POST
-| stats count by uri_path, http_method, src_ip
-| where count > 100
-| table uri_path, http_method, src_ip, count
+index=proxy OR index=web
+| search uri_path="/aura" AND (uri_query="*getConfigData*" OR uri_query="*getItems*" OR uri_query="*getInitialListViews*")
+| stats count by src_ip, uri_path, uri_query
+| where count > 10
 ```
-*Comment: Identifies potentially misconfigured Salesforce Aura endpoints being accessed via POST requests.*
+*Comment:* Detects repeated access to Salesforce Aura methods that could indicate unauthorized data retrieval attempts.
 
-### Detecting GraphQL API Abuse
+### Detecting GraphQL API Exploitation
 ```spl
-index=web proxy
-| search uri_path="/graphql" AND http_method=POST
-| stats count by uri_path, http_method, src_ip
-| where count > 100
-| table uri_path, http_method, src_ip, count
+index=proxy OR index=web
+| search uri_path="/graphql" AND http_method="POST"
+| stats count by src_ip, uri_path, http_method
+| where count > 5
 ```
-*Comment: Detects high-frequency access to the GraphQL API endpoint, which could indicate data exfiltration attempts.*
+*Comment:* Identifies potential abuse of the GraphQL API for large-scale data retrieval.
 
-### Detecting Bulk Actions in Salesforce Aura
+### Monitoring for Large Data Exfiltration
 ```spl
-index=web proxy
-| search uri_path="/aura" AND http_method=POST AND request_body="actions"
-| rex field=request_body "\"actions\":\[(?<actions>.*?)\]"
-| eval action_count=mvcount(split(actions, ","))
-| where action_count > 100
-| table src_ip, uri_path, action_count
+index=proxy OR index=web
+| search uri_path="/aura" OR uri_path="/graphql"
+| stats sum(bytes_out) as total_data_exfiltrated by src_ip
+| where total_data_exfiltrated > 10000000
 ```
-*Comment: Identifies bulk actions in Salesforce Aura requests exceeding 100 actions per request.*
-
-### Detecting Self-Registration Abuse
-```spl
-index=web proxy
-| search uri_path="/applauncher.LoginFormController/ACTION$getSelfRegistrationUrl" OR uri_path="/applauncher.LoginFormController/ACTION$getIsSelfRegistrationEnabled"
-| stats count by src_ip, uri_path
-| table src_ip, uri_path, count
-```
-*Comment: Detects attempts to query self-registration status and URLs, which could indicate reconnaissance activity.*
+*Comment:* Flags IPs exfiltrating more than 10MB of data via Salesforce endpoints.
 
 ## 6. Executive Summary
 
-Mandiant has released a new open-source tool, AuraInspector, to identify and audit access control misconfigurations in Salesforce Aura, a framework used in Salesforce applications. The report highlights several techniques that attackers could exploit, including misconfigured Aura endpoints, GraphQL APIs, and self-registration pages, to gain unauthorized access to sensitive data. Organizations using Salesforce Experience Cloud should immediately review their access control configurations, disable unnecessary self-registration, and monitor for suspicious activity on Salesforce-related endpoints.
+Mandiant has released a new tool, AuraInspector, to help organizations identify misconfigurations in Salesforce Aura that could expose sensitive data. The report highlights the abuse of Salesforce Aura methods and the GraphQL API to bypass record retrieval limits and exfiltrate large datasets. Organizations using Salesforce Experience Cloud should immediately audit their access control configurations and monitor for suspicious activity on Salesforce endpoints. Recommended actions include deploying Splunk searches to detect misuse of Aura methods and GraphQL API exploitation, and ensuring proper access controls are in place.
