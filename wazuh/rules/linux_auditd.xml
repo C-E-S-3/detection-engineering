@@ -1,0 +1,573 @@
+<!-- Linux Auditd Detection Rules -->
+<!-- Rule IDs: 100600-100699                                               -->
+<!-- Maps audit keys from proxmox-auditd-security and ubuntu-auditd-security roles -->
+<!-- MITRE ATT&CK aligned; parent rule 100600 anchors all children         -->
+
+<group name="linux,auditd,">
+
+  <!-- ================================================================ -->
+  <!-- BASE RULE — anchors all custom Linux auditd rules                 -->
+  <!-- ================================================================ -->
+
+  <rule id="100600" level="0">
+    <decoded_as>auditd</decoded_as>
+    <description>Linux: Auditd base event (custom rule anchor)</description>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- AUDIT SYSTEM TAMPERING — T1562.001                               -->
+  <!-- Highest priority: attacker trying to blind the audit system       -->
+  <!-- ================================================================ -->
+
+  <rule id="100601" level="12">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">auditlog</field>
+    <description>Linux: Audit log directory modified — possible evidence tampering (T1562.001)</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>audit_tampering,defense_evasion,</group>
+  </rule>
+
+  <rule id="100602" level="12">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">auditconfig</field>
+    <description>Linux: Auditd configuration modified — audit rules may be disabled (T1562.001)</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>audit_tampering,defense_evasion,</group>
+  </rule>
+
+  <rule id="100603" level="12">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">audispconfig</field>
+    <description>Linux: Audisp (audit dispatcher) configuration modified (T1562.001)</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>audit_tampering,defense_evasion,</group>
+  </rule>
+
+  <rule id="100604" level="13">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">audittools</field>
+    <description>Linux: Auditd management binary (auditctl/auditd) executed — possible rule manipulation (T1562.001)</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>audit_tampering,defense_evasion,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- PRIVILEGE ESCALATION — T1548.003, T1098                          -->
+  <!-- ================================================================ -->
+
+  <rule id="100610" level="5">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">priv_esc</field>
+    <description>Linux: Privilege escalation binary (sudo/su) executed (T1548.003)</description>
+    <mitre>
+      <id>T1548.003</id>
+    </mitre>
+    <group>privilege_escalation,</group>
+  </rule>
+
+  <rule id="100611" level="10">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">privileged-priv_change</field>
+    <description>Linux: Privileged command (su/sudo/chsh/chfn/gpasswd) executed by unprivileged user (T1548.003)</description>
+    <mitre>
+      <id>T1548.003</id>
+    </mitre>
+    <group>privilege_escalation,</group>
+  </rule>
+
+  <rule id="100612" level="9">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">privileged-passwd</field>
+    <description>Linux: Password change command (passwd) executed by unprivileged user (T1098)</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
+    <group>privilege_escalation,credential_access,</group>
+  </rule>
+
+  <rule id="100613" level="8">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">passwd_modification</field>
+    <description>Linux: Password modification command executed (T1098)</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
+    <group>credential_access,</group>
+  </rule>
+
+  <rule id="100614" level="12">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">scope</field>
+    <description>Linux: Sudoers file or sudoers.d/ modified — possible persistent privilege backdoor (T1548.003)</description>
+    <mitre>
+      <id>T1548.003</id>
+    </mitre>
+    <group>privilege_escalation,persistence,</group>
+  </rule>
+
+  <rule id="100615" level="9">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">privileged-mount</field>
+    <description>Linux: Mount/umount executed by unprivileged user (T1052)</description>
+    <mitre>
+      <id>T1052</id>
+    </mitre>
+    <group>privilege_escalation,lateral_movement,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- CREDENTIAL ACCESS — T1003, T1098                                 -->
+  <!-- ================================================================ -->
+
+  <rule id="100620" level="11">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">etcpasswd</field>
+    <description>Linux: /etc/passwd or /etc/shadow modified — user account or credential change (T1098)</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
+    <group>credential_access,persistence,</group>
+  </rule>
+
+  <rule id="100621" level="10">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">etcgroup</field>
+    <description>Linux: /etc/group or /etc/gshadow modified — group membership changed (T1098)</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
+    <group>credential_access,persistence,</group>
+  </rule>
+
+  <rule id="100622" level="11">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">opasswd</field>
+    <description>Linux: /etc/security/opasswd (password history) modified — credential data tampering (T1003)</description>
+    <mitre>
+      <id>T1003</id>
+    </mitre>
+    <group>credential_access,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- PERSISTENCE — T1053.003, T1543.002, T1547.006                   -->
+  <!-- ================================================================ -->
+
+  <rule id="100630" level="8">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">cron</field>
+    <description>Linux: Cron configuration modified — possible scheduled persistence (T1053.003)</description>
+    <mitre>
+      <id>T1053.003</id>
+    </mitre>
+    <group>persistence,</group>
+  </rule>
+
+  <rule id="100631" level="8">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">systemd</field>
+    <description>Linux: Systemd binary executed or /etc/systemd/ modified — possible service persistence (T1543.002)</description>
+    <mitre>
+      <id>T1543.002</id>
+    </mitre>
+    <group>persistence,configuration_change,</group>
+  </rule>
+
+  <rule id="100632" level="10">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">modules</field>
+    <description>Linux: Kernel module loaded/unloaded (insmod/rmmod/modprobe) — possible rootkit or driver persistence (T1547.006)</description>
+    <mitre>
+      <id>T1547.006</id>
+    </mitre>
+    <group>persistence,defense_evasion,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- DEFENSE EVASION — T1222, T1485, T1562.004                       -->
+  <!-- ================================================================ -->
+
+  <rule id="100640" level="6">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">perm_mod</field>
+    <description>Linux: File permissions or ownership changed by unprivileged user (T1222)</description>
+    <mitre>
+      <id>T1222</id>
+    </mitre>
+    <group>defense_evasion,file_integrity,</group>
+  </rule>
+
+  <rule id="100641" level="6">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">delete</field>
+    <description>Linux: File deletion or rename by unprivileged user (T1485)</description>
+    <mitre>
+      <id>T1485</id>
+    </mitre>
+    <group>defense_evasion,impact,</group>
+  </rule>
+
+  <rule id="100642" level="9">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">iptables</field>
+    <description>Linux: iptables/ip6tables firewall rules modified — possible firewall bypass (T1562.004)</description>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
+    <group>defense_evasion,network,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- NETWORK AND SYSTEM CONFIGURATION — T1557, T1205, T1565.001      -->
+  <!-- ================================================================ -->
+
+  <rule id="100650" level="7">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">hosts</field>
+    <description>Linux: /etc/hosts modified — possible DNS hijacking or traffic redirection (T1557)</description>
+    <mitre>
+      <id>T1557</id>
+    </mitre>
+    <group>configuration_change,lateral_movement,</group>
+  </rule>
+
+  <rule id="100651" level="8">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">resolv</field>
+    <description>Linux: /etc/resolv.conf modified — possible DNS hijacking (T1557)</description>
+    <mitre>
+      <id>T1557</id>
+    </mitre>
+    <group>configuration_change,</group>
+  </rule>
+
+  <rule id="100652" level="7">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">system-locale</field>
+    <description>Linux: Hostname, network configuration, or locale changed (sethostname/setdomainname) (T1565.001)</description>
+    <mitre>
+      <id>T1565.001</id>
+    </mitre>
+    <group>configuration_change,</group>
+  </rule>
+
+  <rule id="100653" level="7">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">network_modifications</field>
+    <description>Linux: Network socket bind/connect syscall detected (T1205)</description>
+    <mitre>
+      <id>T1205</id>
+    </mitre>
+    <group>network,</group>
+  </rule>
+
+  <rule id="100654" level="5">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">hostname</field>
+    <description>Linux: /etc/hostname file modified</description>
+    <group>configuration_change,</group>
+  </rule>
+
+  <rule id="100655" level="5">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">fstab</field>
+    <description>Linux: /etc/fstab modified — filesystem mount configuration changed (T1565.001)</description>
+    <mitre>
+      <id>T1565.001</id>
+    </mitre>
+    <group>configuration_change,</group>
+  </rule>
+
+  <rule id="100656" level="5">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">mounts</field>
+    <description>Linux: Mount syscall by unprivileged user (T1052)</description>
+    <mitre>
+      <id>T1052</id>
+    </mitre>
+    <group>lateral_movement,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- SSH CONFIGURATION — T1563.001                                    -->
+  <!-- ================================================================ -->
+
+  <rule id="100660" level="8">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">sshd</field>
+    <description>Linux: SSH daemon configuration (sshd_config) modified (T1563.001)</description>
+    <mitre>
+      <id>T1563.001</id>
+    </mitre>
+    <group>configuration_change,lateral_movement,</group>
+  </rule>
+
+  <rule id="100661" level="8">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">ssh</field>
+    <description>Linux: SSH configuration directory (/etc/ssh/) modified (T1563.001)</description>
+    <mitre>
+      <id>T1563.001</id>
+    </mitre>
+    <group>configuration_change,lateral_movement,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- SESSION AND AUTHENTICATION — T1078, T1110                        -->
+  <!-- ================================================================ -->
+
+  <rule id="100670" level="3">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">session</field>
+    <description>Linux: User session event (utmp write)</description>
+    <group>authentication,</group>
+  </rule>
+
+  <rule id="100671" level="5">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">logins</field>
+    <description>Linux: Login record written (wtmp/btmp/lastlog/faillog) (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication,</group>
+  </rule>
+
+  <rule id="100672" level="10" frequency="8" timeframe="120">
+    <if_matched_sid>100671</if_matched_sid>
+    <same_field>audit.auid</same_field>
+    <description>Linux: High frequency of login record events — possible brute force or log manipulation (T1110)</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication,brute_force,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- PROXMOX HYPERVISOR — VM/container/cluster/storage operations     -->
+  <!-- ================================================================ -->
+
+  <rule id="100680" level="5">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">vm_operations</field>
+    <description>Linux: Proxmox VM management command (qm) executed</description>
+    <group>proxmox,vm_operations,</group>
+  </rule>
+
+  <rule id="100681" level="5">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">container_operations</field>
+    <description>Linux: Proxmox LXC container management command (pct) executed</description>
+    <group>proxmox,container_operations,</group>
+  </rule>
+
+  <rule id="100682" level="7">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">proxmox_api</field>
+    <description>Linux: Proxmox API shell (pvesh) executed — direct API call outside web dashboard</description>
+    <group>proxmox,</group>
+  </rule>
+
+  <rule id="100683" level="10">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">proxmox_config</field>
+    <description>Linux: Proxmox configuration directory (/etc/pve/) modified — direct config manipulation (T1565.001)</description>
+    <mitre>
+      <id>T1565.001</id>
+    </mitre>
+    <group>proxmox,integrity_impact,</group>
+  </rule>
+
+  <rule id="100684" level="10">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">proxmox_cluster</field>
+    <description>Linux: Proxmox cluster configuration modified (/etc/pve/cluster.conf) (T1565.001)</description>
+    <mitre>
+      <id>T1565.001</id>
+    </mitre>
+    <group>proxmox,cluster_operations,</group>
+  </rule>
+
+  <rule id="100685" level="11">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">cluster_operations</field>
+    <description>Linux: Proxmox cluster management command (pvecm) executed — potential cluster disruption (T1489)</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
+    <group>proxmox,cluster_operations,impact,</group>
+  </rule>
+
+  <rule id="100686" level="7">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">ha_operations</field>
+    <description>Linux: Proxmox HA management command (ha-manager) executed</description>
+    <group>proxmox,ha_operations,</group>
+  </rule>
+
+  <rule id="100687" level="10">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">ha_config</field>
+    <description>Linux: Proxmox HA configuration (/etc/pve/ha/) modified (T1565.001)</description>
+    <mitre>
+      <id>T1565.001</id>
+    </mitre>
+    <group>proxmox,ha_operations,</group>
+  </rule>
+
+  <rule id="100688" level="7">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">proxmox_backup</field>
+    <description>Linux: Proxmox backup configuration (vzdump.conf) modified — backup integrity risk (T1490)</description>
+    <mitre>
+      <id>T1490</id>
+    </mitre>
+    <group>proxmox,impact,</group>
+  </rule>
+
+  <rule id="100689" level="7">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">proxmox_storage</field>
+    <description>Linux: Proxmox storage configuration (/etc/pve/storage.cfg) modified (T1565.001)</description>
+    <mitre>
+      <id>T1565.001</id>
+    </mitre>
+    <group>proxmox,storage_operations,</group>
+  </rule>
+
+  <rule id="100690" level="6">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">storage_operations</field>
+    <description>Linux: Proxmox storage management command (pvesm) executed</description>
+    <group>proxmox,storage_operations,</group>
+  </rule>
+
+  <rule id="100691" level="5">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">zfs_operations</field>
+    <description>Linux: ZFS pool/dataset management command (zfs/zpool) executed</description>
+    <group>proxmox,storage_operations,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- PROCESS EXECUTION — execve syscall (base only; level 0)          -->
+  <!-- Level 0 = no alert; used for future correlation chains           -->
+  <!-- ================================================================ -->
+
+  <rule id="100695" level="0">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">exec</field>
+    <description>Linux: Process execution event (execve syscall logged)</description>
+    <group>exec,</group>
+  </rule>
+
+  <!-- Cluster config change + exec chain: pvecm executed AND cluster config changed recently -->
+  <rule id="100696" level="13" timeframe="60">
+    <if_matched_sid>100684</if_matched_sid>
+    <if_sid>100685</if_sid>
+    <description>Linux: Proxmox cluster config modified AND pvecm executed within 60s — possible cluster takeover (T1489)</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
+    <group>proxmox,cluster_operations,impact,</group>
+  </rule>
+
+  <!-- Sudoers modified + priv_esc executed: likely exploitation -->
+  <rule id="100697" level="14" timeframe="300">
+    <if_matched_sid>100614</if_matched_sid>
+    <if_sid>100610</if_sid>
+    <description>Linux: Sudoers modified then sudo executed within 5 minutes — likely privilege escalation exploitation (T1548.003)</description>
+    <mitre>
+      <id>T1548.003</id>
+    </mitre>
+    <group>privilege_escalation,attack_chain,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- DOCKER / CONTAINER SECURITY — T1610, T1552.007, T1543.002       -->
+  <!-- Keys from ubuntu-auditd-security role                            -->
+  <!-- ================================================================ -->
+
+  <rule id="100698" level="8">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">docker_socket</field>
+    <description>Linux: Docker socket (/var/run/docker.sock) accessed — root-equivalent operation (T1610)</description>
+    <mitre>
+      <id>T1610</id>
+    </mitre>
+    <group>container,privilege_escalation,</group>
+  </rule>
+
+  <rule id="100699" level="5">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">docker_exec</field>
+    <description>Linux: Docker/containerd/runc binary executed (T1610)</description>
+    <mitre>
+      <id>T1610</id>
+    </mitre>
+    <group>container,</group>
+  </rule>
+
+  <!-- Higher severity when docker_socket is accessed by an unprivileged auid -->
+  <!-- Matches any auid that is not root (0) and not AUDIT_UID_UNSET (4294967295) -->
+  <rule id="100700" level="12">
+    <if_sid>100698</if_sid>
+    <field name="audit.auid" negate="yes">^0$</field>
+    <field name="audit.auid" negate="yes">^4294967295$</field>
+    <description>Linux: Docker socket accessed by unprivileged user — possible container escape attempt (T1610)</description>
+    <mitre>
+      <id>T1610</id>
+    </mitre>
+    <group>container,privilege_escalation,</group>
+  </rule>
+
+  <rule id="100701" level="9">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">docker_config</field>
+    <description>Linux: Docker daemon configuration (/etc/docker/) modified — possible daemon misconfiguration (T1610)</description>
+    <mitre>
+      <id>T1610</id>
+    </mitre>
+    <group>container,configuration_change,</group>
+  </rule>
+
+  <rule id="100702" level="9">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">docker_service</field>
+    <description>Linux: Docker systemd unit file modified — possible persistence via modified container runtime (T1543.002)</description>
+    <mitre>
+      <id>T1543.002</id>
+    </mitre>
+    <group>container,persistence,</group>
+  </rule>
+
+  <rule id="100703" level="8">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">package_manager</field>
+    <description>Linux: Package manager (apt/dpkg) executed — software installation or modification (T1072)</description>
+    <mitre>
+      <id>T1072</id>
+    </mitre>
+    <group>software_deployment,</group>
+  </rule>
+
+</group>

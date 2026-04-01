@@ -1,0 +1,361 @@
+<!-- Docker Application Security Rules -->
+<!-- Rule IDs: 101200-101299                                                    -->
+<!-- Detects auth events, admin activity, and config changes in containerized   -->
+<!-- services: Kanidm, OpenBao, Traefik, MISP, Komodo                         -->
+<!-- Logs read from /var/log/docker-containers/*.log via json-file driver       -->
+<!--                                                                            -->
+<!-- Architecture: Wazuh reads Docker json-file logs with <log_format>json</log_format>. -->
+<!-- The built-in "json" decoder extracts top-level fields (log, stream, time). -->
+<!-- Base rule anchors on decoded_as=json + stream field (unique to Docker      -->
+<!-- json-file format). Container-specific rules match on log content.          -->
+<!-- NOTE: <location> tag does NOT match for json-decoded agent events.         -->
+
+<group name="docker,application,">
+
+  <!-- ================================================================ -->
+  <!-- BASE RULE — anchors all docker application security rules        -->
+  <!-- Docker json-file logs always have "stream":"stdout"|"stderr"     -->
+  <!-- ================================================================ -->
+
+  <rule id="101200" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="stream" type="osregex">^stdout$|^stderr$</field>
+    <description>Docker: Application log event (base anchor)</description>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- KANIDM — Identity Provider                                       -->
+  <!-- Container names: kanidm, kanidm-dev                              -->
+  <!-- Log format: "<uuid> <LEVEL> <handler> [duration]"                -->
+  <!-- e.g.: "d27f0016... INFO handle_auth [ 125µs | 100.00% ]"        -->
+  <!-- ================================================================ -->
+
+  <!-- Auth event (handle_auth handler — Kanidm-specific function name) -->
+  <rule id="101210" level="3">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">handle_auth(?:entication|event)?[\s\[]</field>
+    <description>Kanidm: Authentication event</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication,kanidm,</group>
+  </rule>
+
+  <!-- Auth failure (Kanidm uses specific handler names and error types) -->
+  <rule id="101211" level="5">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">(?:badpassword|notauthenticated|credential.*invalid|WARN\s+handle_auth)</field>
+    <description>Kanidm: Authentication failure</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failed,kanidm,</group>
+  </rule>
+
+  <!-- Brute force — repeated auth failures -->
+  <rule id="101212" level="10" frequency="5" timeframe="120">
+    <if_matched_sid>101211</if_matched_sid>
+    <description>Kanidm: Brute force attempt — multiple auth failures in 2 minutes</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failed,brute_force,kanidm,</group>
+  </rule>
+
+  <!-- Admin group or privilege changes (Kanidm handler names) -->
+  <rule id="101213" level="10">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">handle_(?:group|modify).*(?:member|privilege|role)|(?:member_add|member_remove|group_modify)</field>
+    <description>Kanidm: Group membership or privilege change</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
+    <group>account_change,kanidm,</group>
+  </rule>
+
+  <!-- OIDC/OAuth2 events (Kanidm handler names) -->
+  <rule id="101214" level="3">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">handle_oauth2_(?:openid|authorise|token_exchange)</field>
+    <description>Kanidm: OIDC/OAuth2 token event</description>
+    <mitre>
+      <id>T1550.001</id>
+    </mitre>
+    <group>authentication,oidc,kanidm,</group>
+  </rule>
+
+  <!-- Account creation or deletion (Kanidm handler names) -->
+  <rule id="101215" level="8">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">handle_(?:create|delete|purge).*(?:account|person|service_account)|handle_purge(?:recycled|_delete)</field>
+    <description>Kanidm: Account created or deleted</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>account_change,kanidm,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- OPENBAO — Secrets Management                                     -->
+  <!-- ================================================================ -->
+
+  <!-- Secret read operation -->
+  <rule id="101220" level="3">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">"operation":"read".*"path":"(?:kv|secret)/</field>
+    <description>OpenBao: Secret read operation</description>
+    <mitre>
+      <id>T1552</id>
+    </mitre>
+    <group>secret_access,openbao,</group>
+  </rule>
+
+  <!-- Secret write/update -->
+  <rule id="101221" level="5">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">"operation":"(?:update|create)".*"path":"(?:kv|secret)/</field>
+    <description>OpenBao: Secret written or updated</description>
+    <mitre>
+      <id>T1552</id>
+    </mitre>
+    <group>secret_access,openbao,</group>
+  </rule>
+
+  <!-- Policy changes -->
+  <rule id="101222" level="10">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">"path":"sys/polic</field>
+    <description>OpenBao: Policy change — access control modified</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
+    <group>policy_change,openbao,</group>
+  </rule>
+
+  <!-- Auth method changes -->
+  <rule id="101223" level="10">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">"path":"sys/auth/</field>
+    <description>OpenBao: Auth method configuration changed</description>
+    <mitre>
+      <id>T1556</id>
+    </mitre>
+    <group>authentication,configuration_change,openbao,</group>
+  </rule>
+
+  <!-- Seal/unseal events (OpenBao audit log format) -->
+  <rule id="101224" level="12">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">"path":"sys/(?:seal|unseal)"</field>
+    <description>OpenBao: Seal/unseal event — vault state change</description>
+    <mitre>
+      <id>T1490</id>
+    </mitre>
+    <group>availability,openbao,</group>
+  </rule>
+
+  <!-- Token creation -->
+  <rule id="101225" level="5">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">"path":"auth/token/create"</field>
+    <description>OpenBao: New token created</description>
+    <mitre>
+      <id>T1550.001</id>
+    </mitre>
+    <group>authentication,token,openbao,</group>
+  </rule>
+
+  <!-- PKI certificate issuance -->
+  <rule id="101226" level="3">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">"path":"pki.*issue"</field>
+    <description>OpenBao: PKI certificate issued</description>
+    <group>certificate,openbao,</group>
+  </rule>
+
+  <!-- Root token usage -->
+  <rule id="101227" level="12">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">"display_name":"root"</field>
+    <description>OpenBao: Root token used — high-privilege operation</description>
+    <mitre>
+      <id>T1078.003</id>
+    </mitre>
+    <group>privilege_escalation,openbao,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- TRAEFIK — Reverse Proxy                                          -->
+  <!-- ================================================================ -->
+
+  <!-- 401 Unauthorized responses -->
+  <rule id="101230" level="5">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">"(?:DownstreamStatus|StatusCode)":401</field>
+    <description>Traefik: HTTP 401 Unauthorized response</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>web,authentication_failed,traefik,</group>
+  </rule>
+
+  <!-- 403 Forbidden responses -->
+  <rule id="101231" level="5">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">"(?:DownstreamStatus|StatusCode)":403</field>
+    <description>Traefik: HTTP 403 Forbidden response</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>web,access_denied,traefik,</group>
+  </rule>
+
+  <!-- Repeated 401s — brute force via proxy -->
+  <rule id="101232" level="10" frequency="10" timeframe="60">
+    <if_matched_sid>101230</if_matched_sid>
+    <same_source_ip></same_source_ip>
+    <description>Traefik: Brute force via proxy — repeated 401s from same source</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>web,brute_force,traefik,</group>
+  </rule>
+
+  <!-- 5xx server errors (service disruption indicator) -->
+  <rule id="101233" level="5">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">"(?:DownstreamStatus|StatusCode)":5\d\d</field>
+    <description>Traefik: HTTP 5xx server error — backend service issue</description>
+    <group>web,service_error,traefik,</group>
+  </rule>
+
+  <!-- TLS errors (generic — any container) -->
+  <rule id="101234" level="7">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">(?i)(?:TLS|certificate).*(?:error|fail|invalid|expired|verify failed)</field>
+    <description>Docker: TLS/certificate error</description>
+    <mitre>
+      <id>T1557</id>
+    </mitre>
+    <group>tls_error,</group>
+  </rule>
+
+  <!-- Rate limiting triggered -->
+  <rule id="101235" level="7">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">"(?:DownstreamStatus|StatusCode)":429</field>
+    <description>Traefik: Rate limit triggered (HTTP 429)</description>
+    <mitre>
+      <id>T1498</id>
+    </mitre>
+    <group>web,rate_limit,traefik,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- MISP — Threat Intelligence Platform                              -->
+  <!-- ================================================================ -->
+
+  <!-- Login success (MISP CakePHP audit log format) -->
+  <rule id="101240" level="3">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">(?:MISP|CakeLog|UsersController).*(?:login.*success|logged.*in|successful.*auth)</field>
+    <description>MISP: User login success</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication_success,misp,</group>
+  </rule>
+
+  <!-- Login failure (MISP CakePHP audit log format) -->
+  <rule id="101241" level="5">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">(?:MISP|CakeLog|UsersController).*(?:login.*fail|invalid.*login|authentication.*fail)</field>
+    <description>MISP: User login failure</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failed,misp,</group>
+  </rule>
+
+  <!-- Brute force — repeated MISP login failures -->
+  <rule id="101242" level="10" frequency="5" timeframe="120">
+    <if_matched_sid>101241</if_matched_sid>
+    <description>MISP: Brute force attempt — multiple login failures</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failed,brute_force,misp,</group>
+  </rule>
+
+  <!-- API key usage -->
+  <rule id="101243" level="3">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">(?i)(?:api.*key|authkey).*(?:used|access)</field>
+    <description>MISP: API key authentication</description>
+    <group>authentication,api,misp,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- KOMODO — Deployment Platform                                     -->
+  <!-- ================================================================ -->
+
+  <!-- Stack deploy/destroy (Komodo Rust request format) -->
+  <rule id="101250" level="7">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">(?:DeployStack|DestroyStack|StartContainer|StopContainer|RemoveContainer|PullStack)</field>
+    <description>Komodo: Stack deployment or destruction event</description>
+    <mitre>
+      <id>T1610</id>
+    </mitre>
+    <group>deployment,komodo,</group>
+  </rule>
+
+  <!-- User action (Komodo Rust request format) -->
+  <rule id="101251" level="5">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">(?:UpdateDescription|CreateStack|DeleteStack|RenameStack|CreateServer|DeleteServer|CloneStack)</field>
+    <description>Komodo: User administrative action</description>
+    <group>admin_action,komodo,</group>
+  </rule>
+
+  <!-- Auth events (Komodo login/API key format) -->
+  <rule id="101252" level="5">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">(?:komodo|periphery).*(?:Login|Unauthorized|api_key|auth_header)</field>
+    <description>Komodo: Authentication or API key event</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication,komodo,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- CROSS-SERVICE — Generic container security patterns              -->
+  <!-- ================================================================ -->
+
+  <!-- Any container crash/restart loop -->
+  <rule id="101260" level="7">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">(?:panic|FATAL|segfault|out of memory|OOMKilled)</field>
+    <description>Docker: Container fatal error or crash</description>
+    <mitre>
+      <id>T1499</id>
+    </mitre>
+    <group>service_availability,crash,</group>
+  </rule>
+
+  <!-- Connection refused to backend (service health) -->
+  <rule id="101262" level="5">
+    <if_sid>101200</if_sid>
+    <field name="log" type="pcre2">(?:connection refused|ECONNREFUSED)</field>
+    <description>Docker: Backend connection refused — possible service outage</description>
+    <group>service_availability,</group>
+  </rule>
+
+</group>

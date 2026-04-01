@@ -1,0 +1,84 @@
+<!--
+  Privoxy Proxy Log Decoder
+  Parses Privoxy log lines from Docker json-file log entries.
+
+  Docker json-file format wraps each log line as:
+    {"log":"<privoxy line>\n","stream":"stderr","time":"..."}
+
+  The built-in json decoder parses this and extracts data.log with the
+  Privoxy log line content. These child decoders use <parent>json</parent>
+  and match the extracted log field to pull out Privoxy-specific fields.
+
+  Note: The child decoder regex matches against the raw full_log JSON string,
+  so we use \\n (escaped newline in JSON) as the line terminator, not $.
+
+  Privoxy log format: YYYY-MM-DD HH:MM:SS.mmm threadid ActionType: details
+
+  Privoxy debug levels parsed:
+    debug 1  - Request: domain/path (destination for each request)
+    debug 2  - Connect: domain:port (connection status)
+    debug 8  - Header: scan: ... (HTTP header parsing — method, headers)
+               Crunch: Blocked: domain/path (blocked requests)
+-->
+
+<!-- ================================================================ -->
+<!-- Request: domain/path (debug 1)                                   -->
+<!-- ================================================================ -->
+<decoder name="privoxy-request">
+  <parent>json</parent>
+  <prematch type="pcre2">\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \w+ Request:</prematch>
+  <regex type="pcre2">(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+) \w+ (Request): (\S+?)(/\S*)?\\n</regex>
+  <order>privoxy.timestamp,privoxy.action,privoxy.domain,privoxy.url</order>
+</decoder>
+
+<!-- ================================================================ -->
+<!-- Connect: to domain (debug 2 — initial connection)                -->
+<!-- ================================================================ -->
+<decoder name="privoxy-connect">
+  <parent>json</parent>
+  <prematch type="pcre2">\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \w+ Connect: to </prematch>
+  <regex type="pcre2">(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+) \w+ (Connect): to (\S+?)\\n</regex>
+  <order>privoxy.timestamp,privoxy.action,privoxy.domain</order>
+</decoder>
+
+<!-- ================================================================ -->
+<!-- Header: scan: METHOD URL HTTP/x.x (debug 8 — request line)      -->
+<!-- This captures the HTTP method (GET/POST/etc) and full URL        -->
+<!-- ================================================================ -->
+<decoder name="privoxy-header-request">
+  <parent>json</parent>
+  <prematch type="pcre2">\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \w+ Header: scan: (?:GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS|CONNECT)</prematch>
+  <regex type="pcre2">(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+) \w+ Header: scan: (\S+) (\S+) (\S+)\\n</regex>
+  <order>privoxy.timestamp,privoxy.method,privoxy.request_url,privoxy.http_version</order>
+</decoder>
+
+<!-- ================================================================ -->
+<!-- Header: scan: Name: Value (debug 8 — request/response headers)   -->
+<!-- Captures header name and value for common security-relevant hdrs -->
+<!-- ================================================================ -->
+<decoder name="privoxy-header-field">
+  <parent>json</parent>
+  <prematch type="pcre2">\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \w+ Header: scan: \S+:</prematch>
+  <regex type="pcre2">(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+) \w+ Header: scan: (\S+?): (.+?)\\n</regex>
+  <order>privoxy.timestamp,privoxy.header_name,privoxy.header_value</order>
+</decoder>
+
+<!-- ================================================================ -->
+<!-- Header: scan: HTTP/x.x STATUS (debug 8 — response status line)  -->
+<!-- ================================================================ -->
+<decoder name="privoxy-header-response">
+  <parent>json</parent>
+  <prematch type="pcre2">\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \w+ Header: scan: HTTP/</prematch>
+  <regex type="pcre2">(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+) \w+ Header: scan: (HTTP/\S+) (\d+)\s*(.*?)\\n</regex>
+  <order>privoxy.timestamp,privoxy.http_version,privoxy.status_code,privoxy.status_text</order>
+</decoder>
+
+<!-- ================================================================ -->
+<!-- Crunch/Block: domain blocked by Privoxy filter                   -->
+<!-- ================================================================ -->
+<decoder name="privoxy-block">
+  <parent>json</parent>
+  <prematch type="pcre2">\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \w+ Crunch:</prematch>
+  <regex type="pcre2">(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+) \w+ (Crunch): \S+ (\S+?)(/\S*)?\\n</regex>
+  <order>privoxy.timestamp,privoxy.action,privoxy.domain,privoxy.url</order>
+</decoder>

@@ -1,0 +1,29 @@
+<!-- Network Policy Violation Detection Rules -->
+<!-- Rule IDs: 100800-100899 -->
+
+<group name="local,syslog,network_policy,">
+
+  <!-- DNS Bypass Detection -->
+  <rule id="100800" level="10">
+    <if_group>firewall</if_group>
+    <field name="data.dest_port">^53$</field>
+    <field name="data.dest_ip" negate="yes" type="pcre2">^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)</field>
+    <description>Outbound DNS bypass attempt - direct port 53 to internet</description>
+    <mitre>
+      <id>T1071.004</id>
+    </mitre>
+    <group>dns_bypass,policy_violation,</group>
+  </rule>
+
+  <!-- Suricata IDS: Tencent Cloud DNS Lookup -->
+  <rule id="100810" level="10">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature" type="pcre2">Tencent Cloud Storage Domain in DNS Lookup</field>
+    <description>Suricata: Tencent Cloud Storage domain (myqcloud.com) resolved via DNS</description>
+    <mitre>
+      <id>T1071.004</id>
+    </mitre>
+    <group>ids,suricata,policy_violation,</group>
+  </rule>
+
+</group>

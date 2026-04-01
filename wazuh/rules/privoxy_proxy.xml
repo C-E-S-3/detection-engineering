@@ -1,0 +1,70 @@
+<!-- Privoxy Proxy Detection Rules -->
+<!-- Rule IDs: 101300-101399 -->
+<!-- Requires: privoxy_decoder.xml, misp-domains CDB list -->
+
+<group name="local,privoxy,proxy,">
+
+  <!-- Base rule: any Privoxy request/connect with a domain -->
+  <rule id="101300" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="privoxy.domain">\S+</field>
+    <description>Privoxy: $(privoxy.action) to $(privoxy.domain)</description>
+    <group>privoxy_request,</group>
+  </rule>
+
+  <!-- HTTP method + URL from header scan (debug 8) -->
+  <rule id="101304" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="privoxy.method">\S+</field>
+    <description>Privoxy: $(privoxy.method) $(privoxy.request_url)</description>
+    <group>privoxy_header,</group>
+  </rule>
+
+  <!-- HTTP response status (debug 8) -->
+  <rule id="101305" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="privoxy.status_code">\d+</field>
+    <description>Privoxy: response $(privoxy.http_version) $(privoxy.status_code) $(privoxy.status_text)</description>
+    <group>privoxy_header,</group>
+  </rule>
+
+  <!-- Header name/value captured (debug 8) -->
+  <rule id="101306" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="privoxy.header_name">\S+</field>
+    <description>Privoxy: header $(privoxy.header_name): $(privoxy.header_value)</description>
+    <group>privoxy_header,</group>
+  </rule>
+
+  <!-- Privoxy blocked a request (Crunch action) -->
+  <rule id="101301" level="5">
+    <if_sid>101300</if_sid>
+    <field name="privoxy.action">Crunch</field>
+    <description>Privoxy blocked request to $(privoxy.domain)</description>
+    <group>privoxy_blocked,</group>
+  </rule>
+
+  <!-- Domain matches MISP threat intel CDB list -->
+  <rule id="101302" level="10">
+    <if_sid>101300</if_sid>
+    <list field="privoxy.domain" lookup="match_key">etc/lists/misp-domains</list>
+    <description>Privoxy: domain $(privoxy.domain) matches MISP threat intel</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>privoxy_misp_hit,threat_intel,</group>
+  </rule>
+
+  <!-- High-confidence MISP match (threat_level 1 = high in MISP) -->
+  <rule id="101303" level="13">
+    <if_sid>101302</if_sid>
+    <list field="privoxy.domain" lookup="match_key_value">etc/lists/misp-domains</list>
+    <check_value type="pcre2">^1$</check_value>
+    <description>Privoxy: HIGH-CONFIDENCE MISP hit — $(privoxy.domain) (threat level 1)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>privoxy_misp_critical,threat_intel,</group>
+  </rule>
+
+</group>

@@ -1,0 +1,43 @@
+<!-- NetBox CDB Enrichment Rules -->
+<!-- Rule IDs: 100900-100999 -->
+<!-- These rules add asset context to alerts using NetBox-sourced CDB lists -->
+
+<group name="local,netbox_enrichment,">
+
+  <!-- Enrich: source IP is a known internal host -->
+  <rule id="100900" level="0">
+    <list field="srcip" lookup="address_match_key_value">etc/lists/netbox-ip-to-hostname</list>
+    <description>NetBox: source IP $(srcip) is known host $(netbox-ip-to-hostname)</description>
+    <group>netbox,enrichment,</group>
+  </rule>
+
+  <!-- Enrich: destination IP is a known internal host -->
+  <rule id="100901" level="0">
+    <list field="dstip" lookup="address_match_key_value">etc/lists/netbox-ip-to-hostname</list>
+    <description>NetBox: destination IP $(dstip) is known host $(netbox-ip-to-hostname)</description>
+    <group>netbox,enrichment,</group>
+  </rule>
+
+  <!-- Enrich: source IP has a known device role -->
+  <rule id="100910" level="0">
+    <list field="srcip" lookup="address_match_key_value">etc/lists/netbox-ip-to-role</list>
+    <description>NetBox: source IP $(srcip) has role $(netbox-ip-to-role)</description>
+    <group>netbox,enrichment,</group>
+  </rule>
+
+  <!-- Enrich: destination IP has a known device role -->
+  <rule id="100911" level="0">
+    <list field="dstip" lookup="address_match_key_value">etc/lists/netbox-ip-to-role</list>
+    <description>NetBox: destination IP $(dstip) has role $(netbox-ip-to-role)</description>
+    <group>netbox,enrichment,</group>
+  </rule>
+
+  <!-- Alert: traffic from unknown (non-internal) source IP -->
+  <rule id="100920" level="5">
+    <if_group>firewall</if_group>
+    <list field="srcip" lookup="not_address_match_key">etc/lists/netbox-internal-ips</list>
+    <description>Firewall event from unknown external IP $(srcip)</description>
+    <group>netbox,unknown_source,</group>
+  </rule>
+
+</group>

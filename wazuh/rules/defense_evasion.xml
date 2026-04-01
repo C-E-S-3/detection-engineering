@@ -1,0 +1,131 @@
+<!-- Defense Evasion Detection Rules (MITRE ATT&CK TA0005) -->
+<!-- Rule IDs: 100500-100599 -->
+<!-- Source: Curated from SigmaHQ detection rules -->
+
+<group name="defense_evasion,">
+
+  <!-- Event Log Clearing -->
+  <rule id="100500" level="14">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^1102$</field>
+    <description>Defense Evasion: Security event log cleared (T1070.001)</description>
+    <mitre>
+      <id>T1070.001</id>
+    </mitre>
+    <group>defense_evasion,log_clearing,</group>
+  </rule>
+
+  <rule id="100501" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)wevtutil\s+(cl|clear-log)\s+</field>
+    <description>Defense Evasion: Event log clearing via wevtutil (T1070.001)</description>
+    <mitre>
+      <id>T1070.001</id>
+    </mitre>
+    <group>defense_evasion,log_clearing,</group>
+  </rule>
+
+  <!-- AMSI Bypass -->
+  <rule id="100510" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(amsiInitFailed|AmsiScanBuffer|amsiContext|AmsiUtils)</field>
+    <description>Defense Evasion: AMSI bypass attempt detected (T1562.001)</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>defense_evasion,amsi_bypass,</group>
+  </rule>
+
+  <!-- Timestomping -->
+  <rule id="100520" level="12">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^2$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(powershell|cmd|wscript|cscript)\.exe$</field>
+    <description>Defense Evasion: File timestamp modified by scripting engine (T1070.006)</description>
+    <mitre>
+      <id>T1070.006</id>
+    </mitre>
+    <group>defense_evasion,timestomping,</group>
+  </rule>
+
+  <!-- Disabling Windows Defender -->
+  <rule id="100530" level="14">
+    <if_sid>61645</if_sid>
+    <field name="win.system.eventID">^13$</field>
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)\\Windows Defender\\(DisableAntiSpyware|DisableRealtimeMonitoring)</field>
+    <description>Defense Evasion: Windows Defender disabled via registry (T1562.001)</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>defense_evasion,disable_defender,</group>
+  </rule>
+
+  <rule id="100531" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)Set-MpPreference\s+-Disable(RealtimeMonitoring|IOAVProtection|IntrusionPreventionSystem)\s+\$true</field>
+    <description>Defense Evasion: Windows Defender disabled via PowerShell (T1562.001)</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>defense_evasion,disable_defender,</group>
+  </rule>
+
+  <!-- Sysmon Configuration Tampering -->
+  <rule id="100540" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)fltMC\.exe\s+(unload|detach)\s+SysmonDrv</field>
+    <description>Defense Evasion: Sysmon driver unloaded (T1562.001)</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>defense_evasion,sysmon_tampering,</group>
+  </rule>
+
+  <!-- Process Hollowing / Masquerading -->
+  <rule id="100550" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(svchost|lsass|csrss|smss|wininit|services)\.exe$</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)(?!\\(services|wininit|smss|csrss)\.exe$)</field>
+    <description>Defense Evasion: System process spawned by unexpected parent (T1036.005)</description>
+    <mitre>
+      <id>T1036.005</id>
+    </mitre>
+    <group>defense_evasion,masquerading,</group>
+  </rule>
+
+  <!-- Indicator Removal - File Deletion -->
+  <rule id="100560" level="11">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^23$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(cmd|powershell|wscript|cscript)\.exe$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.(exe|dll|ps1|bat|vbs)$</field>
+    <description>Defense Evasion: Executable file deleted by scripting engine (T1070.004)</description>
+    <mitre>
+      <id>T1070.004</id>
+    </mitre>
+    <group>defense_evasion,indicator_removal,</group>
+  </rule>
+
+  <!-- Firewall Rule Modification -->
+  <rule id="100570" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)netsh\s+advfirewall\s+set\s+(allprofiles|currentprofile|domainprofile|privateprofile|publicprofile)\s+state\s+off</field>
+    <description>Defense Evasion: Windows Firewall disabled via netsh (T1562.004)</description>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
+    <group>defense_evasion,firewall_disable,</group>
+  </rule>
+
+  <!-- PowerShell Execution Policy Bypass -->
+  <rule id="100580" level="10">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)powershell.*-Exec(utionPolicy)?\s+(Bypass|Unrestricted)</field>
+    <description>Defense Evasion: PowerShell execution policy bypassed (T1059.001)</description>
+    <mitre>
+      <id>T1059.001</id>
+    </mitre>
+    <group>defense_evasion,powershell_bypass,</group>
+  </rule>
+
+</group>

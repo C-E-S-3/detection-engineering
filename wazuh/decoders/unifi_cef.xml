@@ -1,0 +1,151 @@
+<!--
+  UniFi Network Application - CEF Syslog Decoder
+  Parses CEF:0|Ubiquiti|UniFi Network|... formatted messages
+  from UniFi Network Application (v10.1.85+)
+-->
+
+<decoder name="unifi-cef">
+  <prematch type="pcre2">CEF:0.Ubiquiti.UniFi Network.</prematch>
+  <regex type="pcre2">CEF:0.Ubiquiti.UniFi Network.(\S+).(\d+).(.*?).(\d+).(.+)</regex>
+  <order>unifi.version,unifi.sig_id,unifi.event_name,unifi.severity,unifi.extension</order>
+</decoder>
+
+<!-- Extract source IP (IPv4) -->
+<decoder name="unifi-cef-src">
+  <parent>unifi-cef</parent>
+  <regex offset="after_parent">src=(\d+\.\d+\.\d+\.\d+)</regex>
+  <order>srcip</order>
+</decoder>
+
+<!-- Extract source IP (IPv6) -->
+<decoder name="unifi-cef-src6">
+  <parent>unifi-cef</parent>
+  <regex type="pcre2" offset="after_parent">src=([0-9a-fA-F:]+:[0-9a-fA-F:]+)</regex>
+  <order>srcip</order>
+</decoder>
+
+<!-- Extract category -->
+<decoder name="unifi-cef-cat">
+  <parent>unifi-cef</parent>
+  <regex offset="after_parent">UNIFIcategory=(\S+)</regex>
+  <order>unifi.category</order>
+</decoder>
+
+<!-- Extract subcategory -->
+<decoder name="unifi-cef-subcat">
+  <parent>unifi-cef</parent>
+  <regex offset="after_parent">UNIFIsubCategory=(\S+)</regex>
+  <order>unifi.subcategory</order>
+</decoder>
+
+<!-- Extract UniFi host -->
+<decoder name="unifi-cef-host">
+  <parent>unifi-cef</parent>
+  <regex type="pcre2" offset="after_parent">UNIFIhost=(.+?)(?:\s+UNIFI|\s+src=|\s+msg=)</regex>
+  <order>unifi.host</order>
+</decoder>
+
+<!-- Extract UniFi site -->
+<decoder name="unifi-cef-site">
+  <parent>unifi-cef</parent>
+  <regex offset="after_parent">UNIFIsite=(\S+)</regex>
+  <order>unifi.site</order>
+</decoder>
+
+<!-- Extract access method -->
+<decoder name="unifi-cef-access">
+  <parent>unifi-cef</parent>
+  <regex offset="after_parent">UNIFIaccessMethod=(\S+)</regex>
+  <order>unifi.access_method</order>
+</decoder>
+
+<!-- Extract admin name (events with cnt= field, e.g. config changes) -->
+<decoder name="unifi-cef-admin-cnt">
+  <parent>unifi-cef</parent>
+  <regex offset="after_parent">UNIFIadmin=(\S+) cnt=</regex>
+  <order>unifi.admin</order>
+</decoder>
+
+<!-- Extract admin name (events ending with UNIFIutcTime=, e.g. login) -->
+<decoder name="unifi-cef-admin-utc">
+  <parent>unifi-cef</parent>
+  <regex offset="after_parent">UNIFIadmin=(\S+) UNIFIutcTime=</regex>
+  <order>unifi.admin</order>
+</decoder>
+
+<!-- Extract admin name (fallback) -->
+<decoder name="unifi-cef-admin-fallback">
+  <parent>unifi-cef</parent>
+  <regex offset="after_parent">UNIFIadmin=(\S+)</regex>
+  <order>unifi.admin</order>
+</decoder>
+
+<!-- Extract client MAC address -->
+<decoder name="unifi-cef-clientmac">
+  <parent>unifi-cef</parent>
+  <regex type="pcre2" offset="after_parent">UNIFIclientMac=([0-9a-fA-F:]{17})</regex>
+  <order>unifi.client_mac</order>
+</decoder>
+
+<!-- Extract client alias -->
+<decoder name="unifi-cef-clientalias">
+  <parent>unifi-cef</parent>
+  <regex type="pcre2" offset="after_parent">UNIFIclientAlias=(.+?)(?:\s+UNIFI|\s+msg=)</regex>
+  <order>unifi.client_alias</order>
+</decoder>
+
+<!-- Extract WiFi network name -->
+<decoder name="unifi-cef-wifiname">
+  <parent>unifi-cef</parent>
+  <regex type="pcre2" offset="after_parent">UNIFIwifiName=(.+?)(?:\s+UNIFI|\s+msg=)</regex>
+  <order>unifi.wifi_name</order>
+</decoder>
+
+<!-- Extract last connected device name -->
+<decoder name="unifi-cef-lastdevice">
+  <parent>unifi-cef</parent>
+  <regex type="pcre2" offset="after_parent">UNIFIlastConnectedToDeviceName=(.+?)(?:\s+UNIFI|\s+msg=)</regex>
+  <order>unifi.last_device_name</order>
+</decoder>
+
+<!-- Extract last connected device IP -->
+<decoder name="unifi-cef-lastdeviceip">
+  <parent>unifi-cef</parent>
+  <regex offset="after_parent">UNIFIlastConnectedToDeviceIp=(\d+\.\d+\.\d+\.\d+)</regex>
+  <order>unifi.last_device_ip</order>
+</decoder>
+
+<!-- Extract duration -->
+<decoder name="unifi-cef-duration">
+  <parent>unifi-cef</parent>
+  <regex type="pcre2" offset="after_parent">UNIFIduration=(.+?)(?:\s+UNIFI|\s+msg=)</regex>
+  <order>unifi.duration</order>
+</decoder>
+
+<!-- Extract settings section -->
+<decoder name="unifi-cef-settings-section">
+  <parent>unifi-cef</parent>
+  <regex offset="after_parent">UNIFIsettingsSection=(\S+)</regex>
+  <order>unifi.settings_section</order>
+</decoder>
+
+<!-- Extract settings entry -->
+<decoder name="unifi-cef-settings-entry">
+  <parent>unifi-cef</parent>
+  <regex offset="after_parent">UNIFIsettingsEntry=(\S+)</regex>
+  <order>unifi.settings_entry</order>
+</decoder>
+
+<!-- Extract change count -->
+<decoder name="unifi-cef-cnt">
+  <parent>unifi-cef</parent>
+  <regex offset="after_parent">cnt=(\d+)</regex>
+  <order>unifi.change_count</order>
+</decoder>
+
+<!-- Extract message (msg= is always last) -->
+<decoder name="unifi-cef-msg">
+  <parent>unifi-cef</parent>
+  <regex offset="after_parent">msg=(.+)$</regex>
+  <order>unifi.message</order>
+</decoder>

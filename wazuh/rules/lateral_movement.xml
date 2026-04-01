@@ -1,0 +1,109 @@
+<!-- Lateral Movement Detection Rules (MITRE ATT&CK TA0008) -->
+<!-- Rule IDs: 100200-100299 -->
+<!-- Source: Curated from SigmaHQ detection rules -->
+
+<group name="lateral_movement,">
+
+  <!-- PsExec Detection -->
+  <rule id="100200" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)psexe(c|svc)\.exe</field>
+    <description>Lateral Movement: PsExec execution detected (T1570)</description>
+    <mitre>
+      <id>T1570</id>
+    </mitre>
+    <group>lateral_movement,psexec,</group>
+  </rule>
+
+  <rule id="100201" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\services\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)psexesvc\.exe$</field>
+    <description>Lateral Movement: PsExec service started on target host (T1570)</description>
+    <mitre>
+      <id>T1570</id>
+    </mitre>
+    <group>lateral_movement,psexec,</group>
+  </rule>
+
+  <!-- WMI Remote Execution -->
+  <rule id="100210" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)wmic\s+/node:.*process\s+call\s+create</field>
+    <description>Lateral Movement: Remote process creation via WMI (T1047)</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <group>lateral_movement,wmi,</group>
+  </rule>
+
+  <rule id="100211" level="11">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\wmiprvse\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(cmd|powershell|pwsh)\.exe$</field>
+    <description>Lateral Movement: Shell spawned by WMI provider (T1047)</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <group>lateral_movement,wmi,</group>
+  </rule>
+
+  <!-- Remote Service Creation -->
+  <rule id="100220" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)sc\s+\\\\.*\s+create\s+</field>
+    <description>Lateral Movement: Remote service creation via sc.exe (T1021.002)</description>
+    <mitre>
+      <id>T1021.002</id>
+    </mitre>
+    <group>lateral_movement,remote_service,</group>
+  </rule>
+
+  <!-- Remote Desktop Protocol -->
+  <rule id="100230" level="10">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4624$</field>
+    <field name="win.eventdata.logonType">^10$</field>
+    <description>Lateral Movement: RDP logon detected (T1021.001)</description>
+    <mitre>
+      <id>T1021.001</id>
+    </mitre>
+    <group>lateral_movement,rdp,</group>
+  </rule>
+
+  <!-- WinRM Remote Execution -->
+  <rule id="100240" level="11">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\wsmprovhost\.exe$</field>
+    <description>Lateral Movement: Process spawned via WinRM (T1021.006)</description>
+    <mitre>
+      <id>T1021.006</id>
+    </mitre>
+    <group>lateral_movement,winrm,</group>
+  </rule>
+
+  <!-- DCOM Remote Execution -->
+  <rule id="100250" level="11">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\mmc\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)-Embedding</field>
+    <description>Lateral Movement: Potential DCOM lateral movement via MMC (T1021.003)</description>
+    <mitre>
+      <id>T1021.003</id>
+    </mitre>
+    <group>lateral_movement,dcom,</group>
+  </rule>
+
+  <!-- SMB/Admin Share Access -->
+  <rule id="100260" level="10">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^5140$</field>
+    <field name="win.eventdata.shareName" type="pcre2">(?i)(ADMIN\$|C\$|IPC\$)</field>
+    <description>Lateral Movement: Administrative share access detected (T1021.002)</description>
+    <mitre>
+      <id>T1021.002</id>
+    </mitre>
+    <group>lateral_movement,smb_share,</group>
+  </rule>
+
+</group>

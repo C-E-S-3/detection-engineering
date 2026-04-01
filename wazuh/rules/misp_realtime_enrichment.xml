@@ -1,0 +1,57 @@
+<!-- MISP Real-Time Enrichment Rules -->
+<!-- Rule IDs: 101100-101199 -->
+<!-- Matches enrichment events written to /var/ossec/logs/misp-enrichment.log -->
+<!-- JSON decoder puts all flat keys under data.* -->
+<!--                                                                          -->
+<!-- NOTE: Wazuh $() description substitution only works with built-in fields -->
+<!-- (srcip, dstip, etc), NOT data.* fields. We use prefixed field names to   -->
+<!-- avoid CDB rule collisions. Real data is in the indexed data.* fields.    -->
+<!--                                                                          -->
+<!-- NOTE: Wazuh <field> regex does NOT support character classes like [12].   -->
+<!-- Use separate rules or exact literal matches instead.                     -->
+<!--                                                                          -->
+<!-- NOTE: Sibling rules (same if_sid) — Wazuh picks the FIRST match in file -->
+<!-- order. Most specific rules MUST come before less specific ones.          -->
+<!--                                                                          -->
+<!-- Key fields in data.*:                                                    -->
+<!--   alert_agent, alert_srcip, alert_dstip, alert_srcport, alert_dstport   -->
+<!--   alert_protocol, original_rule_description, original_rule_level         -->
+<!--   src_ip, src_type (local|external), src_hostname, src_role              -->
+<!--   src_country, src_asn_org, src_misp_found, src_misp_threat_level       -->
+<!--   dst_ip, dst_type, dst_hostname, dst_role, dst_country, dst_asn_org    -->
+<!--   misp_hit (true|false), misp_threat_level (1-4)                        -->
+
+<group name="local,misp_enrichment,">
+
+  <!-- Base: any event from the MISP enrichment log -->
+  <rule id="101100" level="3">
+    <location>/var/ossec/logs/misp-enrichment.log</location>
+    <description>IP enrichment completed — NetBox resolution and MISP/GeoIP/ASN lookup</description>
+    <group>misp,enrichment,threat_intel,</group>
+  </rule>
+
+  <!-- High-confidence MISP match: threat_level=1 (high) — MUST come before 101101 -->
+  <rule id="101102" level="13">
+    <if_sid>101100</if_sid>
+    <field name="misp_threat_level">^1$</field>
+    <description>HIGH CONFIDENCE MISP threat intel match — threat level 1 (high)</description>
+    <group>misp,enrichment,threat_intel,misp_hit,high_confidence,</group>
+  </rule>
+
+  <!-- Medium-confidence MISP match: threat_level=2 (medium) — MUST come before 101101 -->
+  <rule id="101103" level="12">
+    <if_sid>101100</if_sid>
+    <field name="misp_threat_level">^2$</field>
+    <description>MISP threat intel match — threat level 2 (medium confidence)</description>
+    <group>misp,enrichment,threat_intel,misp_hit,medium_confidence,</group>
+  </rule>
+
+  <!-- Any MISP match (lower confidence — threat_level 3 or 4, or fallback) -->
+  <rule id="101101" level="10">
+    <if_sid>101100</if_sid>
+    <field name="misp_hit">true</field>
+    <description>MISP threat intel match — IP found in MISP threat database</description>
+    <group>misp,enrichment,threat_intel,misp_hit,</group>
+  </rule>
+
+</group>

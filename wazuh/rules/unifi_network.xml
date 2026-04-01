@@ -1,0 +1,309 @@
+<!--
+  UniFi Network Application - Detection Rules
+  Rule ID range: 100900-100999
+  Equipment: USW Pro XG 8 PoE, WiFi 7 AP (no gateway)
+  Source: CEF syslog from UniFi Network Application v10.1.85+
+
+  sig_id reference:
+    200  Device Adopted         300  WiFi Client Connected
+    201  Device Offline          301  WiFi Client Disconnected (alt)
+    302  Client Connected        303  Client Disconnected
+    304  WiFi Client Roaming     400  Threat Detected and Blocked
+    401  Honeypot Triggered      402  Blocked by Firewall
+    500  WAN Failover            501  High Latency
+    502  Packet Loss             544  Admin Accessed
+    545  Admin Made Config Changes (alt)
+    546  Admin Made Config Changes
+    600  Insufficient PoE Output 601  AP Underpowered
+    602  PoE Availability Exceeded
+-->
+
+<group name="unifi,network,">
+
+  <!-- ==================== Base Anchor (silent) ==================== -->
+
+  <rule id="100900" level="0">
+    <decoded_as>unifi-cef</decoded_as>
+    <description>UniFi Network CEF event</description>
+  </rule>
+
+  <!-- ==================== Admin Login (sig_id 544) ==================== -->
+
+  <rule id="100901" level="3">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^544$</field>
+    <description>UniFi: Admin login by $(unifi.admin) from $(srcip)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication_success,</group>
+  </rule>
+
+  <rule id="100902" level="6">
+    <if_sid>100901</if_sid>
+    <time>8pm - 6am</time>
+    <description>UniFi: Admin login outside business hours by $(unifi.admin) from $(srcip)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication_success,after_hours,</group>
+  </rule>
+
+  <rule id="100903" level="10" frequency="2" timeframe="600">
+    <if_matched_sid>100901</if_matched_sid>
+    <same_field>unifi.admin</same_field>
+    <different_srcip></different_srcip>
+    <description>UniFi: Admin $(unifi.admin) logged in from multiple IPs within 10 minutes</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication_success,suspicious,</group>
+  </rule>
+
+  <rule id="100904" level="10" frequency="8" timeframe="120">
+    <if_matched_sid>100901</if_matched_sid>
+    <same_srcip></same_srcip>
+    <description>UniFi: High-frequency login attempts from $(srcip) - possible brute force</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures,brute_force,</group>
+  </rule>
+
+  <!-- ==================== Config Changes (sig_id 545, 546) ==================== -->
+
+  <rule id="100910" level="5">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^54[56]$</field>
+    <description>UniFi: Config change by $(unifi.admin) - $(unifi.settings_section)</description>
+    <mitre>
+      <id>T1565.001</id>
+    </mitre>
+    <group>config_changed,</group>
+  </rule>
+
+  <rule id="100911" level="7">
+    <if_sid>100910</if_sid>
+    <field name="unifi.settings_section">^device</field>
+    <description>UniFi: Device config change by $(unifi.admin) - $(unifi.settings_section)</description>
+    <mitre>
+      <id>T1565.001</id>
+    </mitre>
+    <group>config_changed,device,</group>
+  </rule>
+
+  <rule id="100912" level="7">
+    <if_sid>100910</if_sid>
+    <field name="unifi.settings_section">^network|^vlan|^subnet</field>
+    <description>UniFi: Network config change by $(unifi.admin) - $(unifi.settings_section)</description>
+    <mitre>
+      <id>T1565.001</id>
+    </mitre>
+    <group>config_changed,network,</group>
+  </rule>
+
+  <rule id="100913" level="10" frequency="5" timeframe="300">
+    <if_matched_sid>100910</if_matched_sid>
+    <same_field>unifi.admin</same_field>
+    <description>UniFi: Rapid config changes by $(unifi.admin) - 5+ changes in 5 minutes</description>
+    <mitre>
+      <id>T1565.001</id>
+    </mitre>
+    <group>config_changed,suspicious,</group>
+  </rule>
+
+  <rule id="100914" level="8">
+    <if_sid>100910</if_sid>
+    <time>8pm - 6am</time>
+    <description>UniFi: Config change outside business hours by $(unifi.admin)</description>
+    <mitre>
+      <id>T1565.001</id>
+    </mitre>
+    <group>config_changed,after_hours,</group>
+  </rule>
+
+  <!-- ==================== Device Events (sig_id 200-201) ==================== -->
+
+  <rule id="100930" level="3">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^200$</field>
+    <description>UniFi: Device adopted - $(unifi.message)</description>
+    <group>device,</group>
+  </rule>
+
+  <rule id="100931" level="8">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^201$</field>
+    <description>UniFi: Device offline - $(unifi.message)</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
+    <group>device,availability,</group>
+  </rule>
+
+  <rule id="100932" level="12" frequency="3" timeframe="600">
+    <if_matched_sid>100931</if_matched_sid>
+    <description>UniFi: Multiple devices going offline - possible infrastructure issue</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
+    <group>device,availability,suspicious,</group>
+  </rule>
+
+  <!-- ==================== WiFi Client Events (sig_id 300, 301, 304, 401) ==================== -->
+
+  <rule id="100940" level="2">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^300$</field>
+    <description>UniFi: WiFi client connected - $(unifi.client_mac)</description>
+    <group>wifi,client,</group>
+  </rule>
+
+  <rule id="100941" level="2">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^301$|^401$</field>
+    <description>UniFi: WiFi client disconnected - $(unifi.client_mac)</description>
+    <group>wifi,client,</group>
+  </rule>
+
+  <rule id="100942" level="2">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^304$</field>
+    <description>UniFi: WiFi client roaming - $(unifi.message)</description>
+    <group>wifi,client,</group>
+  </rule>
+
+  <rule id="100943" level="6" frequency="10" timeframe="60">
+    <if_matched_sid>100941</if_matched_sid>
+    <description>UniFi: High-frequency WiFi disconnections - possible AP instability</description>
+    <group>wifi,availability,suspicious,</group>
+  </rule>
+
+  <!-- ==================== Wired Client Events (sig_id 302, 303) ==================== -->
+
+  <rule id="100945" level="2">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^302$</field>
+    <description>UniFi: Wired client connected - $(unifi.message)</description>
+    <group>wired,client,</group>
+  </rule>
+
+  <rule id="100946" level="2">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^303$</field>
+    <description>UniFi: Wired client disconnected - $(unifi.message)</description>
+    <group>wired,client,</group>
+  </rule>
+
+  <!-- ==================== Security Events (sig_id 400, 401, 402) ==================== -->
+
+  <rule id="100950" level="8">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^400$</field>
+    <description>UniFi: Threat detected and blocked from $(srcip) - $(unifi.message)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>ids,security,</group>
+  </rule>
+
+  <rule id="100952" level="10" frequency="5" timeframe="300">
+    <if_matched_sid>100950</if_matched_sid>
+    <same_srcip></same_srcip>
+    <description>UniFi: Repeated threats from $(srcip) - 5+ in 5 minutes</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>ids,security,suspicious,</group>
+  </rule>
+
+  <rule id="100953" level="8">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^401$</field>
+    <field name="unifi.subcategory">Honeypot</field>
+    <description>UniFi: Honeypot triggered from $(srcip) - $(unifi.message)</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>ids,security,honeypot,</group>
+  </rule>
+
+  <rule id="100954" level="5">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^402$</field>
+    <description>UniFi: Blocked by firewall from $(srcip) - $(unifi.message)</description>
+    <mitre>
+      <id>T1071</id>
+    </mitre>
+    <group>firewall,security,</group>
+  </rule>
+
+  <rule id="100955" level="10" frequency="10" timeframe="120">
+    <if_matched_sid>100954</if_matched_sid>
+    <same_srcip></same_srcip>
+    <description>UniFi: Possible port scan from $(srcip) - 10+ firewall blocks in 2 minutes</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>firewall,security,suspicious,</group>
+  </rule>
+
+  <!-- ==================== WAN / Performance (sig_id 500-502) ==================== -->
+
+  <rule id="100960" level="8">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^500$</field>
+    <description>UniFi: WAN failover - $(unifi.message)</description>
+    <group>wan,availability,</group>
+  </rule>
+
+  <rule id="100961" level="5">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^501$</field>
+    <description>UniFi: High latency detected - $(unifi.message)</description>
+    <group>wan,performance,</group>
+  </rule>
+
+  <rule id="100962" level="5">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^502$</field>
+    <description>UniFi: Packet loss detected - $(unifi.message)</description>
+    <group>wan,performance,</group>
+  </rule>
+
+  <rule id="100963" level="10" frequency="5" timeframe="600">
+    <if_matched_sid>100961</if_matched_sid>
+    <description>UniFi: Persistent high latency - 5+ alerts in 10 minutes</description>
+    <group>wan,performance,suspicious,</group>
+  </rule>
+
+  <!-- ==================== PoE Events (sig_id 600-602) ==================== -->
+
+  <rule id="100970" level="7">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^600$</field>
+    <description>UniFi: Insufficient PoE output - $(unifi.message)</description>
+    <group>poe,power,</group>
+  </rule>
+
+  <rule id="100971" level="5">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^601$</field>
+    <description>UniFi: AP underpowered - $(unifi.message)</description>
+    <group>poe,power,</group>
+  </rule>
+
+  <rule id="100972" level="7">
+    <if_sid>100900</if_sid>
+    <field name="unifi.sig_id">^602$</field>
+    <description>UniFi: PoE availability exceeded - $(unifi.message)</description>
+    <group>poe,power,</group>
+  </rule>
+
+  <rule id="100973" level="10" frequency="3" timeframe="300">
+    <if_matched_sid>100970</if_matched_sid>
+    <description>UniFi: Repeated PoE budget issues - possible overload</description>
+    <group>poe,power,suspicious,</group>
+  </rule>
+
+</group>

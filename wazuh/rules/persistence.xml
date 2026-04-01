@@ -1,0 +1,123 @@
+<!-- Persistence Detection Rules (MITRE ATT&CK TA0003) -->
+<!-- Rule IDs: 100300-100399 -->
+<!-- Source: Curated from SigmaHQ detection rules -->
+
+<group name="persistence,">
+
+  <!-- Registry Run Key Modification -->
+  <rule id="100300" level="11">
+    <if_sid>61645</if_sid>
+    <field name="win.system.eventID">^13$</field>
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)\\(Run|RunOnce|RunOnceEx|RunServices|RunServicesOnce)\\</field>
+    <description>Persistence: Registry Run key modification detected (T1547.001)</description>
+    <mitre>
+      <id>T1547.001</id>
+    </mitre>
+    <group>persistence,registry_run_key,</group>
+  </rule>
+
+  <rule id="100301" level="12">
+    <if_sid>61645</if_sid>
+    <field name="win.system.eventID">^13$</field>
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)\\(Run|RunOnce|RunOnceEx|RunServices|RunServicesOnce)\\</field>
+    <field name="win.eventdata.details" type="pcre2">(?i)(powershell|cmd|wscript|cscript|mshta|rundll32)</field>
+    <description>Persistence: Suspicious scripting engine added to Run key (T1547.001)</description>
+    <mitre>
+      <id>T1547.001</id>
+    </mitre>
+    <group>persistence,registry_run_key,</group>
+  </rule>
+
+  <!-- Scheduled Task Creation -->
+  <rule id="100310" level="11">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)schtasks\s+/create\s+</field>
+    <description>Persistence: Scheduled task created via schtasks (T1053.005)</description>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
+    <group>persistence,scheduled_task,</group>
+  </rule>
+
+  <rule id="100311" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)schtasks\s+/create\s+</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)/tr\s+.*(powershell|cmd|wscript|mshta|certutil|bitsadmin)</field>
+    <description>Persistence: Scheduled task with suspicious command (T1053.005)</description>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
+    <group>persistence,scheduled_task,</group>
+  </rule>
+
+  <!-- Startup Folder Modification -->
+  <rule id="100320" level="11">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\\Start Menu\\Programs\\Startup\\</field>
+    <description>Persistence: File created in Startup folder (T1547.001)</description>
+    <mitre>
+      <id>T1547.001</id>
+    </mitre>
+    <group>persistence,startup_folder,</group>
+  </rule>
+
+  <!-- New Service Creation -->
+  <rule id="100330" level="11">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^7045$</field>
+    <description>Persistence: New Windows service installed (T1543.003)</description>
+    <mitre>
+      <id>T1543.003</id>
+    </mitre>
+    <group>persistence,new_service,</group>
+  </rule>
+
+  <rule id="100331" level="13">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^7045$</field>
+    <field name="win.eventdata.imagePath" type="pcre2">(?i)(cmd|powershell|wscript|cscript|mshta|rundll32)</field>
+    <description>Persistence: Service installed with suspicious binary (T1543.003)</description>
+    <mitre>
+      <id>T1543.003</id>
+    </mitre>
+    <group>persistence,new_service,</group>
+  </rule>
+
+  <!-- WMI Event Subscription -->
+  <rule id="100340" level="13">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID" type="pcre2">^(19|20|21)$</field>
+    <description>Persistence: WMI event subscription detected (T1546.003)</description>
+    <mitre>
+      <id>T1546.003</id>
+    </mitre>
+    <group>persistence,wmi_subscription,</group>
+  </rule>
+
+  <!-- DLL Search Order Hijacking -->
+  <rule id="100350" level="12">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^7$</field>
+    <field name="win.eventdata.signed">false</field>
+    <field name="win.eventdata.imageLoaded" type="pcre2">(?i)\\(system32|syswow64)\\</field>
+    <description>Persistence: Unsigned DLL loaded from system directory (T1574.001)</description>
+    <mitre>
+      <id>T1574.001</id>
+    </mitre>
+    <group>persistence,dll_hijack,</group>
+  </rule>
+
+  <!-- Registry Winlogon Modification -->
+  <rule id="100360" level="12">
+    <if_sid>61645</if_sid>
+    <field name="win.system.eventID">^13$</field>
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)\\Winlogon\\(Shell|Userinit|Notify)</field>
+    <description>Persistence: Winlogon registry key modified (T1547.004)</description>
+    <mitre>
+      <id>T1547.004</id>
+    </mitre>
+    <group>persistence,winlogon,</group>
+  </rule>
+
+</group>
