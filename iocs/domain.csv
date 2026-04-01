@@ -1,2 +1,3 @@
 indicator,source,date_added,context
 https://fs-loader.com/script/,https://www.bleepingcomputer.com/news/security/backdoored-telnyx-pypi-package-pushes-malware-hidden-in-wav-audio/,2026-03-27,Remote C2 server hosting malicious WAV files
+sfrclak[.]com,https://cloud.google.com/blog/topics/threat-intelligence/north-korea-threat-actor-targets-axios-npm-package/,2026-04-01,C2 domain for WAVESHAPER.V2

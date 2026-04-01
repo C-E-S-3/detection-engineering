@@ -1,0 +1,8 @@
+indicator,type,source,date_added,context
+e10b1fa84f1d6481625f741b69892780140d4e0e7769e7491e5f4d894c2e0e09,SHA256,https://cloud.google.com/blog/topics/threat-intelligence/north-korea-threat-actor-targets-axios-npm-package/,2026-04-01,Obfuscated JavaScript dropper (setup.js)
+fcb81618bb15edfdedfb638b4c08a2af9cac9ecfa551af135a8402bf980375cf,SHA256,https://cloud.google.com/blog/topics/threat-intelligence/north-korea-threat-actor-targets-axios-npm-package/,2026-04-01,WAVESHAPER.V2 Linux Python RAT
+92ff08773995ebc8d55ec4b8e1a225d0d1e51efa4ef88b8849d0071230c9645a,SHA256,https://cloud.google.com/blog/topics/threat-intelligence/north-korea-threat-actor-targets-axios-npm-package/,2026-04-01,WAVESHAPER.V2 macOS native binary
+617b67a8e1210e4fc87c92d1d1da45a2f311c08d26e89b12307cf583c900d101,SHA256,https://cloud.google.com/blog/topics/threat-intelligence/north-korea-threat-actor-targets-axios-npm-package/,2026-04-01,WAVESHAPER.V2 Windows Stage 1 payload
+ed8560c1ac7ceb6983ba995124d5917dc1a00288912387a6389296637d5f815c,SHA256,https://cloud.google.com/blog/topics/threat-intelligence/north-korea-threat-actor-targets-axios-npm-package/,2026-04-01,WAVESHAPER.V2 unknown
+f7d335205b8d7b20208fb3ef93ee6dc817905dc3ae0c10a0b164f4e7d07121cd,SHA256,https://cloud.google.com/blog/topics/threat-intelligence/north-korea-threat-actor-targets-axios-npm-package/,2026-04-01,system.bat
+58401c195fe0a6204b42f5f90995ece5fab74ce7c69c67a24c61a057325af668,SHA256,https://cloud.google.com/blog/topics/threat-intelligence/north-korea-threat-actor-targets-axios-npm-package/,2026-04-01,plain-crypto-js-4.2.1.tgz
