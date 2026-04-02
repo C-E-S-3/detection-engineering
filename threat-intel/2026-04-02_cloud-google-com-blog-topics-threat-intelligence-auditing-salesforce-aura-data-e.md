@@ -1,68 +1,67 @@
 ---
-scraped_at: "2026-04-02T07:02:27Z"
+scraped_at: "2026-04-02T10:02:38Z"
 source_url: "https://cloud.google.com/blog/topics/threat-intelligence/auditing-salesforce-aura-data-exposure/"
 report_type: threat-intel
 severity: "medium"
-title: "AuraInspector reveals Salesforce Aura misconfigurations and GraphQL exploitation risks"
+title: "AuraInspector uncovers Salesforce Aura misconfigurations and GraphQL exploitation risks"
 ---
 
 ## 1. Indicators of Compromise (IOCs)
-No concrete IOCs (IP addresses, domains, hashes, etc.) were provided in the source.
+No specific IOCs (domains, IPs, hashes, etc.) were identified in the source.
 
 ## 2. TTPs (MITRE ATT&CK Mapping)
-### Tactics and Techniques:
 - **Tactic:** Initial Access
   - **Technique ID:** T1190
   - **Technique Name:** Exploit Public-Facing Application
-  - **Description:** Exploiting misconfigured Salesforce Aura endpoints and GraphQL controllers to access sensitive data.
+  - **Description:** Exploiting misconfigured Salesforce Aura endpoints to access sensitive data.
 
 - **Tactic:** Collection
   - **Technique ID:** T1213
   - **Technique Name:** Data from Information Repositories
-  - **Description:** Retrieving sensitive records from Salesforce objects using Aura methods and GraphQL queries.
+  - **Description:** Using GraphQL API to retrieve records from Salesforce objects, bypassing standard record retrieval limits.
 
-- **Tactic:** Defense Evasion
-  - **Technique ID:** T1562
-  - **Technique Name:** Impair Defenses
-  - **Description:** Bypassing record retrieval limits using sorting parameters and GraphQL pagination.
+- **Tactic:** Credential Access
+  - **Technique ID:** T1078
+  - **Technique Name:** Valid Accounts
+  - **Description:** Exploiting self-registration misconfigurations to gain unauthorized access to Salesforce accounts.
 
 ## 3. Malware & Tools
-### Tools:
-- **AuraInspector:** An open-source tool released by Mandiant to audit Salesforce Aura misconfigurations and data exposures.
+- **Tool:** AuraInspector
+  - **Description:** Open-source tool released by Mandiant to identify and audit access control misconfigurations in Salesforce Aura framework.
 
 ## 4. Threat Actor / Campaign Attribution
-No specific threat actors or campaigns were attributed in the source.
+No specific threat actor or campaign attribution was provided in the source.
 
 ## 5. Splunk Detection Searches
-### Detecting Misconfigured Aura Endpoints:
+### Detecting unauthorized access to Salesforce Aura endpoints
 ```spl
 index=web sourcetype=access_combined
-| search uri_path="/AuraServlet" OR uri_path="/graphql"
-| stats count by uri_path, http_method, src_ip
+| search uri_path="/aura" AND (uri_query="descriptor=*getConfigData*" OR uri_query="descriptor=*getItems*")
+| stats count by clientip, uri_path, uri_query
 | where count > 100
-| table uri_path, http_method, src_ip, count
+| table clientip, uri_path, uri_query, count
 ```
-*Detects excessive access to Salesforce Aura or GraphQL endpoints.*
+*Detects excessive requests to Salesforce Aura endpoints, which may indicate exploitation attempts.*
 
-### Detecting Unauthorized Record Retrieval:
+### Detecting GraphQL API exploitation
 ```spl
 index=web sourcetype=access_combined
-| search uri_path="/AuraServlet" "ACTION$getItems" "ACTION$getConfigData"
-| stats count by src_ip, uri_path, http_method, user_agent
+| search uri_path="/graphql" AND (uri_query="query=*" OR uri_query="mutation=*")
+| stats count by clientip, uri_path, uri_query
 | where count > 50
-| table src_ip, uri_path, http_method, user_agent, count
+| table clientip, uri_path, uri_query, count
 ```
-*Identifies repeated attempts to retrieve records using Aura methods.*
+*Identifies potential abuse of the GraphQL API for unauthorized data retrieval.*
 
-### Monitoring GraphQL Queries:
+### Monitoring self-registration page access
 ```spl
 index=web sourcetype=access_combined
-| search uri_path="/graphql" "query" "mutation"
-| stats count by src_ip, uri_path, http_method, user_agent
-| where count > 50
-| table src_ip, uri_path, http_method, user_agent, count
+| search uri_path="/self-registration"
+| stats count by clientip, uri_path
+| where count > 10
+| table clientip, uri_path, count
 ```
-*Detects high-frequency GraphQL queries or mutations.*
+*Flags repeated access attempts to the self-registration page, which may indicate exploitation of misconfigured self-registration settings.*
 
 ## 6. Executive Summary
-Mandiant has released AuraInspector, a tool to identify misconfigurations in Salesforce Aura endpoints. These misconfigurations can allow unauthorized access to sensitive data, including credit card numbers and identity documents. Additionally, exploitation of the GraphQL Aura controller enables attackers to bypass record retrieval limits and access large datasets. Administrators should audit their Salesforce configurations and restrict access to public-facing endpoints. Immediate actions include deploying AuraInspector, monitoring endpoint activity, and validating access control settings.
+Mandiant has released a new tool, AuraInspector, to help administrators identify and audit misconfigurations in Salesforce Aura framework endpoints. These misconfigurations can lead to unauthorized access to sensitive data, including credit card numbers and identity documents. Additionally, the report highlights the exploitation of Salesforce's GraphQL API to bypass record retrieval limits, which could be leveraged in cases of misconfigured access controls. Organizations using Salesforce should immediately audit their Aura endpoints, review access control settings, and ensure self-registration is properly disabled to mitigate potential risks.
