@@ -153,6 +153,8 @@ jobs:
           {
             "has_new_intel": true or false,
             "skip_reason": "reason if has_new_intel is false, null otherwise",
+            "severity": "critical | high | medium | low — based on exploitability, active exploitation, and impact (critical = actively exploited RCE/supply chain; high = weaponized exploit or APT campaign; medium = notable vulnerability or emerging threat; low = informational or limited scope)",
+            "title": "short descriptive title for the threat (e.g., 'APT29 targets Exchange servers via CVE-2026-1234', 'Lazarus supply chain attack on npm packages'). Do NOT use generic titles like 'Threat Intelligence Report'.",
             "report": "full markdown threat intel report if has_new_intel is true, null otherwise",
             "new_iocs": {
               "domains": [
@@ -313,17 +315,52 @@ jobs:
           with open("/tmp/datestamp.txt") as f:
               datestamp = f.read().strip()
 
+          # ── Extract severity and title metadata ────────────────────────
+          severity = data.get("severity", "medium").lower()
+          if severity not in ("critical", "high", "medium", "low"):
+              severity = "medium"
+          ai_title = data.get("title", "").strip()
+
+          with open("/tmp/severity.txt", "w") as f:
+              f.write(severity)
+          with open("/tmp/ai_title.txt", "w") as f:
+              f.write(ai_title)
+
           # ── Write the threat intel report ──────────────────────────────
           report = data.get("report", "")
           if report:
               output_dir = "threat-intel"
               os.makedirs(output_dir, exist_ok=True)
               output_path = f"{output_dir}/{datestamp}_{url_slug}.md"
+
+              # Inject YAML frontmatter with severity metadata
+              frontmatter = (
+                  f"---\n"
+                  f"scraped_at: \"{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}\"\n"
+                  f"source_url: \"{source_url}\"\n"
+                  f"report_type: threat-intel\n"
+                  f"severity: \"{severity}\"\n"
+                  f"title: \"{ai_title}\"\n"
+                  f"---\n\n"
+              )
+
+              # If report already has frontmatter, replace it; otherwise prepend
+              if report.lstrip().startswith("---"):
+                  # Find closing --- and replace
+                  parts = report.lstrip().split("---", 2)
+                  if len(parts) >= 3:
+                      report_body = parts[2]
+                  else:
+                      report_body = report
+                  report_content = frontmatter + report_body.lstrip("\n")
+              else:
+                  report_content = frontmatter + report
+
               with open(output_path, "w") as f:
-                  f.write(report)
+                  f.write(report_content)
               with open("/tmp/output_path.txt", "w") as f:
                   f.write(output_path)
-              print(f"📄 Report written to {output_path}")
+              print(f"📄 Report written to {output_path} [severity: {severity}]")
 
           # ── Update IOC CSVs ────────────────────────────────────────────
           new_iocs = data.get("new_iocs", {})
@@ -392,6 +429,8 @@ jobs:
           SOURCE_URL=$(cat /tmp/source_url.txt)
           DATESTAMP=$(cat /tmp/datestamp.txt)
           OUTPUT_PATH=$(cat /tmp/output_path.txt 2>/dev/null || echo "")
+          SEVERITY=$(cat /tmp/severity.txt 2>/dev/null || echo "medium")
+          AI_TITLE=$(cat /tmp/ai_title.txt 2>/dev/null || echo "")
 
           git config user.name "ai-agent[bot]"
           git config user.email "ai-agent[bot]@users.noreply.github.com"
@@ -402,19 +441,40 @@ jobs:
           if git diff --cached --quiet; then
             echo "No file changes — skipping commit."
           else
-            TITLE=""
-            if [ -n "$OUTPUT_PATH" ] && [ -f "$OUTPUT_PATH" ]; then
+            # Use AI-generated title, fall back to heading extraction, then URL slug
+            TITLE="${AI_TITLE}"
+            if [ -z "$TITLE" ] && [ -n "$OUTPUT_PATH" ] && [ -f "$OUTPUT_PATH" ]; then
               TITLE=$(grep -m1 '^##\? ' "$OUTPUT_PATH" \
                 | sed 's/^##\? //' \
                 | cut -c1-72)
             fi
             TITLE="${TITLE:-$(cat /tmp/url_slug.txt)}"
 
-            git commit -m "threat-intel: ${TITLE}" \
-              -m "Source: ${SOURCE_URL}" \
-              -m "Date: ${DATESTAMP}"
+            # Severity tag in uppercase for commit subject
+            SEV_TAG=$(echo "$SEVERITY" | tr '[:lower:]' '[:upper:]')
+
+            # Count IOC additions for commit body
+            IOC_SUMMARY=""
+            for csv in iocs/domain.csv iocs/hash.csv iocs/ip.csv; do
+              if git diff --cached --name-only | grep -q "$csv"; then
+                ADDED=$(git diff --cached "$csv" | grep '^+' | grep -v '^+++' | wc -l)
+                TYPE=$(basename "$csv" .csv)
+                IOC_SUMMARY="${IOC_SUMMARY}${TYPE}:${ADDED} "
+              fi
+            done
+
+            COMMIT_MSG="threat-intel [${SEV_TAG}]: ${TITLE}"
+            COMMIT_BODY="Source: ${SOURCE_URL}
+          Date: ${DATESTAMP}
+          Severity: ${SEVERITY}"
+            if [ -n "$IOC_SUMMARY" ]; then
+              COMMIT_BODY="${COMMIT_BODY}
+          New IOCs: ${IOC_SUMMARY}"
+            fi
+
+            git commit -m "${COMMIT_MSG}" -m "${COMMIT_BODY}"
 
             git pull --rebase origin main
             git push
-            echo "✅ Committed: threat-intel: ${TITLE}"
+            echo "✅ Committed: ${COMMIT_MSG}"
           fi
