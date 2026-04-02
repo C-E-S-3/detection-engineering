@@ -1,0 +1,154 @@
+---
+# Deploy or update the Wazuh stack (indexer, manager, dashboard) on secops-monitoring.
+#
+# This playbook manages the full Wazuh container stack via docker compose.
+# Use for initial deployment or disaster recovery — Wazuh is already running
+# at 10.0.69.7. For routine operations use wazuh-enroll-agents.yml or
+# wazuh-push-rules.yml instead.
+#
+# Prerequisites:
+#   - secops-monitoring reachable via SSH through nucbox-infra-01 jump host
+#   - Docker and docker compose plugin installed on secops-monitoring
+#   - Wazuh stack compose file at {{ wazuh_compose_dir }}/docker-compose.yml
+#
+# Usage:
+#   ansible-playbook playbooks/security/wazuh-deploy.yml            # deploy/update
+#   ansible-playbook playbooks/security/wazuh-deploy.yml -e wazuh_pull_images=false
+#   ansible-playbook playbooks/security/wazuh-deploy.yml --tags validate  # health check only
+
+- name: Deploy Wazuh stack on secops-monitoring
+  hosts: wazuh_server
+  gather_facts: yes
+  become: yes
+
+  vars:
+    wazuh_compose_dir: /opt/stacks/wazuh
+    wazuh_api_host: "{{ wazuh_manager_api_host | default('10.0.69.7') }}"
+    wazuh_api_url: "https://{{ wazuh_api_host }}:55000"
+    wazuh_api_verify_ssl: false
+    wazuh_api_username: ansible
+    wazuh_pull_images: true
+    wazuh_health_retries: 18
+    wazuh_health_delay: 10
+
+    # OpenBao connection — populated from Semaphore environment vars
+    openbao_url: "{{ lookup('env', 'VAULT_ADDR') | default('https://nucbox-infra-01.svc.eskridge.internal:8200') }}"
+    openbao_token: "{{ lookup('env', 'VAULT_TOKEN') }}"
+
+  pre_tasks:
+    - name: Verify compose directory exists
+      ansible.builtin.stat:
+        path: "{{ wazuh_compose_dir }}/docker-compose.yml"
+      register: _compose_file
+
+    - name: Fail if compose file is missing
+      ansible.builtin.fail:
+        msg: "Wazuh compose file not found at {{ wazuh_compose_dir }}/docker-compose.yml"
+      when: not _compose_file.stat.exists
+
+  tasks:
+    - name: Pull latest Wazuh container images
+      ansible.builtin.command:
+        cmd: docker compose pull
+        chdir: "{{ wazuh_compose_dir }}"
+      changed_when: true
+      tags: [deploy]
+      when: wazuh_pull_images | bool
+
+    - name: Deploy / update Wazuh stack (docker compose up)
+      ansible.builtin.command:
+        cmd: docker compose up -d --remove-orphans
+        chdir: "{{ wazuh_compose_dir }}"
+      register: _compose_up
+      changed_when: "'Started' in _compose_up.stdout or 'Recreated' in _compose_up.stdout or 'Created' in _compose_up.stdout"
+      tags: [deploy]
+
+    - name: Wait for Wazuh API to become reachable
+      ansible.builtin.uri:
+        url: "{{ wazuh_api_url }}/security/user/authenticate"
+        method: POST
+        url_username: "{{ wazuh_api_username }}"
+        url_password: "placeholder"
+        force_basic_auth: true
+        validate_certs: "{{ wazuh_api_verify_ssl }}"
+        status_code: [200, 401]  # 401 means API is up, creds incorrect at this stage
+      register: _api_ready
+      until: _api_ready.status in [200, 401]
+      retries: "{{ wazuh_health_retries }}"
+      delay: "{{ wazuh_health_delay }}"
+      tags: [deploy, validate]
+
+    - name: Retrieve Wazuh API credentials from OpenBao
+      ansible.builtin.uri:
+        url: "{{ openbao_url }}/v1/kv/data/wazuh"
+        method: GET
+        headers:
+          X-Vault-Token: "{{ openbao_token }}"
+        validate_certs: false
+        status_code: [200]
+      register: _wazuh_creds
+      no_log: true
+      tags: [deploy, validate]
+
+    - name: Authenticate to Wazuh API
+      ansible.builtin.uri:
+        url: "{{ wazuh_api_url }}/security/user/authenticate"
+        method: POST
+        url_username: "{{ wazuh_api_username }}"
+        url_password: "{{ _wazuh_creds.json.data.data[wazuh_api_username] }}"
+        force_basic_auth: true
+        validate_certs: "{{ wazuh_api_verify_ssl }}"
+        status_code: [200]
+      register: _auth
+      no_log: true
+      tags: [deploy, validate]
+
+    - name: Set Wazuh API token
+      ansible.builtin.set_fact:
+        _wazuh_token: "{{ _auth.json.data.token }}"
+      no_log: true
+      tags: [deploy, validate]
+
+    - name: Check Wazuh manager daemon status
+      ansible.builtin.uri:
+        url: "{{ wazuh_api_url }}/manager/status"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ _wazuh_token }}"
+        validate_certs: "{{ wazuh_api_verify_ssl }}"
+        status_code: [200]
+      register: _mgr_status
+      tags: [deploy, validate]
+
+    - name: Assert critical daemons are running
+      ansible.builtin.assert:
+        that:
+          - _mgr_status.json.data.affected_items[0]['wazuh-modulesd'] == 'running'
+          - _mgr_status.json.data.affected_items[0]['wazuh-analysisd'] == 'running'
+          - _mgr_status.json.data.affected_items[0]['wazuh-remoted'] == 'running'
+        success_msg: "Wazuh manager daemons are healthy"
+        fail_msg: "One or more Wazuh manager daemons are not running: {{ _mgr_status.json.data.affected_items[0] }}"
+      tags: [deploy, validate]
+
+    - name: Check connected agent count
+      ansible.builtin.uri:
+        url: "{{ wazuh_api_url }}/agents?status=active&limit=1"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ _wazuh_token }}"
+        validate_certs: "{{ wazuh_api_verify_ssl }}"
+        status_code: [200]
+      register: _agents
+      tags: [validate]
+
+    - name: Display deployment summary
+      ansible.builtin.debug:
+        msg: |
+          Wazuh Stack Deployment Summary
+          ===============================
+          Host:             {{ inventory_hostname }}
+          Compose dir:      {{ wazuh_compose_dir }}
+          API:              {{ wazuh_api_url }}
+          Manager daemons:  healthy
+          Active agents:    {{ _agents.json.data.total_affected_items }}
+      tags: [deploy, validate]

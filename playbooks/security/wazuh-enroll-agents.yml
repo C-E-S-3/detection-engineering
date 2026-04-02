@@ -1,0 +1,136 @@
+---
+# Install and enroll Wazuh agents on all hosts in the wazuh_agents group.
+#
+# Connects agents to the Wazuh manager at 10.0.69.7 using authd auto-enrollment
+# (port 1515). Idempotent — safe to run against already-enrolled hosts.
+#
+# Host groups managed:
+#   - infra_vms: nucbox-infra-01, nucbox-docker-01, beelink-automation (Ubuntu)
+#
+# Prerequisites:
+#   - Target hosts reachable over SSH (infra_vms via direct, secops_vms via jump host)
+#   - Wazuh manager authd port 1515 open from target VLAN to SecOps VLAN (10.0.69.7)
+#   - Internet access or local mirror for packages.wazuh.com
+#
+# Usage:
+#   ansible-playbook playbooks/security/wazuh-enroll-agents.yml         # all agents
+#   ansible-playbook playbooks/security/wazuh-enroll-agents.yml -l nucbox-infra-01.svc.eskridge.internal
+
+- name: Install and enroll Wazuh agents
+  hosts: wazuh_agents
+  gather_facts: yes
+  become: yes
+  serial: 5
+
+  vars:
+    wazuh_manager_address: "{{ wazuh_manager_address | default('10.0.69.7') }}"
+    wazuh_manager_port: 1514
+    wazuh_enrollment_port: 1515
+    wazuh_agent_version: "4.13.1-1"
+    wazuh_apt_key_url: "https://packages.wazuh.com/key/GPG-KEY-WAZUH"
+    wazuh_apt_repo: "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main"
+    wazuh_install_dir: /var/ossec
+
+  tasks:
+    # --- Package installation ---
+
+    - name: Ensure prerequisite packages are present
+      ansible.builtin.apt:
+        name:
+          - gnupg
+          - curl
+          - apt-transport-https
+        state: present
+        update_cache: yes
+
+    - name: Create APT keyrings directory
+      ansible.builtin.file:
+        path: /usr/share/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Download Wazuh GPG signing key
+      ansible.builtin.get_url:
+        url: "{{ wazuh_apt_key_url }}"
+        dest: /tmp/wazuh-gpg-key.asc
+        mode: "0644"
+        timeout: 30
+
+    - name: Import Wazuh GPG key into keyring
+      ansible.builtin.shell:
+        cmd: "gpg --dearmor < /tmp/wazuh-gpg-key.asc > /usr/share/keyrings/wazuh.gpg"
+        creates: /usr/share/keyrings/wazuh.gpg
+
+    - name: Add Wazuh APT repository
+      ansible.builtin.apt_repository:
+        repo: "{{ wazuh_apt_repo }}"
+        state: present
+        filename: wazuh
+        update_cache: yes
+
+    - name: Install wazuh-agent package
+      ansible.builtin.apt:
+        name: wazuh-agent
+        state: present
+      register: _pkg_install
+
+    - name: Stop wazuh-agent after fresh install (configure before first start)
+      ansible.builtin.systemd:
+        name: wazuh-agent
+        state: stopped
+      when: _pkg_install.changed
+      ignore_errors: yes
+
+    # --- Configuration ---
+
+    - name: Configure ossec.conf — set manager address
+      ansible.builtin.blockinfile:
+        path: "{{ wazuh_install_dir }}/etc/ossec.conf"
+        marker: "<!-- {mark} ANSIBLE MANAGED: manager address -->"
+        insertafter: "<ossec_config>"
+        block: |
+          <client>
+            <server>
+              <address>{{ wazuh_manager_address }}</address>
+              <port>{{ wazuh_manager_port }}</port>
+              <protocol>tcp</protocol>
+            </server>
+            <enrollment>
+              <enabled>yes</enabled>
+              <port>{{ wazuh_enrollment_port }}</port>
+            </enrollment>
+          </client>
+      register: _ossec_conf
+
+    # --- Service management ---
+
+    - name: Enable and start wazuh-agent service
+      ansible.builtin.systemd:
+        name: wazuh-agent
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: Restart wazuh-agent if configuration changed
+      ansible.builtin.systemd:
+        name: wazuh-agent
+        state: restarted
+      when: _ossec_conf.changed
+
+    # --- Verification ---
+
+    - name: Wait for agent to connect to manager
+      ansible.builtin.command:
+        cmd: "{{ wazuh_install_dir }}/bin/wazuh-control status"
+      register: _agent_status
+      until: "'wazuh-agentd is running' in _agent_status.stdout"
+      retries: 12
+      delay: 5
+      changed_when: false
+
+    - name: Display agent enrollment status
+      ansible.builtin.debug:
+        msg: |
+          Wazuh Agent Enrollment — {{ inventory_hostname }}
+          Manager:  {{ wazuh_manager_address }}:{{ wazuh_manager_port }}
+          Status:   {{ 'CONNECTED' if 'wazuh-agentd is running' in _agent_status.stdout else 'NOT RUNNING' }}

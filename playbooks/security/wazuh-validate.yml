@@ -1,0 +1,156 @@
+---
+# Validate Wazuh health: manager running, agents connected, rules loaded.
+#
+# Read-only health check. Makes no changes. Queries the Wazuh REST API for:
+#   - Manager daemon status (wazuh-analysisd, wazuh-remoted, wazuh-modulesd)
+#   - Active agent count (asserts >= 1 agent connected)
+#   - Loaded custom rule count (asserts > 0 custom rules present)
+#
+# Scheduled: every 6 hours via Semaphore.
+#
+# Prerequisites:
+#   - VAULT_ADDR and VAULT_TOKEN set in Semaphore environment (Wazuh Vault env)
+#   - Wazuh API credentials stored in OpenBao at kv/wazuh
+#   - Wazuh manager API reachable from Semaphore runner at https://10.0.69.7:55000
+#
+# Usage:
+#   ansible-playbook playbooks/security/wazuh-validate.yml
+#   ansible-playbook playbooks/security/wazuh-validate.yml --tags agents
+#   ansible-playbook playbooks/security/wazuh-validate.yml --tags rules
+
+- name: Validate Wazuh health
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    wazuh_api_url: "https://10.0.69.7:55000"
+    wazuh_api_verify_ssl: false
+    wazuh_api_username: ansible
+    wazuh_min_active_agents: 1
+
+    # OpenBao connection — populated from Semaphore environment vars
+    openbao_url: "{{ lookup('env', 'VAULT_ADDR') | default('https://nucbox-infra-01.svc.eskridge.internal:8200') }}"
+    openbao_token: "{{ lookup('env', 'VAULT_TOKEN') }}"
+
+  tasks:
+    # --- Authenticate ---
+
+    - name: Retrieve Wazuh API credentials from OpenBao
+      ansible.builtin.uri:
+        url: "{{ openbao_url }}/v1/kv/data/wazuh"
+        method: GET
+        headers:
+          X-Vault-Token: "{{ openbao_token }}"
+        validate_certs: false
+        status_code: [200]
+      register: _wazuh_creds
+      no_log: true
+      tags: [validate, agents, rules, manager]
+
+    - name: Authenticate to Wazuh API
+      ansible.builtin.uri:
+        url: "{{ wazuh_api_url }}/security/user/authenticate"
+        method: POST
+        url_username: "{{ wazuh_api_username }}"
+        url_password: "{{ _wazuh_creds.json.data.data[wazuh_api_username] }}"
+        force_basic_auth: true
+        validate_certs: "{{ wazuh_api_verify_ssl }}"
+        status_code: [200]
+      register: _auth
+      no_log: true
+      tags: [validate, agents, rules, manager]
+
+    - name: Set Wazuh API token
+      ansible.builtin.set_fact:
+        _wazuh_token: "{{ _auth.json.data.token }}"
+      no_log: true
+      tags: [validate, agents, rules, manager]
+
+    # --- Manager daemon check ---
+
+    - name: Query Wazuh manager daemon status
+      ansible.builtin.uri:
+        url: "{{ wazuh_api_url }}/manager/status"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ _wazuh_token }}"
+        validate_certs: "{{ wazuh_api_verify_ssl }}"
+        status_code: [200]
+      register: _mgr_status
+      tags: [validate, manager]
+
+    - name: Assert critical manager daemons are running
+      ansible.builtin.assert:
+        that:
+          - _mgr_status.json.data.affected_items[0]['wazuh-analysisd'] == 'running'
+          - _mgr_status.json.data.affected_items[0]['wazuh-remoted'] == 'running'
+          - _mgr_status.json.data.affected_items[0]['wazuh-modulesd'] == 'running'
+        success_msg: "All Wazuh manager daemons are running"
+        fail_msg: >-
+          One or more Wazuh daemons are not running.
+          analysisd={{ _mgr_status.json.data.affected_items[0]['wazuh-analysisd'] }}
+          remoted={{ _mgr_status.json.data.affected_items[0]['wazuh-remoted'] }}
+          modulesd={{ _mgr_status.json.data.affected_items[0]['wazuh-modulesd'] }}
+      tags: [validate, manager]
+
+    # --- Active agent check ---
+
+    - name: Query active agent count
+      ansible.builtin.uri:
+        url: "{{ wazuh_api_url }}/agents?status=active"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ _wazuh_token }}"
+        validate_certs: "{{ wazuh_api_verify_ssl }}"
+        status_code: [200]
+      register: _agents
+      tags: [validate, agents]
+
+    - name: Assert minimum active agent count
+      ansible.builtin.assert:
+        that:
+          - _agents.json.data.total_affected_items >= wazuh_min_active_agents
+        success_msg: >-
+          {{ _agents.json.data.total_affected_items }} active agent(s) connected
+          (minimum required: {{ wazuh_min_active_agents }})
+        fail_msg: >-
+          Only {{ _agents.json.data.total_affected_items }} active agent(s) connected
+          — expected at least {{ wazuh_min_active_agents }}
+      tags: [validate, agents]
+
+    # --- Custom rules check ---
+
+    - name: Query loaded custom rule count
+      ansible.builtin.uri:
+        url: "{{ wazuh_api_url }}/rules?relative_dirname=etc/rules&limit=1"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ _wazuh_token }}"
+        validate_certs: "{{ wazuh_api_verify_ssl }}"
+        status_code: [200]
+      register: _rules
+      tags: [validate, rules]
+
+    - name: Assert custom rules are loaded
+      ansible.builtin.assert:
+        that:
+          - _rules.json.data.total_affected_items > 0
+        success_msg: >-
+          {{ _rules.json.data.total_affected_items }} custom rule(s) loaded
+        fail_msg: >-
+          No custom rules found in etc/rules — run wazuh-push-rules.yml to deploy them
+      tags: [validate, rules]
+
+    # --- Health summary ---
+
+    - name: Display validation summary
+      ansible.builtin.debug:
+        msg: |
+          Wazuh Health Validation
+          =======================
+          Manager:        HEALTHY
+          Active agents:  {{ _agents.json.data.total_affected_items }}
+          Custom rules:   {{ _rules.json.data.total_affected_items }}
+          Timestamp:      {{ ansible_date_time.iso8601 | default(lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ')) }}
+      tags: [validate, agents, rules, manager]
