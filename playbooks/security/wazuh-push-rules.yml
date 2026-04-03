@@ -46,6 +46,15 @@
   tasks:
     # --- Authentication ---
 
+    - name: Verify OpenBao token is available
+      ansible.builtin.assert:
+        that:
+          - openbao_token | length > 0
+        fail_msg: >
+          openbao_token is empty. Ensure OPENBAO_TOKEN is set in the Semaphore
+          container environment (Komodo secret SEMAPHORE_OPENBAO_TOKEN). Current
+          openbao_url={{ openbao_url }}
+
     - name: Retrieve Wazuh API credentials from OpenBao
       ansible.builtin.uri:
         url: "{{ openbao_url }}/v1/kv/data/wazuh"
