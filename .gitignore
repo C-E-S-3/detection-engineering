@@ -1,0 +1,12 @@
+# Infrastructure / deployment code — NEVER commit to this public repo
+playbooks/
+ansible/
+inventory/
+group_vars/
+host_vars/
+*.vault.yml
+*.vault
+
+# Environment files
+.env
+.env.*

@@ -4,6 +4,20 @@ Reference for adding, structuring, and maintaining detections in this repository
 
 ---
 
+## CRITICAL: Public Repository Safety Rules
+
+**This is a PUBLIC repository.** The following content MUST NEVER be committed:
+
+1. **Ansible playbooks, roles, or inventory files** — all infrastructure code belongs in private repos (inframan, ansible-builder)
+2. **Internal hostnames** — no `*.eskridge.internal`, `*.svc.eskridge.internal`, or host-specific names (nucbox-*, pve-*, beelink-*, secops-*, protectli-*)
+3. **Internal IP addresses** — no RFC1918 addresses from the homelab (10.0.42.x, 10.0.69.x, 172.16.4.x, etc.)
+4. **Secrets infrastructure references** — no OpenBao/Vault URLs, secret paths, API credentials, or token references
+5. **Network topology details** — no VLAN descriptions, jump host configurations, or deployment architecture
+
+**Allowed content:** Detection rules (Splunk SPL, Wazuh XML), IOCs, threat intel reports, MITRE ATT&CK mappings, and detection documentation. All content must be generic and not reference the homelab environment.
+
+---
+
 ## Repository Structure
 
 ```
