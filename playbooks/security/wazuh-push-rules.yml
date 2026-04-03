@@ -9,10 +9,10 @@
 #   wazuh/rules/*.xml    — custom detection rules
 #   wazuh/decoders/*.xml — custom decoders
 #
-# Prerequisites:
-#   - VAULT_ADDR and VAULT_TOKEN set in Semaphore environment (Wazuh Vault env)
-#   - Wazuh API credentials stored in OpenBao at kv/wazuh
-#     Secret structure: { "ansible": "<password>" }
+# Prerequisites (one of):
+#   A) WAZUH_API_USER + WAZUH_API_PASSWORD set in Semaphore env shell vars (preferred)
+#   B) OPENBAO_TOKEN set in Semaphore container env + Wazuh creds seeded at kv/data/wazuh
+#      Secret structure: { "ansible": "<password>" }
 #   - Wazuh manager API reachable from Semaphore runner at https://10.0.69.7:55000
 #
 # Usage:
@@ -38,22 +38,28 @@
     wazuh_rules_dir: "{{ playbook_dir }}/../../wazuh/rules"
     wazuh_decoders_dir: "{{ playbook_dir }}/../../wazuh/decoders"
 
-    # OpenBao connection — populated from Semaphore environment vars
-    # Semaphore container injects OPENBAO_TOKEN directly; VAULT_ADDR/VAULT_TOKEN are legacy names
+    # OpenBao connection — fallback when WAZUH_API_USER/PASSWORD not directly injected
     openbao_url: "{{ lookup('env', 'VAULT_ADDR') | default(lookup('env', 'OPENBAO_ADDR') | default('https://nucbox-infra-01.svc.eskridge.internal:8200')) }}"
     openbao_token: "{{ lookup('env', 'OPENBAO_TOKEN') | default(lookup('env', 'VAULT_TOKEN')) }}"
+
+    # Direct credentials — set via Semaphore env shell vars (WAZUH_API_USER/PASSWORD)
+    # When set, OpenBao lookup is skipped entirely.
+    _env_api_user: "{{ lookup('env', 'WAZUH_API_USER') }}"
+    _env_api_pass: "{{ lookup('env', 'WAZUH_API_PASSWORD') }}"
+    _use_direct_creds: "{{ (_env_api_user | length > 0) and (_env_api_pass | length > 0) }}"
 
   tasks:
     # --- Authentication ---
 
-    - name: Verify OpenBao token is available
+    - name: Verify credentials source is available
       ansible.builtin.assert:
         that:
-          - openbao_token | length > 0
+          - (_use_direct_creds | bool) or (openbao_token | length > 0)
         fail_msg: >
-          openbao_token is empty. Ensure OPENBAO_TOKEN is set in the Semaphore
-          container environment (Komodo secret SEMAPHORE_OPENBAO_TOKEN). Current
-          openbao_url={{ openbao_url }}
+          No Wazuh API credentials available. Set either:
+          (A) WAZUH_API_USER + WAZUH_API_PASSWORD in Semaphore env shell vars, OR
+          (B) OPENBAO_TOKEN (Komodo secret SEMAPHORE_OPENBAO_TOKEN) to fetch from
+              OpenBao at {{ openbao_url }}/v1/kv/data/wazuh
 
     - name: Retrieve Wazuh API credentials from OpenBao
       ansible.builtin.uri:
@@ -65,13 +71,14 @@
         status_code: [200]
       register: _wazuh_creds
       no_log: true
+      when: not (_use_direct_creds | bool)
 
     - name: Authenticate to Wazuh API
       ansible.builtin.uri:
         url: "{{ wazuh_api_url }}/security/user/authenticate"
         method: POST
-        url_username: "{{ wazuh_api_username }}"
-        url_password: "{{ _wazuh_creds.json.data.data[wazuh_api_username] }}"
+        url_username: "{{ _env_api_user if (_use_direct_creds | bool) else wazuh_api_username }}"
+        url_password: "{{ _env_api_pass if (_use_direct_creds | bool) else _wazuh_creds.json.data.data[wazuh_api_username] }}"
         force_basic_auth: true
         validate_certs: "{{ wazuh_api_verify_ssl }}"
         status_code: [200]
