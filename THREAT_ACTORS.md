@@ -194,7 +194,7 @@ These actors operate independently from the RaaS ecosystem but are tracked in th
 | [Gootloader (UNC2565)](https://attack.mitre.org/software/S1138/) | Malware Loader / Access Broker | [S1138](https://attack.mitre.org/software/S1138/) | SEO poisoning, JS execution, registry stuffing, fileless PowerShell | [13 detections](detections/) |
 | [GodLoader](threat_intel/) | Malware Loader | — | Godot engine abuse, defender exclusion, web service C2 | [2 detections](detections/) |
 | [Medusa Ransomware](https://attack.mitre.org/software/S1131/) | Ransomware Operator | [S1131](https://attack.mitre.org/software/S1131/) | SMBExec/WMIExec lateral movement, credential dumping | [2 detections](detections/) |
-| Qilin Ransomware Group | Ransomware Operator (RaaS) | — | Stolen credential initial access, EDR killer BYOVD, geo-fencing, encrypted data for impact | [1 detection](detections/) |
+| Qilin Ransomware Group | Ransomware Operator (RaaS) | — | Stolen credential initial access (Telegram/Breach Forums), EDR killer BYOVD (300+ drivers), geo-fencing against post-Soviet locale settings, 6-day avg dwell time; responsible for 16.4% of Japan ransomware incidents in 2025; targets manufacturing and healthcare | [2 detections](detections/) |
 | UAT-10608 | Threat Cluster | — | CVE-2025-55182 (React2Shell) exploitation, NEXUS Listener C2, automated credential harvesting | [1 detection](detections/) |
 | EvilTokens / Storm-237 | PhaaS / Cybercrime | — | OAuth device code phishing, Microsoft 365 token theft, QR code phishing lures | [1 detection](detections/) |
 | CrystalRAT (CrystalX RAT) | MaaS RAT | — | WebSocket C2, keylogging, clipboard hijacking (crypto theft), ChaCha20 encryption | [1 detection](detections/) |
