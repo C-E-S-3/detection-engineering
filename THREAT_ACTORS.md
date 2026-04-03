@@ -202,6 +202,7 @@ These actors operate independently from the RaaS ecosystem but are tracked in th
 | TeamPCP | Supply Chain Threat Actor | — | GitHub Actions and PyPI/npm package backdooring; CI/CD credential theft; ICP blockchain C2 | [1 detection](detections/) |
 | UNC5454 / Earth Lamia (UNC6586, UNC6588, UNC6595, UNC6600, UNC6603) | Nation-State APT (China-nexus) | — | CVE-2025-55182 exploitation deploying SNOWLIGHT, MINOCAT, COMPOOD, HISONIC, ANGRYREBEL.LINUX, XMRIG | [1 detection](detections/) |
 | Amaranth Dragon | Nation-State APT (China-nexus) | — | CVE-2026-3502 TrueConf exploitation, Havoc C2, UAC bypass via iscicpl.exe, targets SE Asian government/military | [1 detection](detections/) |
+| Handala (Hatef / Hamsa / Handala Hack Team) | Iranian MOIS-linked Hacktivist | — | Compromises Windows domain admin, creates Azure AD Global Administrator for persistence, deploys data-wiping malware at scale; 2026 Stryker attack wiped ~80,000 devices; targets Israeli organizations and affiliated companies; linked to Iran Ministry of Intelligence and Security | [1 detection](detections/) |
 
 ---
 
