@@ -25,6 +25,7 @@ Detections for techniques adversaries use to steal credentials, including Kerber
 | [ADCS Certificate Abuse](kerberos_adcs_certificate_abuse.md) | T1649 | Certificate-based TGT with tool-fingerprinted TicketOptions (Certipy/Certify) |
 | [Rare TicketOptions Hunting](kerberos_rare_ticketoptions_hunting.md) | T1558 | Hunting query to discover novel tool signatures via rare TicketOptions values |
 | [DES Encryption Downgrade](kerberos_des_encryption_downgrade.md) | T1558 | Any Kerberos request using deprecated DES encryption |
+| [EvilTokens OAuth Device Code Phishing](eviltokens_oauth_device_code_phishing.md) | T1550.001 | OAuth 2.0 device authorization flow abuse for Microsoft account token theft; anomalous device code grants and token reuse |
 
 ---
 
@@ -39,6 +40,7 @@ Detections for techniques adversaries use to steal credentials, including Kerber
 | Any adversary using Mimikatz | Offensive Tool | Golden Ticket, Silver Ticket, OverPass-the-Hash, credential dumping | [Mimikatz](https://github.com/gentilkiwi/mimikatz) |
 | Any adversary using Metasploit | Offensive Framework | Kerberos client module with unique TicketOptions fingerprint | [Metasploit Framework](https://www.metasploit.com/) |
 | Any adversary using Certipy | Offensive Tool | ADCS exploitation (ESC1-ESC8), certificate-based TGT abuse | [Certipy](https://github.com/ly4k/Certipy) |
+| EvilTokens (PhaaS) / Storm-237 / ShinyHunters | Cybercrime (PhaaS) | OAuth 2.0 device code phishing to steal Microsoft access/refresh tokens without credentials | [BleepingComputer - EvilTokens](https://www.bleepingcomputer.com/news/security/new-eviltokens-service-fuels-microsoft-device-code-phishing-attacks/) |
 
 ---
 

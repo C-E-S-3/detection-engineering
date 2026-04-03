@@ -20,6 +20,7 @@ Detections for techniques adversaries use to avoid detection, including abuse of
 | [BYOVD Kernel Driver Service Creation](byovd_driver_service_creation.md) | T1562.001, T1543.003 | Kernel driver service creation via sc.exe indicating potential BYOVD driver deployment |
 | [BYOVD Security Tool Process Termination](byovd_security_tool_termination.md) | T1562.001 | Rapid termination of multiple security tool processes indicating BYOVD-enabled EDR killing |
 | [Godloader Windows Defender Exclusion Manipulation](godloader_defender_exclusion_manipulation.md) | T1562.001 | PowerShell Add-MpPreference commands adding broad Defender exclusion paths |
+| [Qilin EDR Killer Defense Evasion](qilin_edr_killer_defense_evasion.md) | T1562.001 | EDR killer tool execution targeting 300+ security drivers; geo-fencing locale checks |
 
 ---
 
@@ -36,3 +37,4 @@ Detections for techniques adversaries use to avoid detection, including abuse of
 | RobbinHood Ransomware | Ransomware Operator | BYOVD using GIGABYTE driver (gdrv.sys) to disable endpoint protection | [Sophos - RobbinHood BYOVD](https://news.sophos.com/en-us/2020/02/06/living-off-another-land-ransomware-borrows-vulnerable-driver-to-remove-security-software/) |
 | AvosLocker Ransomware | Ransomware Operator | BYOVD to disable antivirus solutions before ransomware deployment | [Trend Micro - AvosLocker BYOVD](https://www.trendmicro.com/en_us/research/22/e/avoslocker-ransomware-variant-abuses-driver-file-to-disable-anti-virus-solutions.html) |
 | Medusa Ransomware | Ransomware Operator | BYOVD for EDR evasion and privilege escalation | [Elastic - Medusa BYOVD](https://www.elastic.co/security-labs/medusa-ransomware-escalation) |
+| Qilin Ransomware Group | Ransomware Operator (RaaS) | EDR killer malware targeting 300+ EDR drivers before ransomware deployment; geo-fencing to avoid post-Soviet regions | [Cisco Talos - Qilin in Japan 2025](https://blog.talosintelligence.com/an-overview-of-ransomware-threats-in-japan-in-2025-and-early-detection-insights-from-qilin-cases/) |

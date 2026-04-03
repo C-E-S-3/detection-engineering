@@ -1,3 +1,7 @@
 indicator,source,date_added,context
 142.11.206.73,https://cloud.google.com/blog/topics/threat-intelligence/north-korea-threat-actor-targets-axios-npm-package/,2026-04-01,C2 server for WAVESHAPER.V2
 23.254.167.216,https://cloud.google.com/blog/topics/threat-intelligence/north-korea-threat-actor-targets-axios-npm-package/,2026-04-01,Suspected UNC1069 infrastructure
+144.172.102.88,https://blog.talosintelligence.com/uat-10608-inside-a-large-scale-automated-credential-harvesting-operation-targeting-web-applications/,2026-04-02,UAT-10608 NEXUS Listener C2 server
+172.86.127.128,https://blog.talosintelligence.com/uat-10608-inside-a-large-scale-automated-credential-harvesting-operation-targeting-web-applications/,2026-04-02,UAT-10608 NEXUS Listener C2 server
+144.172.112.136,https://blog.talosintelligence.com/uat-10608-inside-a-large-scale-automated-credential-harvesting-operation-targeting-web-applications/,2026-04-02,UAT-10608 NEXUS Listener C2 server
+144.172.117.112,https://blog.talosintelligence.com/uat-10608-inside-a-large-scale-automated-credential-harvesting-operation-targeting-web-applications/,2026-04-02,UAT-10608 NEXUS Listener C2 server
