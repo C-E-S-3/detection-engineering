@@ -201,6 +201,7 @@ These actors operate independently from the RaaS ecosystem but are tracked in th
 | UNC5221 | Nation-State APT (China-nexus) | — | CVE-2025-22457 Ivanti VPN exploitation, SPAWN ecosystem (TRAILBLAZE, BRUSHFIRE, SPAWNSNARE, SPAWNWAVE, SPAWNSLOTH) | [1 detection](detections/) |
 | TeamPCP | Supply Chain Threat Actor | — | GitHub Actions and PyPI/npm package backdooring; CI/CD credential theft; ICP blockchain C2 | [1 detection](detections/) |
 | UNC5454 / Earth Lamia (UNC6586, UNC6588, UNC6595, UNC6600, UNC6603) | Nation-State APT (China-nexus) | — | CVE-2025-55182 exploitation deploying SNOWLIGHT, MINOCAT, COMPOOD, HISONIC, ANGRYREBEL.LINUX, XMRIG | [1 detection](detections/) |
+| Amaranth Dragon | Nation-State APT (China-nexus) | — | CVE-2026-3502 TrueConf exploitation, Havoc C2, UAC bypass via iscicpl.exe, targets SE Asian government/military | [1 detection](detections/) |
 
 ---
 
