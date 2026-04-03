@@ -198,6 +198,9 @@ These actors operate independently from the RaaS ecosystem but are tracked in th
 | UAT-10608 | Threat Cluster | — | CVE-2025-55182 (React2Shell) exploitation, NEXUS Listener C2, automated credential harvesting | [1 detection](detections/) |
 | EvilTokens / Storm-237 | PhaaS / Cybercrime | — | OAuth device code phishing, Microsoft 365 token theft, QR code phishing lures | [1 detection](detections/) |
 | CrystalRAT (CrystalX RAT) | MaaS RAT | — | WebSocket C2, keylogging, clipboard hijacking (crypto theft), ChaCha20 encryption | [1 detection](detections/) |
+| UNC5221 | Nation-State APT (China-nexus) | — | CVE-2025-22457 Ivanti VPN exploitation, SPAWN ecosystem (TRAILBLAZE, BRUSHFIRE, SPAWNSNARE, SPAWNWAVE, SPAWNSLOTH) | [1 detection](detections/) |
+| TeamPCP | Supply Chain Threat Actor | — | GitHub Actions and PyPI/npm package backdooring; CI/CD credential theft; ICP blockchain C2 | [1 detection](detections/) |
+| UNC5454 / Earth Lamia (UNC6586, UNC6588, UNC6595, UNC6600, UNC6603) | Nation-State APT (China-nexus) | — | CVE-2025-55182 exploitation deploying SNOWLIGHT, MINOCAT, COMPOOD, HISONIC, ANGRYREBEL.LINUX, XMRIG | [1 detection](detections/) |
 
 ---
 

@@ -5,3 +5,6 @@ indicator,source,date_added,context
 172.86.127.128,https://blog.talosintelligence.com/uat-10608-inside-a-large-scale-automated-credential-harvesting-operation-targeting-web-applications/,2026-04-02,UAT-10608 NEXUS Listener C2 server
 144.172.112.136,https://blog.talosintelligence.com/uat-10608-inside-a-large-scale-automated-credential-harvesting-operation-targeting-web-applications/,2026-04-02,UAT-10608 NEXUS Listener C2 server
 144.172.117.112,https://blog.talosintelligence.com/uat-10608-inside-a-large-scale-automated-credential-harvesting-operation-targeting-web-applications/,2026-04-02,UAT-10608 NEXUS Listener C2 server
+82.163.22.139,https://cloud.google.com/blog/topics/threat-intelligence/threat-actors-exploit-react2shell-cve-2025-55182,2026-03-27,SNOWLIGHT C2 server — UNC5454 React2Shell campaign (CVE-2025-55182)
+216.158.232.43,https://cloud.google.com/blog/topics/threat-intelligence/threat-actors-exploit-react2shell-cve-2025-55182,2026-03-27,Payload staging server for sex.sh XMRIG downloader — React2Shell campaign
+45.76.155.14,https://cloud.google.com/blog/topics/threat-intelligence/threat-actors-exploit-react2shell-cve-2025-55182,2026-03-27,COMPOOD backdoor C2 and payload staging — UNC6588 React2Shell campaign
