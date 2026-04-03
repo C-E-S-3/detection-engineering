@@ -39,8 +39,9 @@
     wazuh_decoders_dir: "{{ playbook_dir }}/../../wazuh/decoders"
 
     # OpenBao connection — populated from Semaphore environment vars
-    openbao_url: "{{ lookup('env', 'VAULT_ADDR') | default('https://nucbox-infra-01.svc.eskridge.internal:8200') }}"
-    openbao_token: "{{ lookup('env', 'VAULT_TOKEN') }}"
+    # Semaphore container injects OPENBAO_TOKEN directly; VAULT_ADDR/VAULT_TOKEN are legacy names
+    openbao_url: "{{ lookup('env', 'VAULT_ADDR') | default(lookup('env', 'OPENBAO_ADDR') | default('https://nucbox-infra-01.svc.eskridge.internal:8200')) }}"
+    openbao_token: "{{ lookup('env', 'OPENBAO_TOKEN') | default(lookup('env', 'VAULT_TOKEN')) }}"
 
   tasks:
     # --- Authentication ---

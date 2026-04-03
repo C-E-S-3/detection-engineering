@@ -1,0 +1,132 @@
+<!-- Network Scanning and Service Discovery Detection Rules -->
+<!-- Rule IDs: 100730-100741                                              -->
+<!-- MITRE ATT&CK: T1046 (Network Service Discovery), T1595.001 (Scanning/Active Scanning - Scanning IP Blocks) -->
+<!-- Added: 2026-04-03 | Context: Red Team nmap scan 2026-04-02 not detected (ESKA-48) -->
+
+<group name="local,network,scanning,">
+
+  <!-- ================================================================ -->
+  <!-- SURICATA ET SCAN SIGNATURES — T1046, T1595.001                   -->
+  <!-- Relies on Suricata ET Open ruleset; parent SID 86601             -->
+  <!-- ================================================================ -->
+
+  <!-- Generic Suricata scan event anchor (level 0 — used for correlation) -->
+  <rule id="100730" level="0">
+    <if_sid>86601</if_sid>
+    <field name="alert.category" type="pcre2">(?i)attempted-recon|network-scan|policy-violation</field>
+    <description>Suricata: Network reconnaissance/scan event (base anchor)</description>
+    <group>ids,suricata,recon,</group>
+  </rule>
+
+  <!-- nmap TCP SYN / stealth scan -->
+  <rule id="100731" level="10">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature" type="pcre2">(?i)(ET SCAN|GPL SCAN).*(nmap|SYN scan|port scan|XMAS|FIN scan|NULL scan)</field>
+    <description>Suricata: nmap port scan detected — T1046 Network Service Discovery</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>ids,suricata,nmap,scanning,</group>
+  </rule>
+
+  <!-- nmap OS/version fingerprinting -->
+  <rule id="100732" level="11">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature" type="pcre2">(?i)(ET SCAN|GPL SCAN).*(OS fingerprint|version detect|service detect|-sV|-O )</field>
+    <description>Suricata: nmap OS/version fingerprint scan — active enumeration T1046</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>ids,suricata,nmap,fingerprint,</group>
+  </rule>
+
+  <!-- nmap NSE / Scripting Engine -->
+  <rule id="100733" level="12">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature" type="pcre2">(?i)(ET SCAN).*(NSE|Scripting Engine|nmap script)</field>
+    <description>Suricata: nmap Scripting Engine (NSE) detected — active vulnerability probing T1046</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>ids,suricata,nmap,nse,</group>
+  </rule>
+
+  <!-- Masscan / ZMap / fast horizontal scan -->
+  <rule id="100734" level="11">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature" type="pcre2">(?i)(ET SCAN).*(masscan|zmap|zgrab|internet scanner)</field>
+    <description>Suricata: Mass internet scanner (masscan/zmap) detected — active IP block scanning T1595.001</description>
+    <mitre>
+      <id>T1595.001</id>
+    </mitre>
+    <group>ids,suricata,masscan,scanning,</group>
+  </rule>
+
+  <!-- Generic horizontal port sweep — multiple unique destination ports from same source -->
+  <rule id="100735" level="10" frequency="20" timeframe="60">
+    <if_matched_sid>86601</if_matched_sid>
+    <same_field>data.srcip</same_field>
+    <different_field>data.dest_port</different_field>
+    <description>Suricata: Port sweep — single source hitting 20+ distinct ports in 60s (T1046)</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>ids,suricata,portsweep,scanning,</group>
+  </rule>
+
+  <!-- ================================================================ -->
+  <!-- FIREWALL LOG BASED SCAN DETECTION — T1046, T1595.001             -->
+  <!-- Derived from OPNsense/pf firewall BLOCK logs                     -->
+  <!-- ================================================================ -->
+
+  <!-- Rapid blocked connections from single IP — likely port scan -->
+  <rule id="100736" level="8" frequency="30" timeframe="60">
+    <if_matched_group>firewall</if_matched_group>
+    <same_field>data.srcip</same_field>
+    <different_field>data.dest_port</different_field>
+    <description>Firewall: Rapid port scan detected — single IP hitting 30+ blocked ports in 60s (T1046)</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>firewall,portscan,scanning,</group>
+  </rule>
+
+  <!-- Single source scanning multiple internal hosts -->
+  <rule id="100737" level="9" frequency="10" timeframe="60">
+    <if_matched_group>firewall</if_matched_group>
+    <same_field>data.srcip</same_field>
+    <different_field>data.dest_ip</different_field>
+    <description>Firewall: Host sweep — single source scanning 10+ internal hosts in 60s (T1595.001)</description>
+    <mitre>
+      <id>T1595.001</id>
+    </mitre>
+    <group>firewall,hostweep,scanning,</group>
+  </rule>
+
+  <!-- ================================================================ -->
+  <!-- CORRELATION RULES — ESCALATE ON COMBINED SIGNALS                 -->
+  <!-- ================================================================ -->
+
+  <!-- IDS scan signature followed by firewall hits from same source -->
+  <rule id="100740" level="13" timeframe="120">
+    <if_matched_sid>100731</if_matched_sid>
+    <if_sid>100736</if_sid>
+    <description>ALERT: nmap IDS signature + firewall port scan from same source in 2 min — confirmed active scan T1046</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>ids,firewall,nmap,confirmed_scan,high_fidelity,</group>
+  </rule>
+
+  <!-- NSE scripting + mass connection — aggressive vulnerability scan -->
+  <rule id="100741" level="14" timeframe="180">
+    <if_matched_sid>100733</if_matched_sid>
+    <if_sid>100735</if_sid>
+    <description>ALERT: nmap NSE scripting + port sweep in 3 min — aggressive reconnaissance campaign T1046</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>ids,nmap,nse,portsweep,critical,</group>
+  </rule>
+
+</group>

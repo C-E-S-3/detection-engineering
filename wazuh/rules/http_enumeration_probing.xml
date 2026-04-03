@@ -1,0 +1,156 @@
+<!-- HTTP Enumeration and Active Web Probing Detection Rules -->
+<!-- Rule IDs: 100750-100763                                              -->
+<!-- MITRE ATT&CK: T1595.002 (Active Scanning - Vulnerability Scanning), -->
+<!--               T1590 (Gather Victim Network Information)              -->
+<!-- Added: 2026-04-03 | Context: Red Team Nuclei scan 2026-04-02 not detected (ESKA-48) -->
+
+<group name="local,web,http,enumeration,">
+
+  <!-- ================================================================ -->
+  <!-- NUCLEI VULNERABILITY SCANNER — T1595.002                         -->
+  <!-- Nuclei sends identifiable User-Agent strings in requests         -->
+  <!-- ================================================================ -->
+
+  <!-- Nuclei scan via Suricata HTTP User-Agent detection -->
+  <rule id="100750" level="12">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature" type="pcre2">(?i)(ET SCAN|ET WEB_CLIENT|ET USER_AGENTS).*(Nuclei|nuclei-)</field>
+    <description>Suricata: Nuclei vulnerability scanner User-Agent detected — active web probing T1595.002</description>
+    <mitre>
+      <id>T1595.002</id>
+    </mitre>
+    <group>ids,suricata,nuclei,vulnerability_scanner,</group>
+  </rule>
+
+  <!-- Generic vulnerability scanner User-Agent (Nuclei, Nikto, Gobuster, ffuf, etc.) -->
+  <rule id="100751" level="11">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature" type="pcre2">(?i)(ET SCAN|ET USER_AGENTS).*(nikto|gobuster|ffuf|dirbuster|feroxbuster|wfuzz|sqlmap|burpsuite|nuclei|zaproxy|openvas)</field>
+    <description>Suricata: Known web scanner User-Agent detected — active enumeration T1595.002</description>
+    <mitre>
+      <id>T1595.002</id>
+    </mitre>
+    <group>ids,suricata,web_scanner,</group>
+  </rule>
+
+  <!-- ================================================================ -->
+  <!-- WEB SERVER LOG ANALYSIS — 404/403 BURST (T1595.002)              -->
+  <!-- Based on web access logs forwarded to Wazuh via syslog/filebeat  -->
+  <!-- ================================================================ -->
+
+  <!-- Base: web server 404 Not Found (informational anchor) -->
+  <rule id="100752" level="0">
+    <if_group>web|accesslog</if_group>
+    <match>HTTP/</match>
+    <url_match type="pcre2">.+</url_match>
+    <field name="http_response_code">404</field>
+    <description>Web server: HTTP 404 Not Found (base anchor for enumeration correlation)</description>
+    <group>web,http_404,</group>
+  </rule>
+
+  <!-- Rapid 404 burst from single IP — directory/path enumeration -->
+  <rule id="100753" level="10" frequency="20" timeframe="60">
+    <if_matched_sid>100752</if_matched_sid>
+    <same_field>data.srcip</same_field>
+    <description>Web: Rapid HTTP 404 burst (20+ in 60s) from single IP — path enumeration T1595.002</description>
+    <mitre>
+      <id>T1595.002</id>
+    </mitre>
+    <group>web,path_enumeration,</group>
+  </rule>
+
+  <!-- Base: web server 403 Forbidden (informational anchor) -->
+  <rule id="100754" level="0">
+    <if_group>web|accesslog</if_group>
+    <match>HTTP/</match>
+    <field name="http_response_code">403</field>
+    <description>Web server: HTTP 403 Forbidden (base anchor)</description>
+    <group>web,http_403,</group>
+  </rule>
+
+  <!-- Mixed 403/404 burst from single IP — WAF/auth bypass probe -->
+  <rule id="100755" level="11" frequency="15" timeframe="30">
+    <if_matched_sid>100754</if_matched_sid>
+    <same_field>data.srcip</same_field>
+    <description>Web: Rapid HTTP 403 burst (15+ in 30s) from single IP — WAF/auth bypass probing T1595.002</description>
+    <mitre>
+      <id>T1595.002</id>
+    </mitre>
+    <group>web,auth_probe,</group>
+  </rule>
+
+  <!-- ================================================================ -->
+  <!-- SURICATA HTTP SCANNING SIGNATURES — T1595.002, T1590             -->
+  <!-- ================================================================ -->
+
+  <!-- Generic web scan / crawler detection -->
+  <rule id="100756" level="10">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature" type="pcre2">(?i)(ET SCAN).*(web scan|web crawl|directory scan|path travers|path enum)</field>
+    <description>Suricata: Web directory or path scanning detected (T1595.002)</description>
+    <mitre>
+      <id>T1595.002</id>
+    </mitre>
+    <group>ids,suricata,web_scan,</group>
+  </rule>
+
+  <!-- Technology fingerprinting (CMS/framework detection) -->
+  <rule id="100757" level="9">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature" type="pcre2">(?i)(ET SCAN|ET WEB_SERVER).*(WordPress|Drupal|Joomla|Laravel|phpMyAdmin|wp-admin|wp-login|\.git|\.env|config\.php)</field>
+    <description>Suricata: CMS/framework fingerprinting probe detected (T1590)</description>
+    <mitre>
+      <id>T1590</id>
+    </mitre>
+    <group>ids,suricata,fingerprint,cms_probe,</group>
+  </rule>
+
+  <!-- API endpoint enumeration -->
+  <rule id="100758" level="9">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature" type="pcre2">(?i)(ET SCAN|ET WEB_SERVER).*(API (enum|scan|probe)|swagger|openapi|graphql introspect|\.well-known)</field>
+    <description>Suricata: API endpoint enumeration detected (T1595.002)</description>
+    <mitre>
+      <id>T1595.002</id>
+    </mitre>
+    <group>ids,suricata,api_enum,</group>
+  </rule>
+
+  <!-- Credential/secret file probing (.env, credentials, keys) -->
+  <rule id="100759" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature" type="pcre2">(?i)(ET SCAN|ET WEB_SERVER).*(\.env|credentials|\.pem|\.key|\.pfx|backup|dump|\.sql|shadow|passwd|secret)</field>
+    <description>Suricata: Credential/secret file probe detected — potential pre-exploitation recon T1595.002</description>
+    <mitre>
+      <id>T1595.002</id>
+    </mitre>
+    <group>ids,suricata,credential_probe,high_risk,</group>
+  </rule>
+
+  <!-- ================================================================ -->
+  <!-- CORRELATION RULES — HIGH-CONFIDENCE ACTIVE SCANNING              -->
+  <!-- ================================================================ -->
+
+  <!-- Nuclei detected + rapid 404s from same source -->
+  <rule id="100762" level="14" timeframe="300">
+    <if_matched_sid>100750</if_matched_sid>
+    <if_sid>100753</if_sid>
+    <description>ALERT: Nuclei scanner + rapid HTTP enumeration from same source in 5 min — confirmed active web scan T1595.002</description>
+    <mitre>
+      <id>T1595.002</id>
+    </mitre>
+    <group>nuclei,web,enumeration,confirmed_scan,high_fidelity,</group>
+  </rule>
+
+  <!-- Web scan + credential probe — active pre-exploitation chain -->
+  <rule id="100763" level="15" timeframe="300">
+    <if_matched_sid>100756</if_matched_sid>
+    <if_sid>100759</if_sid>
+    <description>CRITICAL: Web directory scan followed by credential/secret file probe in 5 min — active pre-exploitation T1595.002</description>
+    <mitre>
+      <id>T1595.002</id>
+    </mitre>
+    <group>web,credential_probe,pre_exploitation,critical,</group>
+  </rule>
+
+</group>
