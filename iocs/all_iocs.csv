@@ -17,6 +17,18 @@ HASH,0bc65a55a84d1b2e2a320d2b011186a14f9074d6d28ff9120cb24fcc03c3f696,SHA256,UNC
 HASH,13675cca4674a8f9a8fabe4f9df4ae0ae9ef11986dd1dcc6a896912c7d527274,SHA256,Financially Motivated,XMRIG,Downloader script for cryptocurrency miner,react2shell-cve-2025-55182
 HASH,7f05bad031d22c2bb4352bf0b6b9ee2ca064a4c0e11a317e6fedc694de37737a,SHA256,UNC6586,SNOWLIGHT,Downloader component of VSHELL backdoor,react2shell-cve-2025-55182
 HASH,776850a1e6d6915e9bf35aa83554616129acd94e3a3f6673bd6ddaec530f4273,SHA256,UNC6600,MINOCAT,Linux tunneler with embedded FRP client,react2shell-cve-2025-55182
+IP,142.11.206.73,,UNC1069 (North Korea),WAVESHAPER.V2,C2 server for WAVESHAPER.V2 Python RAT — North Korea Axios npm supply chain campaign,north-korea-axios-npm-supply-chain
+IP,23.254.167.216,,UNC1069 (North Korea),WAVESHAPER.V2,Suspected UNC1069 infrastructure — North Korea Axios npm supply chain campaign,north-korea-axios-npm-supply-chain
+DOMAIN,sfrclak.com,,UNC1069 (North Korea),WAVESHAPER.V2,C2 domain for WAVESHAPER.V2 Python RAT — North Korea Axios npm supply chain campaign,north-korea-axios-npm-supply-chain
+DOMAIN,https://fs-loader.com/script/,,TeamPCP,Telnyx Supply Chain Stealer,Remote C2 server hosting malicious WAV files — TeamPCP Telnyx PyPI supply chain compromise,trivy-action-supply-chain
+HASH,e10b1fa84f1d6481625f741b69892780140d4e0e7769e7491e5f4d894c2e0e09,SHA256,UNC1069 (North Korea),WAVESHAPER.V2,Obfuscated JavaScript dropper (setup.js) — Axios npm package supply chain,north-korea-axios-npm-supply-chain
+HASH,fcb81618bb15edfdedfb638b4c08a2af9cac9ecfa551af135a8402bf980375cf,SHA256,UNC1069 (North Korea),WAVESHAPER.V2,WAVESHAPER.V2 Linux Python RAT — Axios npm package supply chain,north-korea-axios-npm-supply-chain
+HASH,92ff08773995ebc8d55ec4b8e1a225d0d1e51efa4ef88b8849d0071230c9645a,SHA256,UNC1069 (North Korea),WAVESHAPER.V2,WAVESHAPER.V2 macOS native binary — Axios npm package supply chain,north-korea-axios-npm-supply-chain
+HASH,617b67a8e1210e4fc87c92d1d1da45a2f311c08d26e89b12307cf583c900d101,SHA256,UNC1069 (North Korea),WAVESHAPER.V2,WAVESHAPER.V2 Windows Stage 1 payload — Axios npm package supply chain,north-korea-axios-npm-supply-chain
+HASH,ed8560c1ac7ceb6983ba995124d5917dc1a00288912387a6389296637d5f815c,SHA256,UNC1069 (North Korea),WAVESHAPER.V2,WAVESHAPER.V2 unknown sample — Axios npm package supply chain,north-korea-axios-npm-supply-chain
+HASH,f7d335205b8d7b20208fb3ef93ee6dc817905dc3ae0c10a0b164f4e7d07121cd,SHA256,UNC1069 (North Korea),WAVESHAPER.V2,system.bat — Axios npm package supply chain,north-korea-axios-npm-supply-chain
+HASH,58401c195fe0a6204b42f5f90995ece5fab74ce7c69c67a24c61a057325af668,SHA256,UNC1069 (North Korea),WAVESHAPER.V2,plain-crypto-js-4.2.1.tgz trojanized npm package — Axios supply chain,north-korea-axios-npm-supply-chain
+HASH,07500e81693c06ef7ac6bf210cff9c882bcc11db5f16b5bded161218353ba4da,SHA256,Unknown,Trivy-Action Stealer,Legitimate entrypoint.sh baseline/reference hash — TeamPCP Trivy Action supply chain,trivy-action-supply-chain
 IP,144.172.102.88,,UAT-10608,NEXUS Listener,NEXUS Listener C2 server for automated credential harvesting,uat10608-nextjs-credential-harvesting
 IP,172.86.127.128,,UAT-10608,NEXUS Listener,NEXUS Listener C2 server for automated credential harvesting,uat10608-nextjs-credential-harvesting
 IP,144.172.112.136,,UAT-10608,NEXUS Listener,NEXUS Listener C2 server for automated credential harvesting,uat10608-nextjs-credential-harvesting

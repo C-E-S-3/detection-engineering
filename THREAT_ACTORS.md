@@ -203,6 +203,7 @@ These actors operate independently from the RaaS ecosystem but are tracked in th
 | UNC5454 / Earth Lamia (UNC6586, UNC6588, UNC6595, UNC6600, UNC6603) | Nation-State APT (China-nexus) | — | CVE-2025-55182 exploitation deploying SNOWLIGHT, MINOCAT, COMPOOD, HISONIC, ANGRYREBEL.LINUX, XMRIG | [1 detection](detections/) |
 | Amaranth Dragon | Nation-State APT (China-nexus) | — | CVE-2026-3502 TrueConf exploitation, Havoc C2, UAC bypass via iscicpl.exe, targets SE Asian government/military | [1 detection](detections/) |
 | Handala (Hatef / Hamsa / Handala Hack Team) | Iranian MOIS-linked Hacktivist | — | Compromises Windows domain admin, creates Azure AD Global Administrator for persistence, deploys data-wiping malware at scale; 2026 Stryker attack wiped ~80,000 devices; targets Israeli organizations and affiliated companies; linked to Iran Ministry of Intelligence and Security | [1 detection](detections/) |
+| UNC1069 (North Korea) | Nation-State APT (DPRK) | — | Supply chain attack on Axios npm ecosystem delivering WAVESHAPER.V2 cross-platform Python RAT (Linux/macOS/Windows); uses trojanized npm packages (plain-crypto-js) and obfuscated JavaScript dropper (setup.js); C2 via sfrclak.com and 142.11.206.73 | [IOCs tracked](iocs/) |
 
 ---
 
