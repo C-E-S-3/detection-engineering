@@ -1,0 +1,43 @@
+---
+# ESKA-81 Diagnostic: Tracecat API container logs
+# Collects docker ps state and logs from the tracecat-api container to diagnose
+# the persistent HTTP 502 / crash-loop causing Wazuh-Tracecat integration failure.
+#
+# Usage (Semaphore):
+#   Inventory: Wazuh Production
+#   Limit:     beelink-automation.svc.eskridge.internal
+#   Playbook:  playbooks/security/diagnose-tracecat-api.yml
+
+- name: Diagnose Tracecat API container
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: List tracecat-related containers (ps -a)
+      ansible.builtin.command: docker ps -a --filter name=tracecat
+      register: container_list
+      failed_when: false
+      changed_when: false
+
+    - name: Get tracecat-api container inspect (state + restart count)
+      ansible.builtin.command: docker inspect tracecat-api
+      register: container_inspect
+      failed_when: false
+      changed_when: false
+
+    - name: Get tracecat-api container logs (last 150 lines)
+      ansible.builtin.shell: docker logs tracecat-api --tail=150 2>&1
+      register: api_logs
+      failed_when: false
+      changed_when: false
+
+    - name: Display container list
+      ansible.builtin.debug:
+        var: container_list.stdout_lines
+
+    - name: Display container inspect (State + RestartCount)
+      ansible.builtin.debug:
+        var: container_inspect.stdout_lines
+
+    - name: Display API logs
+      ansible.builtin.debug:
+        var: api_logs.stdout_lines
