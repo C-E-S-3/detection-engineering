@@ -1,0 +1,433 @@
+<!-- ============================================================
+     Purple Team Phase 1 Detection Rules
+     MITRE ATT&CK Techniques:
+       T1003.001 — OS Credential Dumping: LSASS Memory
+       T1550.002 — Use Alternate Auth Material: Pass-the-Hash
+       T1505.003 — Server Software Component: Web Shell
+       T1087     — Account Discovery
+       T1082     — System Information Discovery
+       T1560.001 — Archive Collected Data: Archive via Utility
+     Rule IDs: 100770–100819
+     Author: SecOps Engineer (ESKA-123)
+     Date: 2026-04-08
+
+     Severity tiers:
+       Medium (9)  — Suspicious but may be benign
+       High (12)   — Strong indicator, investigate promptly
+       Critical(14)— Near-certain attack, immediate response
+
+     Log source prerequisites:
+       - Windows: Sysmon Event ID 1 (Process Create), 10 (Process Access),
+                  Windows Security Event ID 4624, 4688 — forwarded via Wazuh agent
+       - Linux: auditd with syscall rules for execve, open, openat
+       - Web: Traefik/Nginx/Apache access logs forwarded to Wazuh
+              (set log_format = apache in ossec.conf localfile block)
+     ============================================================ -->
+
+<group name="purple_team,credential_access,">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       T1003.001 — OS Credential Dumping: LSASS Memory
+       Rule IDs: 100770–100779
+       ═══════════════════════════════════════════════════════════ -->
+
+  <!-- Sysmon Event ID 10: Process accessed lsass.exe (Windows) -->
+  <!-- Requires Sysmon with ProcessAccess logging enabled -->
+  <rule id="100770" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.system.eventID">^10$</field>
+    <field name="win.eventdata.targetImage" type="pcre2">(?i)\\lsass\.exe$</field>
+    <description>Process $(win.eventdata.sourceImage) opened handle to lsass.exe on $(hostname) — credential dumping attempt (T1003.001)</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+    <group>lsass_dump,credential_access,</group>
+  </rule>
+
+  <!-- Sysmon Event ID 10: lsass.exe accessed with PROCESS_VM_READ rights -->
+  <rule id="100771" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.system.eventID">^10$</field>
+    <field name="win.eventdata.targetImage" type="pcre2">(?i)\\lsass\.exe$</field>
+    <field name="win.eventdata.grantedAccess" type="pcre2">0x1010|0x1410|0x143a|0x1438|0x1fffff</field>
+    <description>LSASS memory read access granted to $(win.eventdata.sourceImage) on $(hostname) — Mimikatz/ProcDump credential dump (T1003.001)</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+    <group>lsass_dump,credential_access,mimikatz,</group>
+  </rule>
+
+  <!-- ProcDump targeting lsass (Event ID 1: Process Create) -->
+  <rule id="100772" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.system.eventID">^1$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)(procdump|procdump64)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(lsass|lsass\.exe|-ma\s+\d+|-mm\s+\d+)</field>
+    <description>ProcDump executed targeting LSASS on $(hostname) — credential dump via ProcDump (T1003.001)</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+    <group>lsass_dump,credential_access,procdump,</group>
+  </rule>
+
+  <!-- rundll32 comsvcs.dll MiniDump (living-off-the-land LSASS dump) -->
+  <rule id="100773" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.system.eventID">^1$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\rundll32\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)comsvcs(\.dll)?.*(MiniDump|minidump)</field>
+    <description>rundll32 comsvcs.dll MiniDump called on $(hostname) — LOLBin LSASS credential dump (T1003.001)</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+    <group>lsass_dump,credential_access,lolbin,</group>
+  </rule>
+
+  <!-- Linux: auditd — process reading /proc/[pid]/mem where cmdline contains lsass-equivalent -->
+  <rule id="100774" level="12">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall" type="pcre2">^(openat?|read|ptrace)$</field>
+    <field name="audit.file.name" type="pcre2">/proc/\d+/(mem|maps|status)</field>
+    <field name="audit.exe" negate="yes" type="pcre2">^(/usr/bin/cat|/bin/ps|/usr/bin/top|/usr/bin/strace)$</field>
+    <description>Process reading /proc/PID/mem on $(hostname) — possible credential harvesting from process memory (T1003.001)</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+    <group>lsass_dump,credential_access,linux,</group>
+  </rule>
+
+  <!-- /etc/shadow or /etc/passwd read by non-root process -->
+  <rule id="100775" level="12">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall" type="pcre2">^(openat?|read)$</field>
+    <field name="audit.file.name" type="pcre2">^/etc/(shadow|gshadow)$</field>
+    <field name="audit.auid" negate="yes">0</field>
+    <description>Non-root process read /etc/shadow on $(hostname) — credential file access (T1003.001)</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+    <group>credential_access,shadow_file,linux,</group>
+  </rule>
+
+</group>
+
+<group name="purple_team,lateral_movement,">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       T1550.002 — Use Alternate Auth Material: Pass-the-Hash
+       Rule IDs: 100780–100789
+       Supplements existing rule 100590 in ransomware_lateral_movement.xml
+       ═══════════════════════════════════════════════════════════ -->
+
+  <!-- Pass-the-Hash: NTLM logon from workstation without prior Kerberos TGT request -->
+  <!-- Logon type 3 (network) with NTLM auth from non-DC workstation -->
+  <rule id="100780" level="12">
+    <if_sid>60122</if_sid>
+    <field name="win.system.eventID">^4624$</field>
+    <field name="win.eventdata.logonType">^3$</field>
+    <field name="win.eventdata.authenticationPackageName" type="pcre2">NTLM</field>
+    <field name="win.eventdata.logonProcessName" type="pcre2">NtLmSsp</field>
+    <field name="win.eventdata.elevatedToken">%%1843</field>
+    <description>NTLM network logon with elevated token on $(hostname) from $(win.eventdata.ipAddress) — possible pass-the-hash (T1550.002)</description>
+    <mitre>
+      <id>T1550.002</id>
+    </mitre>
+    <group>pass_the_hash,lateral_movement,ntlm,</group>
+  </rule>
+
+  <!-- Rapid NTLM logons to multiple hosts from same source (PtH lateral spread) -->
+  <rule id="100781" level="14">
+    <if_matched_sid>100780</if_matched_sid>
+    <same_source_ip />
+    <different_hostname />
+    <description>NTLM elevated logons to multiple hosts from $(srcip) — pass-the-hash lateral movement campaign (T1550.002)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1550.002</id>
+    </mitre>
+    <group>pass_the_hash,lateral_movement,ntlm,</group>
+  </rule>
+
+  <!-- Impacket PtH tools: wmiexec, psexec, smbexec via smbclient patterns -->
+  <rule id="100782" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.system.eventID">^1$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(impacket|wmiexec|smbexec|psexec\.py|-hashes\s+[a-fA-F0-9:]{32,})</field>
+    <description>Impacket PtH tooling detected on $(hostname) — pass-the-hash execution via impacket (T1550.002)</description>
+    <mitre>
+      <id>T1550.002</id>
+    </mitre>
+    <group>pass_the_hash,lateral_movement,impacket,</group>
+  </rule>
+
+  <!-- Mimikatz sekurlsa::pth or privilege::debug commands (PowerShell/process cmdline) -->
+  <rule id="100783" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(sekurlsa::pth|privilege::debug|lsadump::sam|kerberos::ptt|sekurlsa::logonpasswords)</field>
+    <description>Mimikatz command argument detected on $(hostname) — credential theft/PtH via Mimikatz (T1550.002)</description>
+    <mitre>
+      <id>T1550.002</id>
+    </mitre>
+    <group>pass_the_hash,credential_access,mimikatz,</group>
+  </rule>
+
+  <!-- Linux: pth-winexe or pass-the-hash samba tools -->
+  <rule id="100784" level="12">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.exe" type="pcre2">(?i)(pth-winexe|pth-smbclient|pth-net|crackmapexec|cme)$</field>
+    <description>Pass-the-hash tool executed on $(hostname): $(audit.exe) — lateral movement via hash (T1550.002)</description>
+    <mitre>
+      <id>T1550.002</id>
+    </mitre>
+    <group>pass_the_hash,lateral_movement,linux,</group>
+  </rule>
+
+</group>
+
+<group name="purple_team,persistence,">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       T1505.003 — Server Software Component: Web Shell
+       Rule IDs: 100790–100799
+       ═══════════════════════════════════════════════════════════ -->
+
+  <!-- Web shell HTTP request: command execution parameters in URL/body -->
+  <rule id="100790" level="12">
+    <decoded_as>web-log</decoded_as>
+    <url type="pcre2">(?i)(\?|&amp;)(cmd|exec|command|shell|run|system|passthru|proc_open|popen|eval|base64_decode)\s*=</url>
+    <description>Web shell command parameter detected in request to $(hostname) from $(srcip) — web shell activity (T1505.003)</description>
+    <mitre>
+      <id>T1505.003</id>
+    </mitre>
+    <group>web_shell,persistence,webserver,</group>
+  </rule>
+
+  <!-- Web shell via POST to PHP/ASP file with OS command patterns in response -->
+  <rule id="100791" level="12">
+    <decoded_as>web-log</decoded_as>
+    <match type="pcre2">POST .*\.(php|asp|aspx|jsp|cfm|cgi|pl|py)\b</match>
+    <url type="pcre2">(?i)(shell|cmd|webshell|c99|r57|b374k|wso|alfa|FilesMan)</url>
+    <description>POST request to known web shell filename pattern on $(hostname) — web shell access (T1505.003)</description>
+    <mitre>
+      <id>T1505.003</id>
+    </mitre>
+    <group>web_shell,persistence,webserver,</group>
+  </rule>
+
+  <!-- Web server process (apache/nginx/php-fpm) spawning shell -->
+  <rule id="100792" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)(httpd|apache|nginx|php-fpm|w3wp|tomcat|java)\.exe?$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)(cmd|powershell|wscript|cscript|bash|sh|dash)\.exe?$</field>
+    <description>Web server process $(win.eventdata.parentImage) spawned shell $(win.eventdata.image) on $(hostname) — web shell execution (T1505.003)</description>
+    <mitre>
+      <id>T1505.003</id>
+    </mitre>
+    <group>web_shell,persistence,process_spawn,</group>
+  </rule>
+
+  <!-- Linux: auditd — web server process spawning shell or running system commands -->
+  <rule id="100793" level="14">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.ppid.exe" type="pcre2">(?i)(apache2|httpd|nginx|php-fpm|gunicorn|uwsgi|tomcat)$</field>
+    <field name="audit.exe" type="pcre2">^(/bin/sh|/bin/bash|/bin/dash|/usr/bin/perl|/usr/bin/python[\d.]*)$</field>
+    <description>Web server spawned shell process on $(hostname): $(audit.exe) — web shell command execution (T1505.003)</description>
+    <mitre>
+      <id>T1505.003</id>
+    </mitre>
+    <group>web_shell,persistence,linux,process_spawn,</group>
+  </rule>
+
+  <!-- New PHP/ASP/ASPX file written to web root directories -->
+  <rule id="100794" level="12">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall" type="pcre2">^(openat?|creat)$</field>
+    <field name="audit.file.name" type="pcre2">(/var/www|/srv/http|/usr/share/nginx|/opt/tomcat/webapps|/var/lib/tomcat).*\.(php|asp|aspx|jsp|cgi|pl)$</field>
+    <field name="audit.success">yes</field>
+    <description>New script file written to web root on $(hostname): $(audit.file.name) — possible web shell upload (T1505.003)</description>
+    <mitre>
+      <id>T1505.003</id>
+    </mitre>
+    <group>web_shell,persistence,file_write,linux,</group>
+  </rule>
+
+</group>
+
+<group name="purple_team,discovery,">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       T1087 — Account Discovery / T1082 — System Information Discovery
+       Rule IDs: 100800–100809
+       ═══════════════════════════════════════════════════════════ -->
+
+  <!-- Windows: discovery commands (net user, whoami, systeminfo) — Event ID 4688 or Sysmon 1 -->
+  <rule id="100800" level="9">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(net|net1)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)\bnet\s+(user|localgroup|group|accounts)\b</field>
+    <description>Account enumeration command on $(hostname): $(win.eventdata.commandLine) — account discovery (T1087)</description>
+    <mitre>
+      <id>T1087</id>
+    </mitre>
+    <group>discovery,account_discovery,</group>
+  </rule>
+
+  <!-- whoami with /all, /priv, /groups flags — privilege/group enumeration -->
+  <rule id="100801" level="9">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\whoami\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)whoami\s+/(all|priv|groups|fo)</field>
+    <description>whoami privilege/group enumeration on $(hostname) — attacker recon (T1087/T1082)</description>
+    <mitre>
+      <id>T1087</id>
+    </mitre>
+    <group>discovery,account_discovery,privilege_discovery,</group>
+  </rule>
+
+  <!-- systeminfo — system information discovery -->
+  <rule id="100802" level="9">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\systeminfo\.exe$</field>
+    <description>systeminfo executed on $(hostname) — system information discovery (T1082)</description>
+    <mitre>
+      <id>T1082</id>
+    </mitre>
+    <group>discovery,system_info_discovery,</group>
+  </rule>
+
+  <!-- Rapid discovery command sequence from same session (net user + whoami + systeminfo) -->
+  <rule id="100803" level="12">
+    <if_matched_sid>100800</if_matched_sid>
+    <if_matched_sid>100802</if_matched_sid>
+    <same_user />
+    <description>Multiple discovery commands in sequence on $(hostname) by $(win.eventdata.user) — attacker post-access recon sequence (T1087/T1082)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1087</id>
+    </mitre>
+    <group>discovery,account_discovery,recon_sequence,</group>
+  </rule>
+
+  <!-- Linux: id, whoami, uname -a, hostname discovery commands via auditd -->
+  <rule id="100804" level="9">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.exe" type="pcre2">^(/usr/bin/id|/usr/bin/whoami|/bin/hostname|/bin/uname|/usr/bin/groups)$</field>
+    <field name="audit.auid" negate="yes">-1</field>
+    <field name="audit.auid" negate="yes">4294967295</field>
+    <description>User discovery/system info command on $(hostname) by uid=$(audit.auid): $(audit.exe) — post-access recon (T1087/T1082)</description>
+    <mitre>
+      <id>T1087</id>
+    </mitre>
+    <group>discovery,account_discovery,linux,</group>
+  </rule>
+
+  <!-- Linux: /etc/passwd read by non-system process — account enumeration -->
+  <rule id="100805" level="9">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall" type="pcre2">^(openat?|read)$</field>
+    <field name="audit.file.name">^/etc/passwd$</field>
+    <field name="audit.exe" negate="yes" type="pcre2">^(/usr/sbin/useradd|/usr/sbin/usermod|/usr/sbin/userdel|/usr/bin/getent|/lib/systemd/systemd|/usr/lib/systemd/systemd|/usr/sbin/nscd)$</field>
+    <field name="audit.auid" negate="yes">-1</field>
+    <field name="audit.auid" negate="yes">4294967295</field>
+    <description>Unusual process read /etc/passwd on $(hostname): $(audit.exe) — account enumeration (T1087)</description>
+    <mitre>
+      <id>T1087</id>
+    </mitre>
+    <group>discovery,account_discovery,linux,</group>
+  </rule>
+
+  <!-- net localgroup administrators enumeration -->
+  <rule id="100806" level="9">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)net\s+localgroup\s+administrators</field>
+    <description>Local administrator group enumeration on $(hostname) — privilege discovery (T1087)</description>
+    <mitre>
+      <id>T1087</id>
+    </mitre>
+    <group>discovery,account_discovery,privilege_discovery,</group>
+  </rule>
+
+</group>
+
+<group name="purple_team,collection,">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       T1560.001 — Archive Collected Data: Archive via Utility
+       Rule IDs: 100810–100819
+       ═══════════════════════════════════════════════════════════ -->
+
+  <!-- Windows: compress-archive or zip targeting sensitive paths -->
+  <rule id="100810" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(Compress-Archive|Compress-Zip)\b</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(Documents|Desktop|AppData|Users\\.*\\(passwords?|credentials?|keys?|certs?|config|backup))</field>
+    <description>PowerShell archive compression of sensitive path on $(hostname) — data staging before exfiltration (T1560.001)</description>
+    <mitre>
+      <id>T1560.001</id>
+    </mitre>
+    <group>collection,archive_data,staging,</group>
+  </rule>
+
+  <!-- 7-Zip or WinRAR archiving unusual/sensitive directories -->
+  <rule id="100811" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)(7z|7za|7zr|winrar|rar|WinZip)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(a|add)\s+.*\.(zip|rar|7z|tar|gz)\s+.*(Users|Documents|Desktop|AppData|Passwords|Creds|Backup)</field>
+    <description>Archive utility compressing sensitive directory on $(hostname) — data collection staging (T1560.001)</description>
+    <mitre>
+      <id>T1560.001</id>
+    </mitre>
+    <group>collection,archive_data,staging,</group>
+  </rule>
+
+  <!-- Linux: tar/zip/gzip creating archive in /tmp or /dev/shm (staging areas) -->
+  <rule id="100812" level="12">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.exe" type="pcre2">^(/bin/tar|/usr/bin/zip|/usr/bin/gzip|/usr/bin/bzip2|/usr/bin/7z|/usr/bin/rar)$</field>
+    <field name="audit.cmd" type="pcre2">(/tmp/|/dev/shm/|/var/tmp/|/run/)</field>
+    <description>Archive utility creating file in staging directory on $(hostname): $(audit.cmd) — data collection and staging (T1560.001)</description>
+    <mitre>
+      <id>T1560.001</id>
+    </mitre>
+    <group>collection,archive_data,staging,linux,</group>
+  </rule>
+
+  <!-- Linux: tar/zip on sensitive paths (home dirs, /etc with credentials) -->
+  <rule id="100813" level="12">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.exe" type="pcre2">^(/bin/tar|/usr/bin/zip|/usr/bin/gzip)$</field>
+    <field name="audit.cmd" type="pcre2">(/home/|/root/|/etc/(ssh|ssl|pki|creds|passwd|shadow))</field>
+    <field name="audit.auid" negate="yes">0</field>
+    <description>Non-root archive of sensitive path on $(hostname) by uid=$(audit.auid): $(audit.cmd) — credential/data staging (T1560.001)</description>
+    <mitre>
+      <id>T1560.001</id>
+    </mitre>
+    <group>collection,archive_data,staging,linux,</group>
+  </rule>
+
+  <!-- Large archive file creation (>50MB) in world-writable directories -->
+  <rule id="100814" level="9">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall" type="pcre2">^(openat?|creat)$</field>
+    <field name="audit.file.name" type="pcre2">(/tmp/|/dev/shm/|/var/tmp/).*\.(zip|tar|gz|bz2|xz|rar|7z)$</field>
+    <field name="audit.success">yes</field>
+    <description>Archive file created in world-writable staging path on $(hostname): $(audit.file.name) — data staging for exfiltration (T1560.001)</description>
+    <mitre>
+      <id>T1560.001</id>
+    </mitre>
+    <group>collection,archive_data,staging,linux,</group>
+  </rule>
+
+  <!-- Windows: archive written to TEMP or AppData\Local\Temp directory -->
+  <rule id="100815" level="9">
+    <if_sid>61603</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)(\\Temp\\|\\tmp\\).*\.(zip|rar|7z|tar|gz|cab)$</field>
+    <description>Archive file created in TEMP directory on $(hostname): $(win.eventdata.targetFilename) — data staging (T1560.001)</description>
+    <mitre>
+      <id>T1560.001</id>
+    </mitre>
+    <group>collection,archive_data,staging,</group>
+  </rule>
+
+</group>
