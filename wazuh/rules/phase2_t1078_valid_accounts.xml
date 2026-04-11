@@ -1,0 +1,156 @@
+<!-- ============================================================
+     Purple Team Phase 2 Detection Rules
+     MITRE ATT&CK Technique:
+       T1078 — Valid Accounts
+     Rule IDs: 100840–100849
+     Author: Phase 2 Purple Team Detection
+     Date: 2026-04-09
+
+     Severity tiers:
+       Low (8)     — Anomalous but low confidence
+       Medium (9)  — Suspicious, monitor closely
+       High (12)   — Strong indicator, investigate promptly
+       Critical(15)— IOC match, immediate response required
+
+     Log source prerequisites:
+       - PAM/syslog authentication events (default Wazuh agent collection)
+       - sshd logs via /var/log/auth.log or /var/log/secure
+       - MISP IOC feed integration (misp_ioc_detection.xml rules active,
+         enrichment via active-response or decoder tag)
+       - auditd with cron session monitoring for service account detection
+     ============================================================ -->
+
+<group name="purple_team,initial_access,persistence,privilege_escalation,">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       T1078 — Valid Accounts
+       Rule IDs: 100840–100849
+       ═══════════════════════════════════════════════════════════ -->
+
+  <!-- Successful SSH/PAM login from previously unseen source IP (first-seen heuristic) -->
+  <!-- Fires on authentication success after 0 failures — no brute force, clean first attempt -->
+  <rule id="100840" level="9">
+    <if_sid>5715</if_sid>
+    <match>Accepted</match>
+    <description>Successful SSH authentication on $(hostname) for $(dstuser) from $(srcip) — first-seen clean login, verify legitimacy (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>valid_accounts,ssh_login,initial_access,</group>
+  </rule>
+
+  <!-- Auth success from IP flagged in MISP IOC feed (highest severity) -->
+  <!-- Correlates with MISP IOC rules in misp_ioc_detection.xml -->
+  <rule id="100841" level="15">
+    <if_sid>100840</if_sid>
+    <list field="srcip" lookup="address_match_key">etc/lists/misp-ip-iocs</list>
+    <description>CRITICAL: Successful authentication from MISP-flagged IOC IP $(srcip) on $(hostname) as $(dstuser) — compromised credential or adversary infrastructure (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>valid_accounts,misp_ioc,initial_access,threat_intel,</group>
+  </rule>
+
+  <!-- Successful auth outside business hours: 00:00–06:00 local time -->
+  <rule id="100842" level="8">
+    <if_sid>5715</if_sid>
+    <match>Accepted</match>
+    <time>00:00 - 06:00</time>
+    <description>Successful authentication on $(hostname) for $(dstuser) from $(srcip) outside business hours (00:00-06:00) — off-hours access anomaly (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>valid_accounts,off_hours,initial_access,anomaly,</group>
+  </rule>
+
+  <!-- Successful auth outside business hours: weekends -->
+  <rule id="100843" level="8">
+    <if_sid>5715</if_sid>
+    <match>Accepted</match>
+    <weekday>saturday,sunday</weekday>
+    <description>Successful authentication on $(hostname) for $(dstuser) from $(srcip) on weekend — off-hours access anomaly (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>valid_accounts,off_hours,initial_access,anomaly,</group>
+  </rule>
+
+  <!-- Service account interactive login: accounts expected to be non-interactive -->
+  <!-- Matches common service account naming patterns -->
+  <rule id="100844" level="12">
+    <if_sid>5715</if_sid>
+    <match>Accepted</match>
+    <field name="dstuser" type="pcre2">^(svc_|service_|svc-|srv_|daemon_|app_|bot_|deploy_|ci_|ansible_|wazuh|ossec|nagios|prometheus|grafana|redis|postgres|mysql|mongodb|elasticsearch|jenkins|gitlab|harbor|traefik)</field>
+    <description>Service account interactive SSH login on $(hostname): account=$(dstuser) from $(srcip) — service accounts should not log in interactively (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>valid_accounts,service_account,initial_access,privilege_escalation,</group>
+  </rule>
+
+  <!-- Brute force success: auth success following multiple failures from same IP -->
+  <!-- Correlates with existing brute force rule 5720 (multiple auth failures) -->
+  <rule id="100845" level="12">
+    <if_matched_sid>5720</if_matched_sid>
+    <if_sid>5715</if_sid>
+    <same_source_ip />
+    <description>Successful authentication after brute force failures on $(hostname) from $(srcip) as $(dstuser) — successful credential brute force (T1078)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>valid_accounts,brute_force_success,initial_access,</group>
+  </rule>
+
+  <!-- PAM: root account login from remote (not console/tty0) -->
+  <rule id="100846" level="12">
+    <if_sid>5715</if_sid>
+    <match>Accepted</match>
+    <field name="dstuser">root</field>
+    <description>Direct root SSH login on $(hostname) from $(srcip) — root account used for remote access (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>valid_accounts,root_login,initial_access,privilege_escalation,</group>
+  </rule>
+
+  <!-- Multiple distinct user accounts authenticated from same source IP within short window -->
+  <!-- Credential stuffing or stolen credential batch use pattern -->
+  <rule id="100847" level="12">
+    <if_matched_sid>100840</if_matched_sid>
+    <same_source_ip />
+    <different_user />
+    <description>Multiple distinct user logins from same source IP $(srcip) on $(hostname) — credential stuffing or batch credential use (T1078)</description>
+    <options>no_full_log</options>
+    <timeframe>300</timeframe>
+    <frequency>3</frequency>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>valid_accounts,credential_stuffing,initial_access,</group>
+  </rule>
+
+  <!-- Login with disabled/locked account override — PAM auth bypass indicators -->
+  <rule id="100848" level="12">
+    <if_sid>5503</if_sid>
+    <match type="pcre2">(Account locked|account is locked|authentication failure|account expired|Password expired)</match>
+    <field name="srcip" negate="yes">127.0.0.1</field>
+    <description>Authentication attempt with locked/expired account on $(hostname) from $(srcip): user=$(dstuser) — possible account override attempt (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>valid_accounts,account_bypass,initial_access,</group>
+  </rule>
+
+  <!-- su/sudo to root by unexpected user during off-hours (combines T1078 + privilege escalation) -->
+  <rule id="100849" level="9">
+    <if_sid>5401</if_sid>
+    <time>00:00 - 06:00</time>
+    <description>Privilege escalation via su/sudo on $(hostname) by $(dstuser) during off-hours — suspicious privilege use (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>valid_accounts,privilege_escalation,off_hours,anomaly,</group>
+  </rule>
+
+</group>
