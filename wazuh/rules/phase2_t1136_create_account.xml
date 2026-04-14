@@ -1,0 +1,150 @@
+<!-- ============================================================
+     Purple Team Phase 2 Detection Rules
+     MITRE ATT&CK Technique:
+       T1136 — Create Account
+     Rule IDs: 100850–100859
+     Author: Phase 2 Purple Team Detection
+     Date: 2026-04-09
+
+     Severity tiers:
+       High (12)   — Account creation by non-admin, investigate
+       Critical(15)— Root-equivalent account created, immediate response
+
+     Log source prerequisites:
+       - auditd with execve rules (to catch useradd/adduser)
+       - syslog / /var/log/auth.log (PAM account changes)
+       - Wazuh FIM monitoring of /etc/passwd, /etc/shadow,
+         /etc/group, /etc/sudoers, /etc/sudoers.d/
+         (configure in ossec.conf <syscheck> section)
+       - auditd FIM rules for /etc/passwd and /etc/sudoers
+         as a complement to Wazuh FIM
+     ============================================================ -->
+
+<group name="purple_team,persistence,">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       T1136 — Create Account
+       Rule IDs: 100850–100859
+       ═══════════════════════════════════════════════════════════ -->
+
+  <!-- useradd / adduser executed (syslog/auditd) -->
+  <rule id="100850" level="12">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall">execve</field>
+    <field name="audit.exe" type="pcre2">^(/usr/sbin/useradd|/usr/sbin/adduser)$</field>
+    <description>New user account created on $(hostname) by uid=$(audit.auid) via $(audit.exe): $(audit.cmd) — account creation (T1136)</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>create_account,useradd,persistence,linux,</group>
+  </rule>
+
+  <!-- useradd by non-root / non-privileged user (more suspicious) -->
+  <rule id="100851" level="12">
+    <if_sid>100850</if_sid>
+    <field name="audit.auid" negate="yes">0</field>
+    <description>User account created by non-root uid=$(audit.auid) on $(hostname): $(audit.cmd) — non-privileged account creation attempt (T1136)</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>create_account,useradd,persistence,linux,privilege_escalation,</group>
+  </rule>
+
+  <!-- Wazuh FIM: /etc/passwd modified -->
+  <rule id="100852" level="12">
+    <if_sid>550,554</if_sid>
+    <match>/etc/passwd</match>
+    <description>FIM alert: /etc/passwd modified on $(hostname) — possible account creation or modification (T1136)</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>create_account,fim,passwd,persistence,linux,</group>
+  </rule>
+
+  <!-- Wazuh FIM: /etc/shadow modified -->
+  <rule id="100853" level="12">
+    <if_sid>550,554</if_sid>
+    <match>/etc/shadow</match>
+    <description>FIM alert: /etc/shadow modified on $(hostname) — password hash added or changed, possible new account (T1136)</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>create_account,fim,shadow,persistence,linux,</group>
+  </rule>
+
+  <!-- Wazuh FIM: /etc/sudoers or /etc/sudoers.d/* modified -->
+  <rule id="100854" level="12">
+    <if_sid>550,554</if_sid>
+    <match type="pcre2">/etc/sudoers(\.|$)</match>
+    <description>FIM alert: sudoers file modified on $(hostname) — privilege escalation path added or changed (T1136)</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>create_account,fim,sudoers,privilege_escalation,persistence,linux,</group>
+  </rule>
+
+  <!-- Wazuh FIM: /etc/group modified — group membership change -->
+  <rule id="100855" level="12">
+    <if_sid>550,554</if_sid>
+    <match>/etc/group</match>
+    <description>FIM alert: /etc/group modified on $(hostname) — group membership change, possible sudo/wheel addition (T1136)</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>create_account,fim,group,persistence,linux,</group>
+  </rule>
+
+  <!-- usermod adding user to sudo/wheel/adm group -->
+  <rule id="100856" level="12">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall">execve</field>
+    <field name="audit.exe" type="pcre2">^(/usr/sbin/usermod|/usr/sbin/gpasswd)$</field>
+    <field name="audit.cmd" type="pcre2">(-a\s+-G|-G\s+.*(sudo|wheel|adm|root|staff)|-aG\s*(sudo|wheel|adm|root|staff))</field>
+    <description>User added to privileged group on $(hostname) by uid=$(audit.auid): $(audit.cmd) — privilege group membership change (T1136)</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>create_account,group_modification,privilege_escalation,persistence,linux,</group>
+  </rule>
+
+  <!-- CRITICAL: /etc/passwd entry with uid=0 added (root clone) -->
+  <!-- auditd: write to /etc/passwd where new line contains :0: -->
+  <rule id="100857" level="15">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall" type="pcre2">^(openat?|write|creat)$</field>
+    <field name="audit.file.name">/etc/passwd</field>
+    <field name="audit.success">yes</field>
+    <field name="audit.auid" negate="yes">0</field>
+    <description>CRITICAL: /etc/passwd written by non-root uid=$(audit.auid) on $(hostname) — possible root-clone account injection (T1136)</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>create_account,root_clone,persistence,linux,critical,</group>
+  </rule>
+
+  <!-- Syslog: new user added message from useradd/PAM -->
+  <rule id="100858" level="12">
+    <if_sid>5902</if_sid>
+    <match type="pcre2">(new user:|new group:|useradd\[|added user)</match>
+    <description>New user/group creation logged via PAM/useradd on $(hostname) — account creation event (T1136)</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>create_account,syslog,persistence,linux,</group>
+  </rule>
+
+  <!-- New account created and immediately used for interactive login (persistence verification) -->
+  <rule id="100859" level="14">
+    <if_matched_sid>100850</if_matched_sid>
+    <if_sid>5715</if_sid>
+    <same_user />
+    <description>Account created and immediately used for SSH login on $(hostname): $(dstuser) — attacker persistence confirmed via new account (T1136)</description>
+    <options>no_full_log</options>
+    <timeframe>300</timeframe>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>create_account,immediate_login,persistence,linux,attack_sequence,</group>
+  </rule>
+
+</group>
