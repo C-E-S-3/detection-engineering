@@ -1,0 +1,48 @@
+<!--
+  Grype Container CVE Scan — Wazuh Decoder
+  =========================================
+  Processes per-finding JSON events written by the container-cve-scanner
+  Ansible role (ESKA-174). Feeds the container_cve.xml rule set.
+
+  Architecture
+  ------------
+  The container-cve-scanner role runs `grype <image> -o json` on each
+  docker host, flattens each CVE match to a single JSON line, and appends
+  it to /var/log/grype-findings.json. The Wazuh agent logcollector is
+  configured to read that file with <log_format>json</log_format>.
+
+  With json log format, Wazuh's built-in "json" parent decoder handles
+  the initial parse — all top-level fields become dynamic extracted fields.
+  No custom parent decoder is required. Rules scope to Grype events by
+  matching on the integration="grype" field, which is unique to this source.
+
+  Expected JSON format — one line per CVE finding
+  ------------------------------------------------
+  {
+    "integration":       "grype",
+    "timestamp":         "2024-01-15T10:30:00Z",
+    "container_name":    "nginx",
+    "image_name":        "nginx:1.25.3",
+    "image_digest":      "sha256:abc123def456...",
+    "cve_id":            "CVE-2023-44487",
+    "severity":          "High",
+    "package_name":      "libssl1.1",
+    "package_version":   "1.1.1n-0+deb11u5",
+    "fix_version":       "1.1.1n-0+deb11u6",
+    "cvss_score":        "7.5"
+  }
+
+  Severity values (direct from Grype): Critical, High, Medium, Low,
+  Negligible, Unknown.
+
+  fix_version: set to a version string (e.g. "1.2.3") when a fix is
+  available, or "none" / "not-fixed" when no fix exists.
+
+  Deduplication
+  -------------
+  Dedup is handled upstream by the container-cve-scanner integration
+  script, which maintains a per-host state file of previously-seen
+  CVE+image+digest tuples. Only new findings are written to the log.
+  Rules in container_cve.xml add a within-session suppressor (1-hour
+  window) as a safety net for edge-case duplicate log entries.
+-->
