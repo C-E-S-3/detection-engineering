@@ -1,14 +1,14 @@
 <!-- ============================================================
      Purple Team Phase 2 Detection Rules
      MITRE ATT&CK Technique:
-       T1055 — Process Injection
-     Rule IDs: 100830–100839
+       T1055 -- Process Injection
+     Rule IDs: 100830-100839
      Author: Phase 2 Purple Team Detection
      Date: 2026-04-09
 
      Severity tiers:
-       High (12)   — Strong indicator, investigate promptly
-       Critical(13-14) — Near-certain attack, immediate response
+       High (12)   -- Strong indicator, investigate promptly
+       Critical(13-14) -- Near-certain attack, immediate response
 
      Log source prerequisites:
        - auditd with the following syscall rules deployed
@@ -24,10 +24,10 @@
 
 <group name="purple_team,defense_evasion,privilege_escalation,">
 
-  <!-- ═══════════════════════════════════════════════════════════
-       T1055 — Process Injection
-       Rule IDs: 100830–100839
-       ═══════════════════════════════════════════════════════════ -->
+  <!-- ===========================================================
+       T1055 -- Process Injection
+       Rule IDs: 100830-100839
+       =========================================================== -->
 
   <!-- auditd: ptrace(PTRACE_ATTACH) to a process not owned by the tracer -->
   <!-- a0=0x10 = PTRACE_ATTACH -->
@@ -36,7 +36,7 @@
     <field name="audit.syscall">ptrace</field>
     <field name="audit.a0">0x10</field>
     <field name="audit.key">process_injection</field>
-    <description>ptrace(PTRACE_ATTACH) called on $(hostname) by uid=$(audit.auid) exe=$(audit.exe) — process injection attempt (T1055)</description>
+    <description>ptrace(PTRACE_ATTACH) called on $(hostname) by uid=$(audit.auid) exe=$(audit.exe) -- process injection attempt (T1055)</description>
     <mitre>
       <id>T1055</id>
     </mitre>
@@ -48,14 +48,14 @@
   <rule id="100831" level="14">
     <if_sid>100830</if_sid>
     <field name="audit.exe" negate="yes" type="pcre2">^(/usr/bin/strace|/usr/bin/ltrace|/usr/bin/gdb|/usr/lib/jvm|/usr/bin/lldb|/usr/bin/rr)$</field>
-    <description>ptrace(PTRACE_ATTACH) by non-debugger process on $(hostname): $(audit.exe) uid=$(audit.auid) — process injection by unexpected binary (T1055)</description>
+    <description>ptrace(PTRACE_ATTACH) by non-debugger process on $(hostname): $(audit.exe) uid=$(audit.auid) -- process injection by unexpected binary (T1055)</description>
     <mitre>
       <id>T1055</id>
     </mitre>
     <group>process_injection,ptrace,linux,defense_evasion,</group>
   </rule>
 
-  <!-- auditd: ptrace PEEKDATA/POKEDATA — memory read/write of another process -->
+  <!-- auditd: ptrace PEEKDATA/POKEDATA -- memory read/write of another process -->
   <!-- a0=0x4 = PTRACE_PEEKDATA, a0=0x5 = PTRACE_POKEDATA, a0=0x6 = PTRACE_PEEKUSER -->
   <rule id="100832" level="12">
     <decoded_as>auditd</decoded_as>
@@ -63,7 +63,7 @@
     <field name="audit.a0" type="pcre2">^(0x4|0x5|0x6)$</field>
     <field name="audit.key">process_injection</field>
     <field name="audit.exe" negate="yes" type="pcre2">^(/usr/bin/strace|/usr/bin/ltrace|/usr/bin/gdb|/usr/bin/lldb|/usr/bin/rr)$</field>
-    <description>ptrace PEEKDATA/POKEDATA by non-debugger on $(hostname): $(audit.exe) — process memory manipulation (T1055)</description>
+    <description>ptrace PEEKDATA/POKEDATA by non-debugger on $(hostname): $(audit.exe) -- process memory manipulation (T1055)</description>
     <mitre>
       <id>T1055</id>
     </mitre>
@@ -76,7 +76,7 @@
     <decoded_as>auditd</decoded_as>
     <field name="audit.syscall">execve</field>
     <field name="audit.env" type="pcre2">LD_PRELOAD=(/tmp/|/dev/shm/|/var/tmp/|/home/|/run/user/|\.so)</field>
-    <description>LD_PRELOAD set to suspicious path on $(hostname) by uid=$(audit.auid): $(audit.env) — shared library injection attempt (T1055)</description>
+    <description>LD_PRELOAD set to suspicious path on $(hostname) by uid=$(audit.auid): $(audit.env) -- shared library injection attempt (T1055)</description>
     <mitre>
       <id>T1055</id>
     </mitre>
@@ -91,7 +91,7 @@
     <field name="audit.file.name" type="pcre2">/proc/\d+/mem$</field>
     <field name="audit.success">yes</field>
     <field name="audit.exe" negate="yes" type="pcre2">^(/bin/dd|/usr/bin/gdb|/usr/bin/lldb)$</field>
-    <description>Direct /proc/PID/mem write access on $(hostname) by $(audit.exe) — process memory injection (T1055)</description>
+    <description>Direct /proc/PID/mem write access on $(hostname) by $(audit.exe) -- process memory injection (T1055)</description>
     <mitre>
       <id>T1055</id>
     </mitre>
@@ -105,42 +105,42 @@
     <field name="audit.syscall" type="pcre2">^(openat?|mmap)$</field>
     <field name="audit.file.name" type="pcre2">(/tmp/|/dev/shm/|/var/tmp/|/run/user/).*\.so(\.\d+)*$</field>
     <field name="audit.success">yes</field>
-    <description>Shared library loaded from world-writable path on $(hostname): $(audit.file.name) — suspicious library injection (T1055)</description>
+    <description>Shared library loaded from world-writable path on $(hostname): $(audit.file.name) -- suspicious library injection (T1055)</description>
     <mitre>
       <id>T1055</id>
     </mitre>
     <group>process_injection,so_injection,linux,defense_evasion,</group>
   </rule>
 
-  <!-- /etc/ld.so.preload written — persistent LD_PRELOAD injection for all processes -->
+  <!-- /etc/ld.so.preload written -- persistent LD_PRELOAD injection for all processes -->
   <rule id="100836" level="14">
     <decoded_as>auditd</decoded_as>
     <field name="audit.syscall" type="pcre2">^(openat?|creat|write)$</field>
     <field name="audit.file.name">/etc/ld.so.preload</field>
     <field name="audit.success">yes</field>
-    <description>File /etc/ld.so.preload written on $(hostname) by uid=$(audit.auid) exe=$(audit.exe) — persistent library preload injection (T1055)</description>
+    <description>File /etc/ld.so.preload written on $(hostname) by uid=$(audit.auid) exe=$(audit.exe) -- persistent library preload injection (T1055)</description>
     <mitre>
       <id>T1055</id>
     </mitre>
     <group>process_injection,ld_preload,persistence,linux,</group>
   </rule>
 
-  <!-- memfd_create syscall — fileless shared object injection via anonymous memory fd -->
+  <!-- memfd_create syscall -- fileless shared object injection via anonymous memory fd -->
   <rule id="100837" level="13">
     <decoded_as>auditd</decoded_as>
     <field name="audit.syscall">memfd_create</field>
-    <description>memfd_create called on $(hostname) by uid=$(audit.auid) exe=$(audit.exe) — fileless process injection via anonymous memory fd (T1055)</description>
+    <description>memfd_create called on $(hostname) by uid=$(audit.auid) exe=$(audit.exe) -- fileless process injection via anonymous memory fd (T1055)</description>
     <mitre>
       <id>T1055</id>
     </mitre>
     <group>process_injection,fileless,linux,defense_evasion,</group>
   </rule>
 
-  <!-- process_vm_writev syscall — direct cross-process memory write without ptrace -->
+  <!-- process_vm_writev syscall -- direct cross-process memory write without ptrace -->
   <rule id="100838" level="14">
     <decoded_as>auditd</decoded_as>
     <field name="audit.syscall">process_vm_writev</field>
-    <description>process_vm_writev called on $(hostname) by uid=$(audit.auid) exe=$(audit.exe) — direct cross-process memory write (T1055)</description>
+    <description>process_vm_writev called on $(hostname) by uid=$(audit.auid) exe=$(audit.exe) -- direct cross-process memory write (T1055)</description>
     <mitre>
       <id>T1055</id>
     </mitre>
@@ -149,10 +149,10 @@
 
   <!-- Rapid sequence: ptrace attach followed by proc/mem access from same process -->
   <rule id="100839" level="14">
+    <if_sid>100834</if_sid>
     <if_matched_sid>100831</if_matched_sid>
-    <if_matched_sid>100834</if_matched_sid>
-    <same_source_user />
-    <description>ptrace attach + /proc/mem write sequence on $(hostname) by uid=$(audit.auid) — multi-stage process injection campaign (T1055)</description>
+    <same_source_ip />
+    <description>ptrace attach + /proc/mem write sequence on $(hostname) by uid=$(audit.auid) -- multi-stage process injection campaign (T1055)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1055</id>
