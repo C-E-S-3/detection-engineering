@@ -24,7 +24,7 @@
               (set log_format = apache in ossec.conf localfile block)
      ============================================================ -->
 
-<group name="purple_team,credential_access,">
+<group name="purple_team,">
 
   <!-- ═══════════════════════════════════════════════════════════
        T1003.001 — OS Credential Dumping: LSASS Memory
@@ -109,9 +109,7 @@
     <group>credential_access,shadow_file,linux,</group>
   </rule>
 
-</group>
-
-<group name="purple_team,lateral_movement,">
+  <!-- ─── T1550.002 Pass-the-Hash ─── -->
 
   <!-- ═══════════════════════════════════════════════════════════
        T1550.002 — Use Alternate Auth Material: Pass-the-Hash
@@ -182,9 +180,7 @@
     <group>pass_the_hash,lateral_movement,linux,</group>
   </rule>
 
-</group>
-
-<group name="purple_team,persistence,">
+  <!-- ─── T1505.003 Web Shell ─── -->
 
   <!-- ═══════════════════════════════════════════════════════════
        T1505.003 — Server Software Component: Web Shell
@@ -251,9 +247,7 @@
     <group>web_shell,persistence,file_write,linux,</group>
   </rule>
 
-</group>
-
-<group name="purple_team,discovery,">
+  <!-- ─── T1087/T1082 Account/System Discovery ─── -->
 
   <!-- ═══════════════════════════════════════════════════════════
        T1087 — Account Discovery / T1082 — System Information Discovery
@@ -347,9 +341,7 @@
     <group>discovery,account_discovery,privilege_discovery,</group>
   </rule>
 
-</group>
-
-<group name="purple_team,collection,">
+  <!-- ─── T1560.001 Archive Collected Data ─── -->
 
   <!-- ═══════════════════════════════════════════════════════════
        T1560.001 — Archive Collected Data: Archive via Utility
