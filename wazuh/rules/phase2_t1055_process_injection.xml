@@ -151,7 +151,7 @@
   <rule id="100839" level="14">
     <if_sid>100834</if_sid>
     <if_matched_sid>100831</if_matched_sid>
-    <same_source_ip />
+    <same_srcip />
     <description>ptrace attach + /proc/mem write sequence on $(hostname) by uid=$(audit.auid) -- multi-stage process injection campaign (T1055)</description>
     <options>no_full_log</options>
     <mitre>

@@ -136,7 +136,7 @@
   <!-- Rapid NTLM logons to multiple hosts from same source (PtH lateral spread) -->
   <rule id="100781" level="14" frequency="3" timeframe="300">
     <if_matched_sid>100780</if_matched_sid>
-    <same_source_ip />
+    <same_srcip />
     <description>Rapid NTLM elevated logons from $(srcip) -- pass-the-hash lateral movement campaign (T1550.002)</description>
     <options>no_full_log</options>
     <mitre>
@@ -186,23 +186,23 @@
        Rule IDs: 100790-100799
        =========================================================== -->
 
-  <!-- Web shell HTTP request: command execution parameters in URL/body -->
+  <!-- Web shell HTTP request: command execution parameters in URL/body (Traefik JSON) -->
   <rule id="100790" level="12">
-    <decoded_as>web-log</decoded_as>
-    <url type="pcre2">(?i)(\?|&amp;)(cmd|exec|command|shell|run|system|passthru|proc_open|popen|eval|base64_decode)\s*=</url>
-    <description>Web shell command parameter detected in request to $(hostname) from $(srcip) -- web shell activity (T1505.003)</description>
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)(\?|&amp;)(cmd|exec|command|shell|run|system|passthru|proc_open|popen|eval|base64_decode)\s*=</field>
+    <description>Web shell command parameter detected in request to $(RequestHost) from $(ClientHost) -- web shell activity (T1505.003)</description>
     <mitre>
       <id>T1505.003</id>
     </mitre>
     <group>web_shell,persistence,webserver,</group>
   </rule>
 
-  <!-- Web shell via POST to PHP/ASP file with OS command patterns in response -->
+  <!-- Web shell via POST to PHP/ASP file with OS command patterns (Traefik JSON) -->
   <rule id="100791" level="12">
-    <decoded_as>web-log</decoded_as>
-    <match type="pcre2">POST .*\.(php|asp|aspx|jsp|cfm|cgi|pl|py)\b</match>
-    <url type="pcre2">(?i)(shell|cmd|webshell|c99|r57|b374k|wso|alfa|FilesMan)</url>
-    <description>POST request to known web shell filename pattern on $(hostname) -- web shell access (T1505.003)</description>
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)\.(php|asp|aspx|jsp|cfm|cgi|pl|py)(\?|$|/)</field>
+    <description>POST request to potential web shell filename pattern on $(RequestHost) from $(ClientHost) -- web shell access (T1505.003)</description>
     <mitre>
       <id>T1505.003</id>
     </mitre>

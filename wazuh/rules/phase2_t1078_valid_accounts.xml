@@ -80,8 +80,7 @@
   <!-- Matches common service account naming patterns -->
   <rule id="100844" level="12">
     <if_sid>5715</if_sid>
-    <match>Accepted</match>
-    <field name="dstuser" type="pcre2">^(svc_|service_|svc-|srv_|daemon_|app_|bot_|deploy_|ci_|ansible_|wazuh|ossec|nagios|prometheus|grafana|redis|postgres|mysql|mongodb|elasticsearch|jenkins|gitlab|harbor|traefik)</field>
+    <regex type="pcre2">Accepted \S+ for (svc_|service_|svc-|srv_|daemon_|app_|bot_|deploy_|ci_|ansible_|wazuh|ossec|nagios|prometheus|grafana|redis|postgres|mysql|mongodb|elasticsearch|jenkins|gitlab|harbor|traefik)</regex>
     <description>Service account interactive SSH login on $(hostname): account=$(dstuser) from $(srcip) -- service accounts should not log in interactively (T1078)</description>
     <mitre>
       <id>T1078</id>
@@ -94,7 +93,7 @@
   <rule id="100845" level="12">
     <if_matched_sid>5720</if_matched_sid>
     <if_sid>5715</if_sid>
-    <same_source_ip />
+    <same_srcip />
     <description>Successful authentication after brute force failures on $(hostname) from $(srcip) as $(dstuser) -- successful credential brute force (T1078)</description>
     <options>no_full_log</options>
     <mitre>
@@ -107,7 +106,7 @@
   <rule id="100846" level="12">
     <if_sid>5715</if_sid>
     <match>Accepted</match>
-    <field name="dstuser">root</field>
+    <user>root</user>
     <description>Direct root SSH login on $(hostname) from $(srcip) -- root account used for remote access (T1078)</description>
     <mitre>
       <id>T1078</id>
@@ -117,13 +116,11 @@
 
   <!-- Multiple distinct user accounts authenticated from same source IP within short window -->
   <!-- Credential stuffing or stolen credential batch use pattern -->
-  <rule id="100847" level="12">
+  <rule id="100847" level="12" frequency="3" timeframe="300">
     <if_matched_sid>100840</if_matched_sid>
-    <same_source_ip />
+    <same_srcip />
     <description>Multiple auth events from same source IP $(srcip) on $(hostname) -- credential stuffing or batch credential use (T1078)</description>
     <options>no_full_log</options>
-    <timeframe>300</timeframe>
-    <frequency>3</frequency>
     <mitre>
       <id>T1078</id>
     </mitre>
@@ -134,7 +131,7 @@
   <rule id="100848" level="12">
     <if_sid>5503</if_sid>
     <match type="pcre2">(Account locked|account is locked|authentication failure|account expired|Password expired)</match>
-    <field name="srcip" negate="yes">127.0.0.1</field>
+    <srcip negate="yes">127.0.0.1</srcip>
     <description>Authentication attempt with locked/expired account on $(hostname) from $(srcip): user=$(dstuser) -- possible account override attempt (T1078)</description>
     <mitre>
       <id>T1078</id>

@@ -216,7 +216,7 @@
   <!-- Repeated 401s - brute force via proxy -->
   <rule id="101232" level="10" frequency="10" timeframe="60">
     <if_matched_sid>101230</if_matched_sid>
-    <same_source_ip></same_source_ip>
+    <same_srcip />
     <description>Traefik: Brute force via proxy - repeated 401s from same source</description>
     <mitre>
       <id>T1110</id>

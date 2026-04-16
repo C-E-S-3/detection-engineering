@@ -134,13 +134,11 @@
   </rule>
 
   <!-- New account created and immediately used for interactive login (persistence verification) -->
-  <rule id="100859" level="14">
-    <if_matched_sid>100850</if_matched_sid>
-    <if_sid>5715</if_sid>
+  <rule id="100859" level="14" frequency="2" timeframe="600">
+    <if_matched_sid>5715</if_matched_sid>
     <same_user />
     <description>Account created and immediately used for SSH login on $(hostname): $(dstuser) -- attacker persistence confirmed via new account (T1136)</description>
     <options>no_full_log</options>
-    <timeframe>300</timeframe>
     <mitre>
       <id>T1136</id>
     </mitre>
