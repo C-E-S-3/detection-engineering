@@ -15,8 +15,9 @@
      Log source prerequisites:
        - PAM/syslog authentication events (default Wazuh agent collection)
        - sshd logs via /var/log/auth.log or /var/log/secure
-       - MISP IOC feed integration (misp_ioc_detection.xml rules active,
-         enrichment via active-response or decoder tag)
+       - Malicious-IP CDB list deployed at
+         /var/ossec/etc/lists/malicious-ioc/malicious-ip(.cdb)
+         (populated by threat-intel pipeline; see misp_ioc_detection.xml)
        - auditd with cron session monitoring for service account detection
      ============================================================ -->
 
@@ -39,12 +40,12 @@
     <group>valid_accounts,ssh_login,initial_access,</group>
   </rule>
 
-  <!-- Auth success from IP flagged in MISP IOC feed (highest severity) -->
-  <!-- Correlates with MISP IOC rules in misp_ioc_detection.xml -->
+  <!-- Auth success from IP flagged in malicious-IP CDB list (highest severity) -->
+  <!-- CDB list populated by threat-intel pipeline from MISP and open feeds -->
   <rule id="100841" level="15">
     <if_sid>100840</if_sid>
-    <list field="srcip" lookup="address_match_key">etc/lists/misp-ip-iocs</list>
-    <description>CRITICAL: Successful authentication from MISP-flagged IOC IP $(srcip) on $(hostname) as $(dstuser) -- compromised credential or adversary infrastructure (T1078)</description>
+    <list field="srcip" lookup="address_match_key">etc/lists/malicious-ioc/malicious-ip</list>
+    <description>CRITICAL: Successful authentication from known-bad IOC IP $(srcip) on $(hostname) as $(dstuser) -- compromised credential or adversary infrastructure (T1078)</description>
     <mitre>
       <id>T1078</id>
     </mitre>
