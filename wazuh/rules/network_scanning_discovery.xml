@@ -1,6 +1,6 @@
 <!-- Network Scanning and Service Discovery Detection Rules -->
 <!-- Rule IDs: 100730-100741                                              -->
-<!-- MITRE ATT&CK: T1046 (Network Service Discovery), T1595.001 (Scanning/Active Scanning - Scanning IP Blocks) -->
+<!-- MITRE ATT&amp;CK: T1046 (Network Service Discovery), T1595.001 (Scanning/Active Scanning - Scanning IP Blocks) -->
 <!-- Added: 2026-04-03 | Context: Red Team nmap scan 2026-04-02 not detected (ESKA-48) -->
 
 <group name="local,network,scanning,">

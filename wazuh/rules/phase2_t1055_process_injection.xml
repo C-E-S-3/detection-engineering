@@ -1,14 +1,14 @@
 <!-- ============================================================
      Purple Team Phase 2 Detection Rules
-     MITRE ATT&CK Technique:
-       T1055 -- Process Injection
+     MITRE ATT&amp;CK Technique:
+       T1055 — Process Injection
      Rule IDs: 100830-100839
      Author: Phase 2 Purple Team Detection
      Date: 2026-04-09
 
      Severity tiers:
-       High (12)   -- Strong indicator, investigate promptly
-       Critical(13-14) -- Near-certain attack, immediate response
+       High (12)   — Strong indicator, investigate promptly
+       Critical(13-14) — Near-certain attack, immediate response
 
      Log source prerequisites:
        - auditd with the following syscall rules deployed
@@ -25,7 +25,7 @@
 <group name="purple_team,defense_evasion,privilege_escalation,">
 
   <!-- ===========================================================
-       T1055 -- Process Injection
+       T1055 — Process Injection
        Rule IDs: 100830-100839
        =========================================================== -->
 
@@ -55,7 +55,7 @@
     <group>process_injection,ptrace,linux,defense_evasion,</group>
   </rule>
 
-  <!-- auditd: ptrace PEEKDATA/POKEDATA -- memory read/write of another process -->
+  <!-- auditd: ptrace PEEKDATA/POKEDATA — memory read/write of another process -->
   <!-- a0=0x4 = PTRACE_PEEKDATA, a0=0x5 = PTRACE_POKEDATA, a0=0x6 = PTRACE_PEEKUSER -->
   <rule id="100832" level="12">
     <decoded_as>auditd</decoded_as>
@@ -112,7 +112,7 @@
     <group>process_injection,so_injection,linux,defense_evasion,</group>
   </rule>
 
-  <!-- /etc/ld.so.preload written -- persistent LD_PRELOAD injection for all processes -->
+  <!-- /etc/ld.so.preload written — persistent LD_PRELOAD injection for all processes -->
   <rule id="100836" level="14">
     <decoded_as>auditd</decoded_as>
     <field name="audit.syscall" type="pcre2">^(openat?|creat|write)$</field>
@@ -125,7 +125,7 @@
     <group>process_injection,ld_preload,persistence,linux,</group>
   </rule>
 
-  <!-- memfd_create syscall -- fileless shared object injection via anonymous memory fd -->
+  <!-- memfd_create syscall — fileless shared object injection via anonymous memory fd -->
   <rule id="100837" level="13">
     <decoded_as>auditd</decoded_as>
     <field name="audit.syscall">memfd_create</field>
@@ -136,7 +136,7 @@
     <group>process_injection,fileless,linux,defense_evasion,</group>
   </rule>
 
-  <!-- process_vm_writev syscall -- direct cross-process memory write without ptrace -->
+  <!-- process_vm_writev syscall — direct cross-process memory write without ptrace -->
   <rule id="100838" level="14">
     <decoded_as>auditd</decoded_as>
     <field name="audit.syscall">process_vm_writev</field>

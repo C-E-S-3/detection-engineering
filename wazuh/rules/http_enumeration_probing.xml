@@ -1,6 +1,6 @@
 <!-- HTTP Enumeration and Active Web Probing Detection Rules -->
 <!-- Rule IDs: 100750-100763                                              -->
-<!-- MITRE ATT&CK: T1595.002 (Active Scanning - Vulnerability Scanning), -->
+<!-- MITRE ATT&amp;CK: T1595.002 (Active Scanning - Vulnerability Scanning), -->
 <!--               T1590 (Gather Victim Network Information)              -->
 <!-- Added: 2026-04-03 | Context: Red Team Nuclei scan 2026-04-02 not detected (ESKA-48) -->
 

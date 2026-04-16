@@ -1,7 +1,7 @@
 <!-- Linux Auditd Detection Rules -->
 <!-- Rule IDs: 100600-100699                                               -->
 <!-- Maps audit keys from proxmox-auditd-security and ubuntu-auditd-security roles -->
-<!-- MITRE ATT&CK aligned; parent rule 100600 anchors all children         -->
+<!-- MITRE ATT&amp;CK aligned; parent rule 100600 anchors all children         -->
 
 <group name="linux,auditd,">
 
