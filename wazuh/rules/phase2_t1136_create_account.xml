@@ -1,14 +1,14 @@
 <!-- ============================================================
      Purple Team Phase 2 Detection Rules
      MITRE ATT&amp;CK Technique:
-       T1136 — Create Account
+       T1136 - Create Account
      Rule IDs: 100850-100859
      Author: Phase 2 Purple Team Detection
      Date: 2026-04-09
 
      Severity tiers:
-       High (12)   — Account creation by non-admin, investigate
-       Critical(15)— Root-equivalent account created, immediate response
+       High (12)   - Account creation by non-admin, investigate
+       Critical(15)- Root-equivalent account created, immediate response
 
      Log source prerequisites:
        - auditd with execve rules (to catch useradd/adduser)
@@ -23,7 +23,7 @@
 <group name="purple_team,persistence,">
 
   <!-- ===========================================================
-       T1136 — Create Account
+       T1136 - Create Account
        Rule IDs: 100850-100859
        =========================================================== -->
 
@@ -83,7 +83,7 @@
     <group>create_account,fim,sudoers,privilege_escalation,persistence,linux,</group>
   </rule>
 
-  <!-- Wazuh FIM: /etc/group modified — group membership change -->
+  <!-- Wazuh FIM: /etc/group modified - group membership change -->
   <rule id="100855" level="12">
     <if_sid>550,554</if_sid>
     <match>/etc/group</match>

@@ -1,24 +1,24 @@
 <!-- ============================================================
      Purple Team Phase 1 Detection Rules
      MITRE ATT&amp;CK Techniques:
-       T1003.001 — OS Credential Dumping: LSASS Memory
-       T1550.002 — Use Alternate Auth Material: Pass-the-Hash
-       T1505.003 — Server Software Component: Web Shell
-       T1087     — Account Discovery
-       T1082     — System Information Discovery
-       T1560.001 — Archive Collected Data: Archive via Utility
+       T1003.001 - OS Credential Dumping: LSASS Memory
+       T1550.002 - Use Alternate Auth Material: Pass-the-Hash
+       T1505.003 - Server Software Component: Web Shell
+       T1087     - Account Discovery
+       T1082     - System Information Discovery
+       T1560.001 - Archive Collected Data: Archive via Utility
      Rule IDs: 100770-100819
      Author: SecOps Engineer (ESKA-123)
      Date: 2026-04-08
 
      Severity tiers:
-       Medium (9)  — Suspicious but may be benign
-       High (12)   — Strong indicator, investigate promptly
-       Critical(14)— Near-certain attack, immediate response
+       Medium (9)  - Suspicious but may be benign
+       High (12)   - Strong indicator, investigate promptly
+       Critical(14)- Near-certain attack, immediate response
 
      Log source prerequisites:
        - Windows: Sysmon Event ID 1 (Process Create), 10 (Process Access),
-                  Windows Security Event ID 4624, 4688 — forwarded via Wazuh agent
+                  Windows Security Event ID 4624, 4688 - forwarded via Wazuh agent
        - Linux: auditd with syscall rules for execve, open, openat
        - Web: Traefik/Nginx/Apache access logs forwarded to Wazuh
               (set log_format = apache in ossec.conf localfile block)
@@ -27,7 +27,7 @@
 <group name="purple_team,">
 
   <!-- ===========================================================
-       T1003.001 — OS Credential Dumping: LSASS Memory
+       T1003.001 - OS Credential Dumping: LSASS Memory
        Rule IDs: 100770-100779
        =========================================================== -->
 
@@ -83,7 +83,7 @@
     <group>lsass_dump,credential_access,lolbin,</group>
   </rule>
 
-  <!-- Linux: auditd — process reading /proc/[pid]/mem where cmdline contains lsass-equivalent -->
+  <!-- Linux: auditd - process reading /proc/[pid]/mem where cmdline contains lsass-equivalent -->
   <rule id="100774" level="12">
     <decoded_as>auditd</decoded_as>
     <field name="audit.syscall" type="pcre2">^(openat?|read|ptrace)$</field>
@@ -109,10 +109,10 @@
     <group>credential_access,shadow_file,linux,</group>
   </rule>
 
-  <!-- —- T1550.002 Pass-the-Hash —- -->
+  <!-- - T1550.002 Pass-the-Hash - -->
 
   <!-- ===========================================================
-       T1550.002 — Use Alternate Auth Material: Pass-the-Hash
+       T1550.002 - Use Alternate Auth Material: Pass-the-Hash
        Rule IDs: 100780-100789
        Supplements existing rule 100590 in ransomware_lateral_movement.xml
        =========================================================== -->
@@ -179,10 +179,10 @@
     <group>pass_the_hash,lateral_movement,linux,</group>
   </rule>
 
-  <!-- —- T1505.003 Web Shell —- -->
+  <!-- - T1505.003 Web Shell - -->
 
   <!-- ===========================================================
-       T1505.003 — Server Software Component: Web Shell
+       T1505.003 - Server Software Component: Web Shell
        Rule IDs: 100790-100799
        =========================================================== -->
 
@@ -221,7 +221,7 @@
     <group>web_shell,persistence,process_spawn,</group>
   </rule>
 
-  <!-- Linux: auditd — web server process spawning shell or running system commands -->
+  <!-- Linux: auditd - web server process spawning shell or running system commands -->
   <rule id="100793" level="14">
     <decoded_as>auditd</decoded_as>
     <field name="audit.ppid.exe" type="pcre2">(?i)(apache2|httpd|nginx|php-fpm|gunicorn|uwsgi|tomcat)$</field>
@@ -246,14 +246,14 @@
     <group>web_shell,persistence,file_write,linux,</group>
   </rule>
 
-  <!-- —- T1087/T1082 Account/System Discovery —- -->
+  <!-- - T1087/T1082 Account/System Discovery - -->
 
   <!-- ===========================================================
-       T1087 — Account Discovery / T1082 — System Information Discovery
+       T1087 - Account Discovery / T1082 - System Information Discovery
        Rule IDs: 100800-100809
        =========================================================== -->
 
-  <!-- Windows: discovery commands (net user, whoami, systeminfo) — Event ID 4688 or Sysmon 1 -->
+  <!-- Windows: discovery commands (net user, whoami, systeminfo) - Event ID 4688 or Sysmon 1 -->
   <rule id="100800" level="9">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(net|net1)\.exe$</field>
@@ -265,7 +265,7 @@
     <group>discovery,account_discovery,</group>
   </rule>
 
-  <!-- whoami with /all, /priv, /groups flags — privilege/group enumeration -->
+  <!-- whoami with /all, /priv, /groups flags - privilege/group enumeration -->
   <rule id="100801" level="9">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\whoami\.exe$</field>
@@ -277,7 +277,7 @@
     <group>discovery,account_discovery,privilege_discovery,</group>
   </rule>
 
-  <!-- systeminfo — system information discovery -->
+  <!-- systeminfo - system information discovery -->
   <rule id="100802" level="9">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\systeminfo\.exe$</field>
@@ -314,7 +314,7 @@
     <group>discovery,account_discovery,linux,</group>
   </rule>
 
-  <!-- Linux: /etc/passwd read by non-system process — account enumeration -->
+  <!-- Linux: /etc/passwd read by non-system process - account enumeration -->
   <rule id="100805" level="9">
     <decoded_as>auditd</decoded_as>
     <field name="audit.syscall" type="pcre2">^(openat?|read)$</field>
@@ -340,10 +340,10 @@
     <group>discovery,account_discovery,privilege_discovery,</group>
   </rule>
 
-  <!-- —- T1560.001 Archive Collected Data —- -->
+  <!-- - T1560.001 Archive Collected Data - -->
 
   <!-- ===========================================================
-       T1560.001 — Archive Collected Data: Archive via Utility
+       T1560.001 - Archive Collected Data: Archive via Utility
        Rule IDs: 100810-100819
        =========================================================== -->
 

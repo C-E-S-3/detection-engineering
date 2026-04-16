@@ -1,16 +1,16 @@
 <!-- ============================================================
      Purple Team Phase 2 Detection Rules
      MITRE ATT&amp;CK Technique:
-       T1078 — Valid Accounts
+       T1078 - Valid Accounts
      Rule IDs: 100840-100849
      Author: Phase 2 Purple Team Detection
      Date: 2026-04-09
 
      Severity tiers:
-       Low (8)     — Anomalous but low confidence
-       Medium (9)  — Suspicious, monitor closely
-       High (12)   — Strong indicator, investigate promptly
-       Critical(15)— IOC match, immediate response required
+       Low (8)     - Anomalous but low confidence
+       Medium (9)  - Suspicious, monitor closely
+       High (12)   - Strong indicator, investigate promptly
+       Critical(15)- IOC match, immediate response required
 
      Log source prerequisites:
        - PAM/syslog authentication events (default Wazuh agent collection)
@@ -24,12 +24,12 @@
 <group name="purple_team,initial_access,persistence,privilege_escalation,">
 
   <!-- ===========================================================
-       T1078 — Valid Accounts
+       T1078 - Valid Accounts
        Rule IDs: 100840-100849
        =========================================================== -->
 
   <!-- Successful SSH/PAM login from previously unseen source IP (first-seen heuristic) -->
-  <!-- Fires on authentication success after 0 failures — no brute force, clean first attempt -->
+  <!-- Fires on authentication success after 0 failures - no brute force, clean first attempt -->
   <rule id="100840" level="9">
     <if_sid>5715</if_sid>
     <match>Accepted</match>
@@ -130,7 +130,7 @@
     <group>valid_accounts,credential_stuffing,initial_access,</group>
   </rule>
 
-  <!-- Login with disabled/locked account override — PAM auth bypass indicators -->
+  <!-- Login with disabled/locked account override - PAM auth bypass indicators -->
   <rule id="100848" level="12">
     <if_sid>5503</if_sid>
     <match type="pcre2">(Account locked|account is locked|authentication failure|account expired|Password expired)</match>

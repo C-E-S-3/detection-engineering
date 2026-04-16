@@ -7,7 +7,7 @@
 <group name="local,web,http,enumeration,">
 
   <!-- ================================================================ -->
-  <!-- NUCLEI VULNERABILITY SCANNER — T1595.002                         -->
+  <!-- NUCLEI VULNERABILITY SCANNER - T1595.002                         -->
   <!-- Nuclei sends identifiable User-Agent strings in requests         -->
   <!-- ================================================================ -->
 
@@ -15,7 +15,7 @@
   <rule id="100750" level="12">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(ET SCAN|ET WEB_CLIENT|ET USER_AGENTS).*(Nuclei|nuclei-)</field>
-    <description>Suricata: Nuclei vulnerability scanner User-Agent detected — active web probing T1595.002</description>
+    <description>Suricata: Nuclei vulnerability scanner User-Agent detected - active web probing T1595.002</description>
     <mitre>
       <id>T1595.002</id>
     </mitre>
@@ -26,7 +26,7 @@
   <rule id="100751" level="11">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(ET SCAN|ET USER_AGENTS).*(nikto|gobuster|ffuf|dirbuster|feroxbuster|wfuzz|sqlmap|burpsuite|nuclei|zaproxy|openvas)</field>
-    <description>Suricata: Known web scanner User-Agent detected — active enumeration T1595.002</description>
+    <description>Suricata: Known web scanner User-Agent detected - active enumeration T1595.002</description>
     <mitre>
       <id>T1595.002</id>
     </mitre>
@@ -34,7 +34,7 @@
   </rule>
 
   <!-- ================================================================ -->
-  <!-- WEB SERVER LOG ANALYSIS — 404/403 BURST (T1595.002)              -->
+  <!-- WEB SERVER LOG ANALYSIS - 404/403 BURST (T1595.002)              -->
   <!-- Based on web access logs forwarded to Wazuh via syslog/filebeat  -->
   <!-- ================================================================ -->
 
@@ -48,11 +48,11 @@
     <group>web,http_404,</group>
   </rule>
 
-  <!-- Rapid 404 burst from single IP — directory/path enumeration -->
+  <!-- Rapid 404 burst from single IP - directory/path enumeration -->
   <rule id="100753" level="10" frequency="20" timeframe="60">
     <if_matched_sid>100752</if_matched_sid>
     <same_field>data.srcip</same_field>
-    <description>Web: Rapid HTTP 404 burst (20+ in 60s) from single IP — path enumeration T1595.002</description>
+    <description>Web: Rapid HTTP 404 burst (20+ in 60s) from single IP - path enumeration T1595.002</description>
     <mitre>
       <id>T1595.002</id>
     </mitre>
@@ -68,11 +68,11 @@
     <group>web,http_403,</group>
   </rule>
 
-  <!-- Mixed 403/404 burst from single IP — WAF/auth bypass probe -->
+  <!-- Mixed 403/404 burst from single IP - WAF/auth bypass probe -->
   <rule id="100755" level="11" frequency="15" timeframe="30">
     <if_matched_sid>100754</if_matched_sid>
     <same_field>data.srcip</same_field>
-    <description>Web: Rapid HTTP 403 burst (15+ in 30s) from single IP — WAF/auth bypass probing T1595.002</description>
+    <description>Web: Rapid HTTP 403 burst (15+ in 30s) from single IP - WAF/auth bypass probing T1595.002</description>
     <mitre>
       <id>T1595.002</id>
     </mitre>
@@ -80,7 +80,7 @@
   </rule>
 
   <!-- ================================================================ -->
-  <!-- SURICATA HTTP SCANNING SIGNATURES — T1595.002, T1590             -->
+  <!-- SURICATA HTTP SCANNING SIGNATURES - T1595.002, T1590             -->
   <!-- ================================================================ -->
 
   <!-- Generic web scan / crawler detection -->
@@ -120,7 +120,7 @@
   <rule id="100759" level="13">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(ET SCAN|ET WEB_SERVER).*(\.env|credentials|\.pem|\.key|\.pfx|backup|dump|\.sql|shadow|passwd|secret)</field>
-    <description>Suricata: Credential/secret file probe detected — potential pre-exploitation recon T1595.002</description>
+    <description>Suricata: Credential/secret file probe detected - potential pre-exploitation recon T1595.002</description>
     <mitre>
       <id>T1595.002</id>
     </mitre>
@@ -128,25 +128,25 @@
   </rule>
 
   <!-- ================================================================ -->
-  <!-- CORRELATION RULES — HIGH-CONFIDENCE ACTIVE SCANNING              -->
+  <!-- CORRELATION RULES - HIGH-CONFIDENCE ACTIVE SCANNING              -->
   <!-- ================================================================ -->
 
   <!-- Nuclei detected + rapid 404s from same source -->
   <rule id="100762" level="14" timeframe="300">
     <if_matched_sid>100750</if_matched_sid>
     <if_sid>100753</if_sid>
-    <description>ALERT: Nuclei scanner + rapid HTTP enumeration from same source in 5 min — confirmed active web scan T1595.002</description>
+    <description>ALERT: Nuclei scanner + rapid HTTP enumeration from same source in 5 min - confirmed active web scan T1595.002</description>
     <mitre>
       <id>T1595.002</id>
     </mitre>
     <group>nuclei,web,enumeration,confirmed_scan,high_fidelity,</group>
   </rule>
 
-  <!-- Web scan + credential probe — active pre-exploitation chain -->
+  <!-- Web scan + credential probe - active pre-exploitation chain -->
   <rule id="100763" level="15" timeframe="300">
     <if_matched_sid>100756</if_matched_sid>
     <if_sid>100759</if_sid>
-    <description>CRITICAL: Web directory scan followed by credential/secret file probe in 5 min — active pre-exploitation T1595.002</description>
+    <description>CRITICAL: Web directory scan followed by credential/secret file probe in 5 min - active pre-exploitation T1595.002</description>
     <mitre>
       <id>T1595.002</id>
     </mitre>

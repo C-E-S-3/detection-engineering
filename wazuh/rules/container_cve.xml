@@ -1,10 +1,10 @@
-<!-- Container Image CVE Rules — Grype Integration                          -->
+<!-- Container Image CVE Rules - Grype Integration                          -->
 <!-- Rule IDs: 101400-101499                                                   -->
 <!-- Detects High and Critical CVEs in running container images scanned by     -->
 <!-- Grype via the container-cve-scanner Ansible role (ESKA-174).              -->
 <!--                                                                           -->
 <!-- MITRE ATT&amp;CK: T1190 (Exploit Public-Facing Application)                  -->
-<!-- Group: vulnerability-detector — integrates with host OS CVE alerts for   -->
+<!-- Group: vulnerability-detector - integrates with host OS CVE alerts for   -->
 <!-- a unified dashboard view alongside Wazuh's built-in vuln-detector rules. -->
 <!--                                                                           -->
 <!-- Architecture: see wazuh/decoders/grype_cve.xml for log format and        -->
@@ -22,7 +22,7 @@
 <group name="vulnerability-detector,grype,container,">
 
   <!-- ================================================================ -->
-  <!-- BASE RULE — anchors all Grype container CVE rules                -->
+  <!-- BASE RULE - anchors all Grype container CVE rules                -->
   <!-- Matches JSON events where integration field equals "grype".      -->
   <!-- All Grype finding events carry this field from the scanner role. -->
   <!-- ================================================================ -->
@@ -36,11 +36,11 @@
 
   <!-- ================================================================ -->
   <!-- CRITICAL severity CVEs                                           -->
-  <!-- CVSS 9.0-10.0 range — typically remote code execution or        -->
+  <!-- CVSS 9.0-10.0 range - typically remote code execution or        -->
   <!-- unauthenticated full compromise. Require prompt patching.        -->
   <!-- ================================================================ -->
 
-  <!-- Critical CVE — no fix available yet -->
+  <!-- Critical CVE - no fix available yet -->
   <rule id="101401" level="12">
     <if_sid>101400</if_sid>
     <field name="severity" type="pcre2">(?i)^critical$</field>
@@ -51,7 +51,7 @@
     <group>vulnerability,container_cve,critical,</group>
   </rule>
 
-  <!-- Critical CVE — fix available. Elevated level to prioritise patching. -->
+  <!-- Critical CVE - fix available. Elevated level to prioritise patching. -->
   <!-- fix_version matches a version string (starts with a digit).           -->
   <rule id="101402" level="13">
     <if_sid>101401</if_sid>
@@ -66,10 +66,10 @@
 
   <!-- ================================================================ -->
   <!-- HIGH severity CVEs                                               -->
-  <!-- CVSS 7.0-8.9 range — significant risk, requires investigation.  -->
+  <!-- CVSS 7.0-8.9 range - significant risk, requires investigation.  -->
   <!-- ================================================================ -->
 
-  <!-- High CVE — no fix available yet -->
+  <!-- High CVE - no fix available yet -->
   <rule id="101403" level="10">
     <if_sid>101400</if_sid>
     <field name="severity" type="pcre2">(?i)^high$</field>
@@ -80,7 +80,7 @@
     <group>vulnerability,container_cve,high,</group>
   </rule>
 
-  <!-- High CVE — fix available. Elevated level to prioritise patching. -->
+  <!-- High CVE - fix available. Elevated level to prioritise patching. -->
   <rule id="101404" level="11">
     <if_sid>101403</if_sid>
     <field name="fix_version" type="pcre2">^\d[\w.+~:-]*$</field>
@@ -93,10 +93,10 @@
 
 
   <!-- ================================================================ -->
-  <!-- WITHIN-SESSION DEDUP — safety net suppressor rules               -->
+  <!-- WITHIN-SESSION DEDUP - safety net suppressor rules               -->
   <!-- Primary dedup is the state file in container-cve-scanner role.  -->
   <!-- These rules suppress if the same CVE+image fires twice within   -->
-  <!-- 1 hour — catches edge cases like log file re-reads or duplicate  -->
+  <!-- 1 hour - catches edge cases like log file re-reads or duplicate  -->
   <!-- entries from parallel scan jobs on the same host.               -->
   <!--                                                                  -->
   <!-- level=0 + options>no_log suppresses the composite event itself. -->
