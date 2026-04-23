@@ -69,3 +69,94 @@
        tfd_after=if(like(NewUacValue,"%0x80000%"),"true","false")
 | where tfd_before="false" AND tfd_after="true"
 ```
+
+
+# Core Detection
+
+```
+`wineventlog_security` EventCode=4662 
+    ObjectType="*computer*" 
+    AccessMask="0x20"
+    Properties="*3f78c3e5-f79a-46bd-a0b8-9d18116ddc79*"
+| eval 
+    property_guid="3f78c3e5-f79a-46bd-a0b8-9d18116ddc79",
+    property_name="msDS-AllowedToActOnBehalfOfOtherIdentity",
+    attack_technique="T1558.003/T1550 - RBCD Configuration",
+    src_user=mvindex(split(SubjectUserName,"$"),0),
+    is_machine_account=if(match(SubjectUserName,"\$$"),"true","false")
+| lookup delegation_admin_allowlist SubjectUserName OUTPUT allowed
+| search allowed!="true"
+| lookup asset_category dest AS ObjectName OUTPUT asset_tier, asset_criticality
+| eval risk_score=case(
+    asset_tier="tier0", 90,
+    asset_tier="tier1", 70,
+    is_machine_account="true", 60,
+    1=1, 50)
+| table _time, SubjectUserName, SubjectDomainName, ObjectName, ObjectDN, 
+        property_name, AccessMask, risk_score, asset_tier, attack_technique, 
+        Computer, SubjectLogonId
+| sort - risk_score, - _time
+```
+
+
+# Correlated
+
+```
+`wineventlog_security` (EventCode=4662 OR EventCode=4769)
+| eval 
+    event_type=case(
+        EventCode=4662 AND AccessMask="0x20" AND match(Properties,"3f78c3e5-f79a-46bd-a0b8-9d18116ddc79"), "rbcd_write",
+        EventCode=4769, "kerberos_tgs"
+    )
+| where isnotnull(event_type)
+| eval 
+    actor=case(
+        event_type="rbcd_write", SubjectUserName,
+        event_type="kerberos_tgs", TargetUserName
+    ),
+    actor_domain=case(
+        event_type="rbcd_write", SubjectDomainName,
+        event_type="kerberos_tgs", TargetDomainName
+    ),
+    rbcd_target=if(event_type="rbcd_write", ObjectName, null()),
+    tgs_service=if(event_type="kerberos_tgs", ServiceName, null()),
+    tgs_ticket_options=if(event_type="kerberos_tgs", TicketOptions, null()),
+    tgs_ticket_encryption=if(event_type="kerberos_tgs", TicketEncryptionType, null())
+| eval actor=lower(replace(actor,"\$$",""))
+| eval rbcd_target=lower(replace(rbcd_target,"\$$","")),
+       tgs_service=lower(replace(tgs_service,"\$$",""))
+| stats 
+    earliest(eval(if(event_type="rbcd_write",_time,null()))) as rbcd_write_time,
+    latest(eval(if(event_type="rbcd_write",_time,null()))) as rbcd_write_latest,
+    values(rbcd_target) as rbcd_targets,
+    earliest(eval(if(event_type="kerberos_tgs",_time,null()))) as tgs_first_time,
+    latest(eval(if(event_type="kerberos_tgs",_time,null()))) as tgs_last_time,
+    values(tgs_service) as tgs_services_requested,
+    values(tgs_ticket_options) as tgs_options,
+    values(tgs_ticket_encryption) as tgs_enc_types,
+    dc_values(eval(if(event_type="kerberos_tgs",tgs_service,null()))) as distinct_tgs_services,
+    count(eval(event_type="rbcd_write")) as rbcd_write_count,
+    count(eval(event_type="kerberos_tgs")) as tgs_count
+    by actor, actor_domain
+| where rbcd_write_count > 0 AND tgs_count > 0
+| eval time_delta_sec=tgs_first_time - rbcd_write_time
+| where time_delta_sec >= 0 AND time_delta_sec <= 600
+| eval 
+    tgs_targets_match_rbcd=if(mvcount(mvfilter(match(tgs_services_requested,mvjoin(rbcd_targets,"|"))))>0,"true","false"),
+    rbcd_write_time_readable=strftime(rbcd_write_time,"%Y-%m-%d %H:%M:%S"),
+    tgs_first_time_readable=strftime(tgs_first_time,"%Y-%m-%d %H:%M:%S"),
+    attack_chain="T1558.003 - RBCD: AllowedToAct write followed by TGS request within ".time_delta_sec."s",
+    risk_score=case(
+        tgs_targets_match_rbcd="true" AND time_delta_sec <= 60, 95,
+        tgs_targets_match_rbcd="true", 85,
+        time_delta_sec <= 60, 70,
+        1=1, 60
+    )
+| lookup delegation_admin_allowlist actor OUTPUT allowed
+| search allowed!="true"
+| table rbcd_write_time_readable, tgs_first_time_readable, time_delta_sec,
+        actor, actor_domain, rbcd_targets, tgs_services_requested, 
+        tgs_targets_match_rbcd, rbcd_write_count, tgs_count, 
+        tgs_enc_types, risk_score, attack_chain
+| sort - risk_score, rbcd_write_time_readable
+```
