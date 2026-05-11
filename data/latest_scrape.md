@@ -1,42 +1,44 @@
 ---
-timestamp: 2024-12-19T10:30:00Z
-source: news.ycombinator.com
+timestamp: 2024-12-19T16:47:32Z
+source: https://news.ycombinator.com
 ---
 
-# Analysis Results
+# TTP Description
 
-## Brief Description of TTPs
+The HTML content provided is from Hacker News, a technology news aggregation website. However, one article stands out as security-relevant:
 
-This HTML content is from Hacker News, a technology news aggregator website. No cybersecurity-related Tactics, Techniques, and Procedures (TTPs) are present in this content. The page contains standard web forum functionality including news article listings, voting mechanisms, and user interactions.
+**Obsidian Plugin Abuse Campaign**: A malicious campaign that abused an Obsidian plugin to deploy a remote access trojan (RAT) called "Phantom Pulse RAT."
 
-## IOCs (Indicators of Compromise)
+# IOCs (Indicators of Compromise)
 
-No malicious indicators of compromise were identified in this HTML content. All referenced domains and resources appear legitimate:
+## Malware Names
+- **Phantom Pulse RAT** - Remote Access Trojan deployed via compromised Obsidian plugin
 
-**Domains:**
-- news.ycombinator.com (main site)
-- theparisreview.org
-- github.com
-- blog.google
-- twitter.com
-- freebsd.org
-- debian.org
-- Various other legitimate news and blog domains
+## Domains
+- **netsecops.io** - Source reporting the security incident
+- **cyber.netsecops.io** - Full URL path for the security report
 
-**Files:**
-- news.css (legitimate stylesheet)
-- y18.svg (legitimate site icon)
-- hn.js (legitimate JavaScript file)
-- s.gif (legitimate spacer image)
+## File/Application Names
+- **Obsidian plugin** - The attack vector used to deliver the RAT
 
-## New or Unique TTPs
+# TTP Uniqueness Assessment
 
-No cybersecurity-related TTPs were observed in this content. This is standard HTML for a news aggregation website.
+The use of Obsidian plugins as an attack vector appears to be a relatively novel approach. Obsidian is a popular note-taking application that supports community plugins, and targeting its plugin ecosystem represents an interesting supply chain attack vector that may not have been widely observed before.
 
-## Threat Actor and Tooling Information
+# Threat Actor and Tooling Information
 
-No threat actors or malicious tooling identified. The content represents normal web application functionality for the Hacker News platform operated by Y Combinator.
+## Threat Actor
+- **Unknown/Unspecified** - The reporting article does not provide specific attribution to known threat actors
 
-## Additional Notes
+## Tools and Techniques
+- **Attack Vector**: Malicious Obsidian plugin
+- **Payload**: Phantom Pulse RAT
+- **Technique**: Supply chain compromise through plugin ecosystem
+- **Target Application**: Obsidian (note-taking software)
 
-The HTML shows a typical news aggregator interface with article submissions, user voting, comments, and standard web navigation. One security-related article is mentioned in the listings about a FreeBSD local privilege escalation vulnerability (FreeBSD-SA-26:13.exec.asc), but this appears to be legitimate security disclosure content rather than malicious activity.
+## Campaign Details
+- The campaign specifically targeted users of the Obsidian note-taking application
+- Used the plugin distribution mechanism as a delivery method
+- Successfully deployed remote access capabilities through the Phantom Pulse RAT
+
+*Note: The majority of the HTML content consists of standard Hacker News article listings and does not contain security-relevant TTPs or IOCs beyond the single security-focused article mentioned above.*
