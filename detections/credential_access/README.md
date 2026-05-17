@@ -27,6 +27,7 @@ Detections for techniques adversaries use to steal credentials, including Kerber
 | [DES Encryption Downgrade](kerberos_des_encryption_downgrade.md) | T1558 | Any Kerberos request using deprecated DES encryption |
 | [EvilTokens OAuth Device Code Phishing](eviltokens_oauth_device_code_phishing.md) | T1550.001 | OAuth 2.0 device authorization flow abuse for Microsoft account token theft; anomalous device code grants and token reuse |
 | [Gremlin Stealer Credential Theft](gremlin_stealer_credential_theft.md) | T1539, T1555.003, T1528, T1115 | C#-based MaaS infostealer harvesting Chromium/Gecko browser credentials, Telegram session files, Steam data, VPN configs, and crypto wallet addresses (clipboard clipping); exfiltrates via Telegram Bot API to `207.244.199[.]46` |
+| [UNC6671 AiTM MFA Device Registration Abuse](unc6671_aitm_mfa_device_registration_abuse.md) | T1111, T1556, T1557.002 | Detects attacker-controlled MFA device registration on Okta or Azure AD following vishing-facilitated AiTM credential capture; UNC6671/BlackFile post-access persistence |
 
 ---
 
@@ -43,6 +44,7 @@ Detections for techniques adversaries use to steal credentials, including Kerber
 | Any adversary using Certipy | Offensive Tool | ADCS exploitation (ESC1-ESC8), certificate-based TGT abuse | [Certipy](https://github.com/ly4k/Certipy) |
 | EvilTokens (PhaaS) / Storm-237 / ShinyHunters | Cybercrime (PhaaS) | OAuth 2.0 device code phishing to steal Microsoft access/refresh tokens without credentials | [BleepingComputer - EvilTokens](https://www.bleepingcomputer.com/news/security/new-eviltokens-service-fuels-microsoft-device-code-phishing-attacks/) |
 | Gremlin Stealer (MaaS — multiple buyers) | Cybercrime (MaaS Infostealer) | C# Windows infostealer sold via Telegram; harvests Chromium/Gecko credentials (Chrome Cookie V20 bypass), Telegram sessions, Steam tokens, VPN/FTP credentials, crypto wallet addresses; .NET resource-file XOR obfuscation; Telegram Bot API exfiltration | [Unit 42 — Gremlin Stealer Evolution (2026-05-15)](https://unit42.paloaltonetworks.com/gremlin-stealer-evolution/) |
+| UNC6671 / BlackFile | Cybercrime (Vishing + AiTM Extortion) | Vishing calls impersonating IT helpdesk + real-time AiTM credential/MFA capture → immediate new MFA device registration → bulk M365 cloud data exfiltration → extortion; no malware, pure social engineering + scripting | [Google TI — BlackFile Vishing Operation (2026-05-15)](https://cloud.google.com/blog/topics/threat-intelligence/blackfile-vishing-extortion-operation) |
 
 ---
 

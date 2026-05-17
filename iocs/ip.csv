@@ -10,3 +10,4 @@ indicator,source,date_added,context
 82.163.22.139,https://cloud.google.com/blog/topics/threat-intelligence/threat-actors-exploit-react2shell-cve-2025-55182,2026-03-27,SNOWLIGHT C2 server — UNC5454 React2Shell campaign (CVE-2025-55182)
 216.158.232.43,https://cloud.google.com/blog/topics/threat-intelligence/threat-actors-exploit-react2shell-cve-2025-55182,2026-03-27,Payload staging server for sex.sh XMRIG downloader — React2Shell campaign
 45.76.155.14,https://cloud.google.com/blog/topics/threat-intelligence/threat-actors-exploit-react2shell-cve-2025-55182,2026-03-27,COMPOOD backdoor C2 and payload staging — UNC6588 React2Shell campaign
+179.43.185.226,https://cloud.google.com/blog/topics/threat-intelligence/blackfile-vishing-extortion-operation,2026-05-17,UNC6671/BlackFile — exfiltration source IP observed in M365 UAL SharePoint audit logs with python-requests/2.28.1 user agent; commercial VPN exit node
