@@ -11,3 +11,19 @@ indicator,source,date_added,context
 216.158.232.43,https://cloud.google.com/blog/topics/threat-intelligence/threat-actors-exploit-react2shell-cve-2025-55182,2026-03-27,Payload staging server for sex.sh XMRIG downloader — React2Shell campaign
 45.76.155.14,https://cloud.google.com/blog/topics/threat-intelligence/threat-actors-exploit-react2shell-cve-2025-55182,2026-03-27,COMPOOD backdoor C2 and payload staging — UNC6588 React2Shell campaign
 179.43.185.226,https://cloud.google.com/blog/topics/threat-intelligence/blackfile-vishing-extortion-operation,2026-05-17,UNC6671/BlackFile — exfiltration source IP observed in M365 UAL SharePoint audit logs with python-requests/2.28.1 user agent; commercial VPN exit node
+47.90.180.205,https://www.esentire.com/blog/tycoon-2fa-operators-adopt-oauth-device-code-phishing,2026-05-19,Tycoon2FA post-takedown device-code variant — Alibaba Cloud AS45102; operator-side IP observed during token acquisition phase (late April/May 2026)
+47.252.11.99,https://www.esentire.com/blog/tycoon-2fa-operators-adopt-oauth-device-code-phishing,2026-05-19,Tycoon2FA post-takedown device-code variant — Alibaba Cloud AS45102; operator-side IP observed during sustained refresh-token reuse phase
+193.228.131.161,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
+166.1.241.247,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
+138.249.139.6,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
+166.1.255.233,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
+142.252.86.104,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
+130.49.117.205,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
+170.168.215.64,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
+50.118.198.26,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
+172.120.234.223,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
+45.39.175.12,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
+142.252.171.135,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
+166.88.219.45,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
+172.120.57.92,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
+172.121.59.99,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file

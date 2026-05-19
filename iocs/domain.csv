@@ -20,3 +20,44 @@ load.yju.o-r[.]kr,https://securelist.com/kimsuky-appleseed-pebbledash-campaigns/
 attach.docucloud.o-r[.]kr,https://securelist.com/kimsuky-appleseed-pebbledash-campaigns/119785/,2026-05-18,Kimsuky — httpMalice C2 using compromised legitimate South Korean website
 load.supershop.o-r[.]kr,https://securelist.com/kimsuky-appleseed-pebbledash-campaigns/119785/,2026-05-18,Kimsuky — httpMalice C2 using compromised legitimate South Korean website
 load.erasecloud.n-e[.]kr,https://securelist.com/kimsuky-appleseed-pebbledash-campaigns/119785/,2026-05-18,Kimsuky — httpMalice C2 using compromised legitimate South Korean website
+fijothi[.]com,https://www.esentire.com/blog/tycoon-2fa-operators-adopt-oauth-device-code-phishing,2026-05-19,Tycoon2FA post-takedown device-code variant — PhaaS backend C2/delivery endpoint (Alibaba Cloud AS45102 operator infrastructure)
+shivacrio[.]com,https://www.esentire.com/blog/tycoon-2fa-operators-adopt-oauth-device-code-phishing,2026-05-19,Tycoon2FA post-takedown device-code variant — PhaaS delivery endpoint (observed path: /bytecore~tx1j8)
+cookies.28gholland.workers[.]dev,https://www.esentire.com/blog/tycoon-2fa-operators-adopt-oauth-device-code-phishing,2026-05-19,Tycoon2FA post-takedown device-code variant — Cloudflare Workers redirector in four-layer in-browser delivery chain
+gremlin.craifishi[.]business,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend Check Domain — March 2026 eSentire IOC file
+artist.yedrene[.]best,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+international.fesxtmc[.]com,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+stostiyai.sistaidru[.]com,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+spark.shoupeatai[.]com,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+asw.cretrousteafi[.]icu,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+cloud.shailoyio[.]com,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+capital.yljdimage[.]com,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+powershell.traibiru[.]world,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+support.traibiru[.]world,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+www.alnaharegypt[.]com,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS — compromised legitimate site used as redirect relay — March 2026 eSentire IOC file
+pop3.kouvadre[.]ink,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+dao.civushea[.]sbs,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+donation.cewiobu[.]center,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+ionic.tehipio[.]ink,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+bay.rifoupoumeshoo[.]club,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+varnish.widoupoo[.]network,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+coat.jadubo[.]courses,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+college.petristifrouja[.]bar,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+chain.toushatou[.]beauty,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+cedar.cethaicro.co[.]za,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+dubai.vaikaza.sa[.]com,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+mosquito.dralilai[.]beauty,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+toad.yioso[.]beer,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+screen.thougai[.]beer,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+cruise.reafraiyousteaga[.]qpon,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+w0re.stadrourea[.]ru,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+colombia.shoomoweajai[.]cyou,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+leopard.teashaboulouve[.]qpon,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+chair.shustoufraithookea[.]qpon,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+melon.teashaboulouve[.]qpon,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+shirt.roowothonio[.]cyou,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+storm.thobewoofricrou[.]qpon,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+as65cj.crimiwa.sa[.]com,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+tajikistan.noyaidetipio[.]qpon,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+oil.tracroo.it[.]com,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+chart.nigafo[.]download,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+e.goowevea[.]digital,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
