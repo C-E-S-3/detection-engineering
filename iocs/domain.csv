@@ -61,3 +61,5 @@ tajikistan.noyaidetipio[.]qpon,https://github.com/eSentire/iocs/tree/main/Tycoon
 oil.tracroo.it[.]com,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
 chart.nigafo[.]download,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
 e.goowevea[.]digital,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown backend — March 2026 eSentire IOC file
+filev2.getsession.org,https://www.wiz.io/blog/durabletask-teampcp-supply-chain-attack,2026-05-20,TeamPCP Wave 3 — Session Protocol open-group file upload API abused for credential exfiltration; specific endpoint used in durabletask PyPI compromise and AntV/echarts npm wave
+api.masscan.cloud,https://www.wiz.io/blog/durabletask-teampcp-supply-chain-attack,2026-05-20,TeamPCP Wave 3 — attacker-controlled server; malicious GitHub Actions workflows serialize stolen repository secrets as JSON and POST to this endpoint

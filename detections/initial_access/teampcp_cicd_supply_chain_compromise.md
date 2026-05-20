@@ -72,6 +72,20 @@ Secondary techniques: T1552.001 (Unsecured Credentials — cloud tokens/SSH keys
 | table firstTime lastTime src_ip dest_ip dest_port uri_path risk_score
 ```
 
+**Supplemental: Wave 3 (May 2026) — durabletask dropper and GitHub Actions C2 exfiltration**
+
+```spl
+| tstats `security_content_summariesonly` count min(_time) as firstTime max(_time) as lastTime
+  from datamodel=Network_Traffic.All_Traffic
+  where All_Traffic.dest_domain IN ("filev2.getsession.org","api.masscan.cloud")
+  by All_Traffic.src_ip All_Traffic.dest_ip All_Traffic.dest_domain All_Traffic.dest_port
+| `drop_dm_object_name(All_Traffic)`
+| eval risk_score=95
+| `security_content_ctime(firstTime)`
+| `security_content_ctime(lastTime)`
+| table firstTime lastTime src_ip dest_ip dest_domain dest_port risk_score
+```
+
 **Supplemental: Suspicious process in GitHub Actions runner temp directories**
 
 ```spl
@@ -100,6 +114,7 @@ Secondary techniques: T1552.001 (Unsecured Credentials — cloud tokens/SSH keys
 |-----------|-------|-----------|
 | Traffic to `scan.aquasecurtiy.org` or ICP blockchain C2 | 95 | Confirmed exfil endpoints from TeamPCP Trivy Action campaign |
 | Traffic to `fs-loader.com` | 90 | TeamPCP C2 hosting malicious WAV payloads (Telnyx/Axios campaigns) |
+| Traffic to `filev2.getsession.org` or `api.masscan.cloud` | 95 | Wave 3 exfil endpoints from durabletask PyPI compromise (May 2026) |
 | Python reading `.kube/config` or service account tokens | 90 | K8s token theft; legitimate CI tools don't read kubeconfig from Python install hooks |
 | Python reading `.ssh/` or `.aws/` credentials | 80-85 | Credential harvesting pattern from install-time malicious code |
 | Temp shell scripts from GitHub Actions runner paths | 75 | Malicious workflow injection; correlate with unusual network destinations |
@@ -117,3 +132,5 @@ Secondary techniques: T1552.001 (Unsecured Credentials — cloud tokens/SSH keys
 - [BleepingComputer - Backdoored Telnyx PyPI Package Pushes Malware](https://www.bleepingcomputer.com/news/security/backdoored-telnyx-pypi-package-pushes-malware-hidden-in-wav-audio/)
 - [BleepingComputer - Hackers Compromise Axios npm Package](https://www.bleepingcomputer.com/news/security/hackers-compromise-axios-npm-package-to-drop-cross-platform-malware/)
 - [MITRE ATT&CK - T1195.002 Supply Chain Compromise](https://attack.mitre.org/techniques/T1195/002/)
+- [Wiz — durabletask TeamPCP Supply Chain Attack (Wave 3)](https://www.wiz.io/blog/durabletask-teampcp-supply-chain-attack)
+- [BleepingComputer — GitHub investigates internal repo breach by TeamPCP](https://www.bleepingcomputer.com/news/security/github-investigates-internal-repositories-breach-claimed-by-teampcp/)

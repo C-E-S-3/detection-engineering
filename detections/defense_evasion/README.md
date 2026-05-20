@@ -21,6 +21,7 @@ Detections for techniques adversaries use to avoid detection, including abuse of
 | [BYOVD Security Tool Process Termination](byovd_security_tool_termination.md) | T1562.001 | Rapid termination of multiple security tool processes indicating BYOVD-enabled EDR killing |
 | [Godloader Windows Defender Exclusion Manipulation](godloader_defender_exclusion_manipulation.md) | T1562.001 | PowerShell Add-MpPreference commands adding broad Defender exclusion paths |
 | [Qilin EDR Killer Defense Evasion](qilin_edr_killer_defense_evasion.md) | T1562.001 | EDR killer tool execution targeting 300+ security drivers; geo-fencing locale checks |
+| [MiniPlasma Windows Cloud Filter LPE](miniplasma_windows_cloud_filter_lpe.md) | T1068 | Unpatched Windows LPE via Cloud Filter driver (cldflt.sys); SYSTEM shell from standard user; public PoC released May 2026 |
 
 ---
 
@@ -38,3 +39,4 @@ Detections for techniques adversaries use to avoid detection, including abuse of
 | AvosLocker Ransomware | Ransomware Operator | BYOVD to disable antivirus solutions before ransomware deployment | [Trend Micro - AvosLocker BYOVD](https://www.trendmicro.com/en_us/research/22/e/avoslocker-ransomware-variant-abuses-driver-file-to-disable-anti-virus-solutions.html) |
 | Medusa Ransomware | Ransomware Operator | BYOVD for EDR evasion and privilege escalation | [Elastic - Medusa BYOVD](https://www.elastic.co/security-labs/medusa-ransomware-escalation) |
 | Qilin Ransomware Group | Ransomware Operator (RaaS) | EDR killer malware targeting 300+ EDR drivers before ransomware deployment; geo-fencing to avoid post-Soviet regions | [Cisco Talos - Qilin in Japan 2025](https://blog.talosintelligence.com/an-overview-of-ransomware-threats-in-japan-in-2025-and-early-detection-insights-from-qilin-cases/) |
+| Nightmare Eclipse (security researcher) | PoC Author | Released public PoC for MiniPlasma — Windows Cloud Filter LPE zero-day enabling SYSTEM access on fully patched Windows 10/11; unpatched as of May 2026 | [BleepingComputer — MiniPlasma](https://www.bleepingcomputer.com/news/microsoft/new-windows-miniplasma-zero-day-exploit-gives-system-access-poc-released/) |
