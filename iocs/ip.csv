@@ -27,3 +27,4 @@ indicator,source,date_added,context
 166.88.219.45,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
 172.120.57.92,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
 172.121.59.99,https://github.com/eSentire/iocs/tree/main/Tycoon2FA,2026-05-19,Tycoon2FA PhaaS pre-takedown operator infrastructure — March 2026 eSentire IOC file
+194.11.246[.]101,https://www.cisa.gov/news-events/alerts/2026/05/21/cisa-adds-two-known-exploited-vulnerabilities-catalog,2026-05-23,MuddyWater (MOIS) C&C server IP; embedded in modified exploit script targeting Langflow CVE-2025-34291; previously attributed to MuddyWater by ESET; active in campaign starting January 2026
