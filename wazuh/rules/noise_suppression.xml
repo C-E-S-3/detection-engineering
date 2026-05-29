@@ -1,0 +1,55 @@
+<!-- Noise suppression: low-value, high-frequency stock rules tuned to level 0 so -->
+<!-- they generate no alert (kept out of dashboards and downstream analytics).      -->
+<!-- These are routine operational events with negligible detection value at their  -->
+<!-- default severity. if_sid child rules still evaluate on the original match, so   -->
+<!-- correlation chains that key off these SIDs (e.g. logon-based rules) are         -->
+<!-- unaffected. Rule IDs 100700-100799 reserved for local suppression overrides.    -->
+
+<group name="local,noise_suppression,">
+
+  <!-- Docker container error-level log messages: high volume, low signal. -->
+  <rule id="86003" level="0" overwrite="yes">
+    <if_sid>86000</if_sid>
+    <field name="docker.level">error</field>
+    <description>Docker: Error message [suppressed - low value]</description>
+  </rule>
+
+  <!-- Routine SELinux AVC permission checks. -->
+  <rule id="80730" level="0" overwrite="yes">
+    <if_sid>80700</if_sid>
+    <field name="audit.type">AVC</field>
+    <description>Auditd: SELinux permission check [suppressed - low value]</description>
+  </rule>
+
+  <!-- Routine Windows logon success (4624, etc.). -->
+  <rule id="60106" level="0" overwrite="yes">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^528$|^540$|^673$|^4624$|^4769$</field>
+    <description>Windows Logon Success [suppressed - low value]</description>
+  </rule>
+
+  <!-- Routine Windows logoff (4634/4647, etc.). -->
+  <rule id="60137" level="0" overwrite="yes">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^538$|^551$|^4634$|^4647$</field>
+    <description>Windows User Logoff [suppressed - low value]</description>
+  </rule>
+
+  <!-- `ps aux`-style process enumeration via auditd execve. Suppressed via an
+       if_sid child rather than overwrite: rule 92604 anchors on if_group, which
+       Wazuh does not permit overwriting (warning 7605). The child matches every
+       92604 hit and downgrades the resulting alert to level 0. -->
+  <rule id="100760" level="0">
+    <if_sid>92604</if_sid>
+    <description>Processes queried with ps command [suppressed - low value]</description>
+  </rule>
+
+  <!-- WinRM self traffic (localhost to localhost, port 5985). -->
+  <rule id="92110" level="0" overwrite="yes">
+    <if_sid>92101, 61605</if_sid>
+    <field name="win.eventdata.destinationPort" type="pcre2">^5985$</field>
+    <options>no_full_log</options>
+    <description>Detected WinRM activity [suppressed - low value]</description>
+  </rule>
+
+</group>

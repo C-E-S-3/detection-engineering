@@ -41,10 +41,14 @@
   </rule>
 
   <!-- Token Manipulation -->
+  <!-- The trailing-$ clause excludes Active Directory computer/machine accounts
+       (samAccountName ending in "$"). EventID 4672 fires on every privileged logon,
+       and machine accounts trigger it constantly, producing a high false-positive
+       rate at this severity. Genuine interactive and service accounts still alert. -->
   <rule id="100410" level="13">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4672$</field>
-    <field name="win.eventdata.subjectUserName" type="pcre2">(?i)^(?!SYSTEM$|LOCAL SERVICE$|NETWORK SERVICE$)</field>
+    <field name="win.eventdata.subjectUserName" type="pcre2">(?i)^(?!SYSTEM$|LOCAL SERVICE$|NETWORK SERVICE$|.*\$$)</field>
     <description>Privilege Escalation: Special privileges assigned to non-system account (T1134)</description>
     <mitre>
       <id>T1134</id>
