@@ -47,7 +47,10 @@ where DNS.query IN (
     "load.yju.o-r.kr",
     "attach.docucloud.o-r.kr",
     "load.supershop.o-r.kr",
-    "load.erasecloud.n-e.kr"
+    "load.erasecloud.n-e.kr",
+    "pyrotech.co.kr",
+    "newjo-imd.com",
+    "yespp.co.kr"
     )
 by DNS.src DNS.query DNS.answer
 | `drop_dm_object_name(DNS)`
