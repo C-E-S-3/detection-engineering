@@ -1,0 +1,128 @@
+<!-- GTFOBins Execution Detection (Linux) -->
+<!-- Rule IDs: 101500-101599                                              -->
+<!--                                                                      -->
+<!-- PURPOSE                                                              -->
+<!--   The auditd execve firehose is logged at level 0 (no alert, not     -->
+<!--   indexed) and is ~92% daemon noise (auid unset). These rules        -->
+<!--   promote GTFOBin-class executions to indexed levels so a downstream -->
+<!--   vector/anomaly layer can baseline normal GTFOBin usage and surface -->
+<!--   novel abuse, and they raise high-severity alerts on unambiguous    -->
+<!--   abuse shapes (root privilege transition, reverse-shell payloads,   -->
+<!--   in-tool shell escapes).                                            -->
+<!--                                                                      -->
+<!-- ANCHORING                                                            -->
+<!--   The anchor (101500) keys off the auditd decoder directly           -->
+<!--   (decoded_as auditd) rather than chaining if_sid to a custom        -->
+<!--   execve rule, so it is self-contained and does not depend on other  -->
+<!--   rule files being in sync on the manager.                           -->
+<!--                                                                      -->
+<!-- VOLUME CONTROL                                                       -->
+<!--   101500 is level 0 (not indexed); it groups events as "gtfobins"    -->
+<!--   for the child rules and for any manager-side integration. Indexing -->
+<!--   is gated by the child rules, which scope on auid (login session vs -->
+<!--   daemon) and argument content, so routine daemon execs never reach  -->
+<!--   the index.                                                         -->
+<!--                                                                      -->
+<!-- FIELDS (Wazuh auditd decoder)                                        -->
+<!--   audit.command   comm basename, e.g. "find" (max 15 chars)          -->
+<!--   audit.auid      login uid; 4294967295 = no login session           -->
+<!--                   (daemon/automation), a real uid = interactive      -->
+<!--   audit.euid      effective uid; 0 = running as root                 -->
+<!--   the rule body (match) also sees the raw audit record, which        -->
+<!--   carries the reconstructed argv (a0..aN) for token matching         -->
+
+<group name="linux,auditd,gtfobins,">
+
+  <!-- ================================================================ -->
+  <!-- ANCHOR - a GTFOBins-capable binary was executed (level 0)         -->
+  <!-- Self-contained: decoded_as auditd + key=exec + comm in the        -->
+  <!-- GTFOBins set. Not indexed; refined by the child rules below.      -->
+  <!-- ================================================================ -->
+  <rule id="101500" level="0">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.key">exec</field>
+    <field name="audit.command" type="pcre2">^(?:bash|sh|dash|ash|zsh|ksh|fish|csh|tcsh|busybox|vi|vim|vim\.basic|view|rvim|nvim|nano|pico|ed|ex|less|more|man|pager|most|emacs|joe|awk|gawk|mawk|nawk|sed|find|xargs|env|nice|nohup|timeout|watch|stdbuf|flock|ionice|taskset|setarch|chrt|make|cmake|perl|python|python2|python3|ruby|lua|luac|php|node|nodejs|tclsh|wish|gdb|expect|socat|nc|ncat|netcat|ssh|scp|sftp|rsync|curl|wget|telnet|tftp|tar|cpio|ar|zip|gzip|gunzip|bzip2|xz|zstd|tmux|screen|byobu|dpkg|apt|apt-get|pip|pip3|gem|npm|crontab|at|docker|podman|runc|ctr|nsenter|unshare|capsh|setcap|mysql|psql|sqlite3|mongo|redis-cli|openssl|base64|base32|xxd|strace|ltrace|git)$</field>
+    <description>Linux: GTFOBins-capable binary executed (execve)</description>
+    <group>execution,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- BASELINE FEED - GTFOBin executed inside an interactive login      -->
+  <!-- session (auid is set). Low volume by construction: daemon and     -->
+  <!-- automation execs run with auid unset and are excluded. Level 3 =  -->
+  <!-- indexed, informational. This is the "normal manifold" the vector  -->
+  <!-- layer learns per host/user/binary. T1059.004 (Unix Shell)         -->
+  <!-- ================================================================ -->
+  <rule id="101501" level="3">
+    <if_sid>101500</if_sid>
+    <field name="audit.auid" negate="yes">^4294967295$</field>
+    <description>Linux: GTFOBin executed in an interactive login session (baseline)</description>
+    <mitre>
+      <id>T1059.004</id>
+    </mitre>
+    <group>execution,gtfobins_baseline,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- ABUSE - GTFOBin run as root by a NON-root login user.             -->
+  <!-- euid=0 while auid is a real, non-root login uid is the canonical  -->
+  <!-- SUID/sudo GTFOBin privilege-escalation fingerprint. Root daemons  -->
+  <!-- (auid unset) and root logins (auid=0) are excluded for precision. -->
+  <!-- T1548 (Abuse Elevation Control Mechanism)                         -->
+  <!-- ================================================================ -->
+  <rule id="101502" level="10">
+    <if_sid>101500</if_sid>
+    <field name="audit.euid">^0$</field>
+    <field name="audit.auid" negate="yes">^0$</field>
+    <field name="audit.auid" negate="yes">^4294967295$</field>
+    <description>Linux: GTFOBin executed with privilege escalation to root by a login user (T1548)</description>
+    <mitre>
+      <id>T1548</id>
+      <id>T1059.004</id>
+    </mitre>
+    <group>execution,gtfobins_abuse,privilege_escalation,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- ABUSE - reverse-shell / interactive-shell payload in process      -->
+  <!-- arguments. Self-contained (decoded_as auditd + key=exec) so it    -->
+  <!-- fires regardless of binary - a reverse shell is a reverse shell   -->
+  <!-- whether spawned via bash, python, perl, or an obscure binary.     -->
+  <!-- match is literal-substring OR (no regex needed): the tokens are   -->
+  <!-- high-precision and rarely appear in benign command arguments.     -->
+  <!-- T1059.004 (Unix Shell)                                            -->
+  <!-- ================================================================ -->
+  <rule id="101503" level="12">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.key">exec</field>
+    <match>/dev/tcp/|/dev/udp/|pty.spawn|import pty|os.system|socket.socket|BEGIN{system|sh -i</match>
+    <description>Linux: Reverse-shell or interactive-shell payload in process arguments (T1059.004)</description>
+    <mitre>
+      <id>T1059.004</id>
+    </mitre>
+    <group>execution,gtfobins_abuse,reverse_shell,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- ABUSE - GTFOBin invoked with a shell path in its arguments        -->
+  <!-- (in-tool shell escape, e.g. find -exec /bin/sh, awk system,       -->
+  <!-- tar to-command, etc). Chains from the GTFOBin anchor (101500) so   -->
+  <!-- shell-path match is scoped to GTFOBins and stays high-precision.  -->
+  <!-- T1059.004 / T1548                                                 -->
+  <!-- ================================================================ -->
+  <rule id="101504" level="8">
+    <if_sid>101500</if_sid>
+    <match>/bin/sh|/bin/bash|/bin/dash|/bin/zsh|/bin/ash</match>
+    <description>Linux: GTFOBin invoked with a shell path in arguments (in-tool shell escape) (T1059.004)</description>
+    <mitre>
+      <id>T1059.004</id>
+      <id>T1548</id>
+    </mitre>
+    <group>execution,gtfobins_abuse,</group>
+  </rule>
+
+</group>
