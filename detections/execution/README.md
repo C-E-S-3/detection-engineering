@@ -22,6 +22,7 @@ Detections for techniques adversaries use to run malicious code on a local or re
 | [Lazarus Encoded Command Execution](lazarus_encoded_command_execution.md) | T1059.001, T1027 | Encoded PowerShell and script interpreter command execution |
 | [Lazarus EDR Detection](lazarus_edr_detection.md) | T1059, T1218 | Multi-technique detection via CrowdStrike EDR for Lazarus TTPs |
 | [ClickFix User Execution Lure](clickfix_user_execution_lure.md) | T1204.002, T1059.001, T1218.005 | PowerShell/mshta spawned from browser or Windows Run dialog; fake CAPTCHA and ClickFix-style clipboard execution lures (57.5% of intrusions per Blackpoint 2026) |
+| [CIFSwitch Linux Local Privilege Escalation via cifs.spnego Key Forgery](cifswitch_linux_cifs_spnego_privilege_escalation.md) | T1068, T1059.006 | 19-year-old Linux kernel LPE (CVE pending, May 2026); Python3 PoC forges cifs.spnego key requests to gain deterministic root access on AlmaLinux 9, Rocky Linux 9, CentOS Stream 9, Linux Mint, Kali Linux, and SLES 15 |
 
 ---
 
@@ -34,3 +35,4 @@ Detections for techniques adversaries use to run malicious code on a local or re
 | Lazarus Group (HIDDEN COBRA) | Nation-State APT (DPRK) | Living-off-the-land binaries, encoded PowerShell, certutil/bitsadmin abuse | [MITRE - Lazarus Group (G0032)](https://attack.mitre.org/groups/G0032/), [CISA - AppleJeus](https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-048a) |
 | Medusa Ransomware | Ransomware Operator | PowerShell-based WMI/SMB execution for lateral movement | [MITRE - Medusa](https://attack.mitre.org/software/S1131/), [CISA - StopRansomware: Medusa](https://www.cisa.gov/news-events/cybersecurity-advisories/aa25-071a) |
 | Scattered Spider / EvilCorp Affiliates / Qilin | Various Cybercrime | ClickFix and fake CAPTCHA lures trick users into pasting PowerShell in Windows Run dialog; present in 57.5% of 2026 intrusions | [Blackpoint Cyber - 2026 Annual Threat Report](https://blackpointcyber.com/resources/reports/2026-annual-threat-report/) |
+| Any local attacker (CIFSwitch) | Any motivated local attacker | Python3-based LPE exploit (732 bytes); deterministic root escalation on vulnerable Linux distributions including AlmaLinux 9.7, Rocky Linux 9, CentOS Stream 9, SLES 15; CVE pending; PoC public May 28, 2026 | [BleepingComputer (2026-05-30)](https://www.bleepingcomputer.com/news/security/new-cifswitch-linux-flaw-gives-root-on-multiple-distributions/), [heyitsas.im — CIFSwitch](https://heyitsas.im/posts/cifswitch/) |

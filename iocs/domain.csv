@@ -1,4 +1,5 @@
 indicator,source,date_added,context
+openew[.]app,https://www.bleepingcomputer.com/news/security/chatgpt-share-links-abused-to-host-fake-outage-pages-to-deliver-malware/,2026-06-01,LLMShare malvertising campaign — fake OpenAI ChatGPT download portal; delivers Windows credential-stealing loader and macOS Odyssey Stealer (AMOS fork) to users redirected from malicious Google Ads via ChatGPT share links
 https://fs-loader.com/script/,https://www.bleepingcomputer.com/news/security/backdoored-telnyx-pypi-package-pushes-malware-hidden-in-wav-audio/,2026-03-27,Remote C2 server hosting malicious WAV files
 sfrclak[.]com,https://cloud.google.com/blog/topics/threat-intelligence/north-korea-threat-actor-targets-axios-npm-package/,2026-04-01,C2 domain for WAVESHAPER.V2
 reactcdn.windowserrorapis[.]com,https://cloud.google.com/blog/topics/threat-intelligence/threat-actors-exploit-react2shell-cve-2025-55182,2026-03-27,SNOWLIGHT C2 and payload staging — UNC5454 React2Shell campaign (CVE-2025-55182)
