@@ -11,6 +11,7 @@ Detections for techniques adversaries use to disrupt availability or compromise 
 
 | [Ransomware Mass File Encryption](ransomware_mass_file_encryption.md) | T1486 | Statistical detection of rapid file modification volume (>200/min), ransom note creation, and VSS deletion |
 | [Ransomware Backup Infrastructure Targeting](ransomware_backup_infrastructure_targeting.md) | T1490, T1485 | Backup agent termination, wbadmin/bcdedit anti-recovery, Veeam/ESXi snapshot destruction |
+| [Disk Space Exhaustion](disk_space_exhaustion.md) | T1499, T1485, T1562.006 | Kernel ENOSPC, userspace disk-full errors, Docker overlay exhaustion, and >= 90% filesystem usage warnings |
 
 ---
 
