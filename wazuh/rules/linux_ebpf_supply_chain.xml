@@ -1,0 +1,159 @@
+<!-- Linux eBPF Rootkit and Supply Chain Attack Detection Rules               -->
+<!-- Rule IDs: 101600-101619                                                    -->
+<!-- MITRE ATT&amp;CK: T1014 (Rootkit), T1195.002 (Supply Chain Compromise),   -->
+<!--                   T1059.004/007 (Unix Shell / JavaScript Exec)             -->
+<!-- Threat: Atomic Arch AUR supply chain campaign (Sonatype-2026-003775,      -->
+<!--         JFrog IronWorm; June 2026) and related npm hook-based attacks      -->
+<!--                                                                            -->
+<!-- Prerequisites:                                                             -->
+<!--   FIM rules (101600-101602): Wazuh syscheck must monitor:                 -->
+<!--     - /sys/fs/bpf/ (for 101600 — eBPF map pinning detection)              -->
+<!--     - npm/node_modules parent paths (for 101601 — hook binary detection)  -->
+<!--   Auditd execve rules (101603-101605): auditd must log execve syscalls    -->
+<!--     (the proxmox-auditd-security / ubuntu-auditd-security roles do this)  -->
+<!--   BPF syscall rules (101610-101611): requires new auditd rule:            -->
+<!--     -a always,exit -F arch=b64 -S bpf -k ebpf_prog_load                  -->
+<!--     Add this to roles/proxmox-auditd-security and ubuntu-auditd-security   -->
+<!--     in inframan (separate PR required).                                    -->
+
+<group name="linux,supply_chain,defense_evasion,ebpf,">
+
+  <!-- ================================================================= -->
+  <!-- FIM: eBPF program or map pinned to BPF filesystem (T1014)         -->
+  <!-- New files appearing in /sys/fs/bpf/ indicate an eBPF program has  -->
+  <!-- been loaded and pinned — behavior consistent with eBPF rootkits    -->
+  <!-- like Atomic Arch that hide their stealer process and sockets.      -->
+  <!-- Legitimate eBPF tools (systemd-resolved, Cilium, etc.) can also   -->
+  <!-- pin objects; baseline your environment before raising severity.    -->
+  <!-- Requires syscheck monitoring /sys/fs/bpf/ in ossec.conf           -->
+  <!-- ================================================================= -->
+
+  <rule id="101600" level="12">
+    <if_sid>554</if_sid>
+    <match>/sys/fs/bpf/</match>
+    <description>Linux: New file pinned in BPF filesystem (/sys/fs/bpf/) -- possible eBPF rootkit or program loaded (T1014)</description>
+    <mitre>
+      <id>T1014</id>
+    </mitre>
+    <group>rootkit,ebpf,defense_evasion,linux,</group>
+  </rule>
+
+
+  <!-- ================================================================= -->
+  <!-- FIM: Malicious npm preinstall hook binary planted (T1195.002)     -->
+  <!-- The Atomic Arch attack drops an ELF at src/hooks/deps inside an   -->
+  <!-- npm module directory. This path pattern has no legitimate use.     -->
+  <!-- Requires syscheck monitoring npm global/local dirs in ossec.conf  -->
+  <!-- ================================================================= -->
+
+  <rule id="101601" level="15">
+    <if_sid>554</if_sid>
+    <match>src/hooks/deps</match>
+    <description>Linux: ELF binary created at npm preinstall hook path (src/hooks/deps) -- Atomic Arch credential stealer planted via AUR supply chain (T1195.002)</description>
+    <mitre>
+      <id>T1195.002</id>
+    </mitre>
+    <group>supply_chain,initial_access,linux,atomic_arch,</group>
+  </rule>
+
+
+  <!-- ================================================================= -->
+  <!-- FIM: Known Atomic Arch malicious SHA256 hash detected (T1195.002) -->
+  <!-- Wazuh FIM includes SHA256 in syscheck alerts; this rule fires if   -->
+  <!-- the known malicious hash for the Rust ELF deps binary appears.     -->
+  <!-- IOC source: Sonatype-2026-003775, OSV.dev MAL-2026-2528           -->
+  <!-- ================================================================= -->
+
+  <rule id="101602" level="15">
+    <if_sid>550,553,554,593</if_sid>
+    <match>6144d433f8a0316869877b5f834c801251bbb936e5f1577c5680878c7443c98b</match>
+    <description>Linux: File matching known Atomic Arch malicious SHA256 detected by FIM -- Rust ELF credential stealer / eBPF rootkit installer (T1195.002, Sonatype-2026-003775)</description>
+    <mitre>
+      <id>T1195.002</id>
+    </mitre>
+    <group>supply_chain,initial_access,linux,atomic_arch,ioc_match,</group>
+  </rule>
+
+
+  <!-- ================================================================= -->
+  <!-- Auditd execve: npm / bun / node invocation anchor               -->
+  <!-- Level 0 anchor matched by child rules 101604 and 101605.          -->
+  <!-- Fires on any npm, bun, or node execution captured by auditd.      -->
+  <!-- ================================================================= -->
+
+  <rule id="101603" level="0">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall">execve</field>
+    <field name="audit.exe" type="pcre2">(?:^|/)(?:npm|bun|node)$</field>
+    <description>Linux: npm/bun/node invoked (anchor for supply chain detection)</description>
+    <group>supply_chain,linux,</group>
+  </rule>
+
+
+  <!-- ================================================================= -->
+  <!-- Auditd execve: npm/bun install of known-malicious package (T1195.002) -->
+  <!-- The audit.cmd field contains the full command line reconstructed  -->
+  <!-- from the execve arguments. Package names are the core IOC here.   -->
+  <!-- ================================================================= -->
+
+  <rule id="101604" level="14">
+    <if_sid>101603</if_sid>
+    <field name="audit.cmd" type="pcre2">(?i)(?:atomic-lockfile|js-digest|lockfile-js)</field>
+    <description>Linux: npm/bun install of known-malicious Atomic Arch package by $(audit.auid) -- AUR supply chain attack in progress (T1195.002)</description>
+    <mitre>
+      <id>T1195.002</id>
+    </mitre>
+    <group>supply_chain,initial_access,linux,atomic_arch,</group>
+  </rule>
+
+
+  <!-- ================================================================= -->
+  <!-- Auditd execve: deps ELF binary executed from node_modules (T1059.004) -->
+  <!-- When the npm preinstall hook fires, it executes deps from its     -->
+  <!-- module's src/hooks/ path. This execution is the credential stealer -->
+  <!-- activating. This rule matches on the exe path itself.             -->
+  <!-- ================================================================= -->
+
+  <rule id="101605" level="15">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall">execve</field>
+    <field name="audit.exe" type="pcre2">node_modules/.+/src/hooks/deps$</field>
+    <description>Linux: ELF binary deps executed from npm module hook directory by uid=$(audit.auid) -- Atomic Arch credential stealer active (T1059.004)</description>
+    <mitre>
+      <id>T1059.004</id>
+    </mitre>
+    <group>supply_chain,execution,linux,atomic_arch,credential_theft,</group>
+  </rule>
+
+
+  <!-- ================================================================= -->
+  <!-- Auditd BPF syscall: eBPF program load detected (T1014)           -->
+  <!-- Requires auditd rule in inframan:                                  -->
+  <!--   -a always,exit -F arch=b64 -S bpf -k ebpf_prog_load           -->
+  <!-- The bpf(2) syscall with cmd=BPF_PROG_LOAD is invoked when an     -->
+  <!-- eBPF program is compiled and loaded into the kernel. This is the  -->
+  <!-- footprint of eBPF rootkit installation (T1014).                  -->
+  <!-- ================================================================= -->
+
+  <rule id="101610" level="11">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">ebpf_prog_load</field>
+    <description>Linux: BPF syscall intercepted (key=ebpf_prog_load) -- eBPF program being loaded; investigate calling process for rootkit activity (T1014)</description>
+    <mitre>
+      <id>T1014</id>
+    </mitre>
+    <group>rootkit,ebpf,defense_evasion,linux,</group>
+  </rule>
+
+  <!-- High-confidence: BPF load by npm, node, bun, or AUR build helper -->
+  <rule id="101611" level="15">
+    <if_sid>101610</if_sid>
+    <field name="audit.exe" type="pcre2">(?:^|/)(?:npm|node|bun|deps|makepkg|yay|paru|pikaur|trizen|aurutils|aura)$</field>
+    <description>Linux: eBPF program loaded by npm/bun/node or AUR build helper -- high-confidence eBPF rootkit installation from supply chain attack (T1014)</description>
+    <mitre>
+      <id>T1014</id>
+    </mitre>
+    <group>rootkit,ebpf,defense_evasion,supply_chain,linux,atomic_arch,</group>
+  </rule>
+
+</group>
