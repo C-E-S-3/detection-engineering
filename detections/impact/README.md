@@ -12,6 +12,7 @@ Detections for techniques adversaries use to disrupt availability or compromise 
 | [Ransomware Mass File Encryption](ransomware_mass_file_encryption.md) | T1486 | Statistical detection of rapid file modification volume (>200/min), ransom note creation, and VSS deletion |
 | [Ransomware Backup Infrastructure Targeting](ransomware_backup_infrastructure_targeting.md) | T1490, T1485 | Backup agent termination, wbadmin/bcdedit anti-recovery, Veeam/ESXi snapshot destruction |
 | [Unauthorized GPU Cryptominer Execution](gpu_cryptomining_unauthorized_miner_execution.md) | T1496 | Detection of gminer, lolMiner, SRBMiner-MULTI, and XMRig execution; covers May–June 2026 SEO-poisoning/ScreenConnect cryptojacking campaign and WeedHack MaaS; pool connection CLI argument detection; campaign IP IOCs |
+| [Disk Space Exhaustion](disk_space_exhaustion.md) | T1499, T1485 | ENOSPC kernel errors, Docker overlay filesystem exhaustion, and disk usage warnings ≥90% from monitoring scripts; covers adversarial disk-fill and operational capacity failures |
 
 ---
 
