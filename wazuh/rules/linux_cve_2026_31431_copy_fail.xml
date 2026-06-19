@@ -1,0 +1,141 @@
+<!-- ============================================================
+     Copy Fail Linux Kernel Privilege Escalation Detection Rules
+     CVE-2026-31431 (CVSS 7.8 HIGH, CISA KEV — added May 2026)
+     MITRE ATT&CK Techniques:
+       T1068  - Exploitation for Privilege Escalation
+       T1548.001 - Setuid and Setgid (secondary)
+     Rule IDs: 102800-102809
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-06-19
+     References:
+       - Microsoft Security Blog 2026-05-01 (CWE-362 race condition analysis)
+       - Unit42 PaloAlto Networks — technical deep dive
+       - Elastic detection-rules — potential_copy_fail_cve_2026_31431
+       - CloudLinux kernel advisory (CVE-2026-31431)
+
+     Vulnerability summary:
+       A logic flaw in the Linux kernel's algif_aead module (AF_ALG crypto API)
+       allows an unprivileged local user to perform a controlled 4-byte write into
+       the page cache of any readable file on the system, including setuid binaries.
+       By overwriting executable code in a setuid binary's page cache, an attacker
+       can execute arbitrary code as root. All kernels since 2017 (commit 72548b09)
+       are affected. The public PoC exploits a race condition requiring ~40 iterations.
+
+     Log source prerequisites:
+       Add the following auditd rules to ALL Linux hosts
+       (kernel-hardening or common-hardening Ansible role):
+         -a always,exit -F arch=b64 -S socket -F a0=38 -k copy_fail_af_alg
+         -a always,exit -F arch=b64 -S splice -F uid!=0 -k copy_fail_splice
+       AF_ALG = address family 38 (0x26 hex); splice = syscall 275 on x86_64.
+       These rules add negligible overhead; AF_ALG socket creation is extremely
+       rare outside cryptsetup and systemd-cryptsetup on production systems.
+
+     Known legitimate AF_ALG users (excluded in rule 102802):
+       cryptsetup, systemd-cryptsetup, strongSwan IKE daemon (charon).
+
+     Severity tiers:
+       10 - AF_ALG socket by non-root (suspicious; investigate)
+        8 - splice() by non-root (context-dependent; raise if co-occurring)
+       13 - AF_ALG by non-root non-crypto process (high confidence)
+       14 - Exploit loop: ≥15 AF_ALG events / 60s from same user
+       14 - Exploitation chain: AF_ALG burst then privilege escalation
+     ============================================================ -->
+
+<group name="privilege_escalation,linux,copy_fail,cve_2026_31431,">
+
+  <!-- ===========================================================
+       T1068 — Exploitation for Privilege Escalation
+       Rule IDs: 102800-102806 — Copy Fail (CVE-2026-31431)
+       =========================================================== -->
+
+  <!-- Base anchor: AF_ALG socket creation recorded by auditd.
+       Requires: -a always,exit -F arch=b64 -S socket -F a0=38 -k copy_fail_af_alg -->
+  <rule id="102800" level="0">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.key">copy_fail_af_alg</field>
+    <description>Copy Fail: AF_ALG kernel crypto socket creation (base anchor) (CVE-2026-31431)</description>
+  </rule>
+
+  <!-- AF_ALG socket created by any non-root, non-system user.
+       auid=4294967295 is the unset/system auid for kernel threads and
+       early-boot services that have no audit session — excluded to prevent
+       false positives on kernel module init paths. -->
+  <rule id="102801" level="10">
+    <if_sid>102800</if_sid>
+    <field name="audit.auid" negate="yes">^0$</field>
+    <field name="audit.auid" negate="yes">^4294967295$</field>
+    <description>Copy Fail: AF_ALG (kernel crypto API) socket created by unprivileged uid=$(audit.auid) (exe=$(audit.exe)) -- extremely rare for non-crypto binaries; investigate for CVE-2026-31431 (T1068)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>privilege_escalation,af_alg,copy_fail,linux,</group>
+  </rule>
+
+  <!-- AF_ALG by non-root where executable is NOT a known legitimate crypto binary.
+       cryptsetup and systemd-cryptsetup are the primary production users of AF_ALG.
+       strongSwan's charon IKE daemon also uses kernel crypto for IPsec key exchange. -->
+  <rule id="102802" level="13">
+    <if_sid>102801</if_sid>
+    <field name="audit.exe" negate="yes" type="pcre2">^(/usr/sbin/cryptsetup|/sbin/cryptsetup|/usr/lib/systemd/systemd-cryptsetup|/lib/systemd/systemd-cryptsetup|/usr/libexec/strongswan/charon|/usr/lib/ipsec/charon|/usr/sbin/ipsec|/usr/bin/openssl)$</field>
+    <description>Copy Fail: AF_ALG socket by non-privileged non-crypto binary $(audit.exe) (uid=$(audit.auid)) -- high-confidence CVE-2026-31431 exploitation indicator (T1068)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>privilege_escalation,af_alg,copy_fail,linux,</group>
+  </rule>
+
+  <!-- Base anchor: splice() syscall by non-root recorded by auditd.
+       Requires: -a always,exit -F arch=b64 -S splice -F uid!=0 -k copy_fail_splice
+       splice() pipes data between file descriptors without user-space buffering;
+       the exploit uses splice() to atomically copy file content into the AF_ALG
+       buffer, triggering the in-place AEAD race condition. -->
+  <rule id="102803" level="0">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.key">copy_fail_splice</field>
+    <description>Copy Fail: splice() syscall by non-root user (base anchor) (CVE-2026-31431)</description>
+  </rule>
+
+  <!-- splice() by non-root, non-system user.
+       splice() by itself is used by some legitimate processes (sendfile-style
+       I/O), so alert level is kept low. Raise priority if co-occurring with
+       AF_ALG events from the same uid on the same host within a short window. -->
+  <rule id="102804" level="8">
+    <if_sid>102803</if_sid>
+    <field name="audit.auid" negate="yes">^0$</field>
+    <field name="audit.auid" negate="yes">^4294967295$</field>
+    <description>Copy Fail: splice() by unprivileged uid=$(audit.auid) (exe=$(audit.exe)) -- correlate with AF_ALG events from same user for CVE-2026-31431 exploitation context (T1068)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>privilege_escalation,splice,copy_fail,linux,</group>
+  </rule>
+
+  <!-- EXPLOIT LOOP DETECTION: ≥15 AF_ALG socket events from same non-root user in 60s.
+       The Copy Fail exploit races ~40 iterations to win the AEAD in-place overwrite.
+       Frequency 15 / timeframe 60 catches the burst well below the 40-iteration
+       maximum, tolerating any brief legitimate crypto usage. -->
+  <rule id="102805" level="14" frequency="15" timeframe="60">
+    <if_matched_sid>102801</if_matched_sid>
+    <same_field>audit.auid</same_field>
+    <description>Copy Fail: High-frequency AF_ALG burst (≥15 socket events / 60s) by uid=$(audit.auid) -- race-condition loop matches CVE-2026-31431 exploit pattern; immediate investigation required (T1068)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>privilege_escalation,af_alg,copy_fail,linux,exploitation,</group>
+  </rule>
+
+  <!-- EXPLOITATION CHAIN: AF_ALG abuse followed by privilege escalation within 2 minutes.
+       Correlates AF_ALG socket events with a subsequent sudo/su execution on the same host.
+       The 120-second window covers the expected exploit completion time including
+       privilege escalation payload delivery and interactive shell spawn. -->
+  <rule id="102806" level="14" timeframe="120">
+    <if_matched_sid>102801</if_matched_sid>
+    <if_sid>100610</if_sid>
+    <description>Copy Fail: AF_ALG kernel crypto abuse followed by privilege escalation within 2 minutes -- high-confidence CVE-2026-31431 exploitation chain; initiate incident response (T1068)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>privilege_escalation,af_alg,copy_fail,linux,exploitation_chain,</group>
+  </rule>
+
+</group>
