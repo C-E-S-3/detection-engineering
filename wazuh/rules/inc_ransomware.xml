@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- INC Ransomware Detection Rules
+     INC Ransom (GOLD IONIC / G1032) — active RaaS since July 2023, 830+ victims.
+     Major surge in 2026 following LockBit disruption and BlackCat shutdown.
+     Targets Linux and Windows; homelab rules focus on Linux/Docker environment.
+     MITRE ATT&CK: T1486, T1490, T1059, T1078, T1003, T1566, T1021, T1074
+-->
+<group name="inc_ransomware,ransomware,">
+
+  <!-- ===== INC Ransomware File Encryption Indicators (T1486) ===== -->
+
+  <rule id="103300" level="12">
+    <if_group>syscheck</if_group>
+    <regex>\.INC$|\.inc$</regex>
+    <description>INC Ransomware: file with .INC extension created — active encryption indicator (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,file_creation,</group>
+  </rule>
+
+  <rule id="103301" level="14" frequency="10" timeframe="60">
+    <if_matched_sid>103300</if_matched_sid>
+    <description>INC Ransomware: mass .INC file creation (10+ in 60s) — active ransomware encryption in progress (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,file_creation,</group>
+  </rule>
+
+  <rule id="103302" level="14">
+    <if_group>syscheck</if_group>
+    <regex>INC-README\.txt|INC-README\.html|INC-README\.hta</regex>
+    <description>INC Ransomware: ransom note (INC-README.*) created on filesystem (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,file_creation,</group>
+  </rule>
+
+  <!-- ===== INC Process Execution Patterns (T1059) ===== -->
+
+  <rule id="103310" level="12">
+    <if_group>audit_command</if_group>
+    <regex>--file .* --dir|--ens |--lhd |--sup |--debug.*--file</regex>
+    <description>INC Ransomware: process launched with INC-specific encryption flags (--file, --dir, --ens, --lhd, --sup) (T1059)</description>
+    <mitre>
+      <id>T1059</id>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,process_activity,</group>
+  </rule>
+
+  <rule id="103311" level="10">
+    <if_group>audit_command</if_group>
+    <regex>INC_Update|INC-update|INCUpdate</regex>
+    <description>INC Ransomware: scheduled task/persistence mechanism detected (INC_Update) (T1053.005)</description>
+    <mitre>
+      <id>T1053.005</id>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,persistence,</group>
+  </rule>
+
+  <!-- ===== Shadow Copy / Backup Deletion (T1490) ===== -->
+
+  <rule id="103320" level="13">
+    <if_group>audit_command</if_group>
+    <regex>vssadmin.*delete|wmic.*shadowcopy.*delete|bcdedit.*recoveryenabled.*no|wbadmin.*delete</regex>
+    <description>INC Ransomware: shadow copy/backup deletion — pre-encryption anti-recovery step (T1490)</description>
+    <mitre>
+      <id>T1490</id>
+    </mitre>
+    <group>ransomware,backup_deletion,</group>
+  </rule>
+
+  <rule id="103321" level="12">
+    <if_group>audit_command</if_group>
+    <regex>rm -rf.*/backup|rm -rf.*/shadow|find.*/backup.*-delete|find.*/snapshot.*-delete</regex>
+    <description>INC Ransomware (Linux): bulk backup/snapshot deletion command (T1490)</description>
+    <mitre>
+      <id>T1490</id>
+    </mitre>
+    <group>ransomware,backup_deletion,</group>
+  </rule>
+
+  <!-- ===== INC Lateral Movement via PsExec / SSH (T1021) ===== -->
+
+  <rule id="103330" level="10">
+    <if_group>audit_command</if_group>
+    <regex>psexec.*--file|PsExec.*--file|wmic.*process call create.*--file</regex>
+    <description>INC Ransomware: lateral movement via PsExec with ransomware payload flag (T1021)</description>
+    <mitre>
+      <id>T1021</id>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,lateral_movement,</group>
+  </rule>
+
+  <rule id="103331" level="10">
+    <if_group>sshd</if_group>
+    <regex>Accepted password|Accepted publickey</regex>
+    <same_source_ip />
+    <description>INC Ransomware: rapid SSH logins from same IP to multiple hosts — worm-like lateral movement pattern (T1021.004)</description>
+    <mitre>
+      <id>T1021.004</id>
+    </mitre>
+    <group>ransomware,lateral_movement,authentication_success,</group>
+  </rule>
+
+  <!-- ===== INC Data Staging / Exfiltration (T1074) ===== -->
+
+  <rule id="103340" level="10">
+    <if_group>audit_command</if_group>
+    <regex>7z\.exe.*-p|rar\.exe.*-p|WinRAR.*-p|7z.* a .*\.7z|tar.*czf.*tmp</regex>
+    <description>INC Ransomware: archive creation with password — data staging for double-extortion exfiltration (T1074)</description>
+    <mitre>
+      <id>T1074</id>
+    </mitre>
+    <group>ransomware,data_staging,</group>
+  </rule>
+
+  <!-- ===== INC Network C2 / Onion Indicators (T1090.003) ===== -->
+
+  <rule id="103350" level="14">
+    <if_group>firewall</if_group>
+    <regex>inc-decrypt\.onion|incransom\.onion</regex>
+    <description>INC Ransomware: network connection to INC ransom C2/payment domain (T1090.003)</description>
+    <mitre>
+      <id>T1090.003</id>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,c2,tor,</group>
+  </rule>
+
+  <!-- ===== INC Credential Dumping Phase (T1003) ===== -->
+
+  <rule id="103360" level="12">
+    <if_group>audit_command</if_group>
+    <regex>mimikatz|lsass.*dump|procdump.*lsass|comsvcs.*MiniDump|ntdsutil.*snapshot</regex>
+    <description>INC Ransomware: credential dumping tool execution — pre-lateral movement credential harvesting (T1003)</description>
+    <mitre>
+      <id>T1003</id>
+    </mitre>
+    <group>ransomware,credential_access,</group>
+  </rule>
+
+  <!-- ===== INC FortiGate Initial Access Indicator (T1190) ===== -->
+
+  <rule id="103370" level="12">
+    <if_group>firewall</if_group>
+    <regex>CVE-2024-55591|CVE-2024-23113|FortiGate.*authentication.*bypass</regex>
+    <description>INC Ransomware: FortiGate vulnerability exploitation — known INC initial access vector (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>ransomware,initial_access,</group>
+  </rule>
+
+  <!-- ===== Correlation: INC Multi-Stage Attack ===== -->
+
+  <rule id="103380" level="15" frequency="3" timeframe="600">
+    <if_matched_group>ransomware</if_matched_group>
+    <description>CRITICAL: Multiple INC ransomware indicators in 10 min — active INC Ransom attack in progress (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,critical_threat,</group>
+  </rule>
+
+</group>
