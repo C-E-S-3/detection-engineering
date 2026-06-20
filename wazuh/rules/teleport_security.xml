@@ -265,4 +265,35 @@
     <group>service_crash_loop,teleport,critical,</group>
   </rule>
 
+
+  <!-- ============================================================
+       T1562: IMPAIR DEFENSES — TELEPORT CONFIG MODIFICATION
+       FIM watches /etc/teleport.yaml for changes that could disable
+       audit logging or weaken authentication requirements.
+       Requires wazuh-agent FIM stanza in ossec.conf (inframan PR #117).
+       ============================================================ -->
+
+  <!-- /etc/teleport.yaml modified -->
+  <rule id="103130" level="12">
+    <if_sid>550,554</if_sid>
+    <field name="file" type="pcre2">^/etc/teleport\.yaml$</field>
+    <description>Teleport: Configuration file /etc/teleport.yaml modified — verify audit_events_uri not disabled (T1562)</description>
+    <mitre>
+      <id>T1562</id>
+      <id>T1562.006</id>
+    </mitre>
+    <group>config_change,teleport,impair_defenses,</group>
+  </rule>
+
+  <!-- /etc/teleport.yaml deleted — could be service reconfiguration or tampering -->
+  <rule id="103131" level="13">
+    <if_sid>553</if_sid>
+    <field name="file" type="pcre2">^/etc/teleport\.yaml$</field>
+    <description>Teleport: Configuration file /etc/teleport.yaml deleted — possible Teleport teardown or tampering (T1562)</description>
+    <mitre>
+      <id>T1562</id>
+    </mitre>
+    <group>config_delete,teleport,impair_defenses,high,</group>
+  </rule>
+
 </group>
