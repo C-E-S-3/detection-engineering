@@ -1,0 +1,168 @@
+<!-- Threat Intelligence IOC Network Detection Rules -->
+<!-- Rule IDs: 103000-103049                                              -->
+<!-- Covers C2/delivery infrastructure from threat-intel 2026-06-17 to   -->
+<!-- 2026-06-19: Mastra npm supply chain RAT, JetBrains malicious plugin  -->
+<!-- campaign, FishMonger/Earth Lusca SprySOCKS APT backdoor             -->
+<!-- MITRE ATT&CK: T1071.001, T1095, T1105, T1528, T1041, T1195.002     -->
+
+<group name="threat_intel,ioc_network,">
+
+  <!-- ================================================================ -->
+  <!-- FIREWALL ANCHOR - binds all firewall-log child rules             -->
+  <!-- ================================================================ -->
+
+  <rule id="103000" level="0">
+    <if_group>firewall</if_group>
+    <description>Threat Intel IOC: firewall event anchor</description>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- MASTRA NPM EASY-DAY-JS SUPPLY CHAIN RAT (2026-06-17)            -->
+  <!-- 144 @mastra/* npm packages backdoored; cryptocurrency-stealing    -->
+  <!-- RAT with 10-minute C2 beacon; actor: Sapphire Sleet / DPRK      -->
+  <!-- T1195.002, T1071.001, T1555.003                                   -->
+  <!-- IOCs: 23.254.164.92 (dropper C2), 23.254.164.123 (RAT beacon)   -->
+  <!-- ================================================================ -->
+
+  <rule id="103001" level="14">
+    <if_sid>103000</if_sid>
+    <field name="data.dest_ip">^23\.254\.164\.92$</field>
+    <description>IOC: Outbound to Mastra npm easy-day-js dropper C2 (23.254.164.92) — npm postinstall hook retrieving cryptocurrency-stealing RAT; Sapphire Sleet / DPRK (T1195.002)</description>
+    <mitre>
+      <id>T1195.002</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>ioc_c2,supply_chain,sapphire_sleet,dprk,</group>
+  </rule>
+
+  <rule id="103002" level="15">
+    <if_sid>103000</if_sid>
+    <field name="data.dest_ip">^23\.254\.164\.123$</field>
+    <description>IOC: Outbound to Mastra npm easy-day-js RAT beacon C2 (23.254.164.123) — active cryptocurrency-stealing RAT; 10-minute beacon interval; Sapphire Sleet / DPRK (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1555.003</id>
+    </mitre>
+    <group>ioc_c2,supply_chain,sapphire_sleet,dprk,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- JETBRAINS MARKETPLACE MALICIOUS AI PLUGIN CAMPAIGN (Oct 2025–   -->
+  <!-- June 2026): 15 plugins, ~70,000 installs; steal DeepSeek /      -->
+  <!-- OpenAI API keys on "Apply" button click via HTTP to hardcoded IP  -->
+  <!-- T1195.002, T1528, T1041                                          -->
+  <!-- IOC: 39.107.60.51 (API key exfiltration server)                 -->
+  <!-- ================================================================ -->
+
+  <rule id="103010" level="13">
+    <if_sid>103000</if_sid>
+    <field name="data.dest_ip">^39\.107\.60\.51$</field>
+    <description>IOC: Outbound to JetBrains malicious plugin API key exfil server (39.107.60.51) — 15 fake AI coding assistant plugins steal LLM API keys (T1528, T1041)</description>
+    <mitre>
+      <id>T1528</id>
+      <id>T1041</id>
+      <id>T1195.002</id>
+    </mitre>
+    <group>ioc_c2,supply_chain,api_key_theft,jetbrains,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- FISHMONGER / EARTH LUSCA (I-SOON APT) SPRYSOCKS BACKDOOR        -->
+  <!-- Government-targeting campaign; SprySOCKS Windows backdoor        -->
+  <!-- Targets: government orgs in Asia and Latin America               -->
+  <!-- T1095, T1105                                                      -->
+  <!-- IOCs: 207.148.78.36 (WIN_PLUS C2), 207.148.75.122 (delivery)   -->
+  <!-- ================================================================ -->
+
+  <rule id="103020" level="15">
+    <if_sid>103000</if_sid>
+    <field name="data.dest_ip">^207\.148\.78\.36$</field>
+    <description>IOC: Outbound to FishMonger SprySOCKS WIN_PLUS C2 (207.148.78.36) — Earth Lusca / I-SOON APT; TCP:443, UDP:53, WS:80 C2 channel (T1095)</description>
+    <mitre>
+      <id>T1095</id>
+    </mitre>
+    <group>ioc_c2,apt,fishmonger,earth_lusca,i-soon,</group>
+  </rule>
+
+  <rule id="103021" level="14">
+    <if_sid>103000</if_sid>
+    <field name="data.dest_ip">^207\.148\.75\.122$</field>
+    <description>IOC: Outbound to FishMonger SprySOCKS delivery/staging server (207.148.75.122) — Earth Lusca / I-SOON APT initial payload delivery infrastructure (T1105)</description>
+    <mitre>
+      <id>T1105</id>
+    </mitre>
+    <group>ioc_delivery,apt,fishmonger,earth_lusca,i-soon,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- SURICATA IDS: CROSS-DETECTION ON IOC IP ADDRESSES               -->
+  <!-- Fires when Suricata EVE JSON records src/dest matching threat     -->
+  <!-- actor infrastructure for any of the above campaigns              -->
+  <!-- ================================================================ -->
+
+  <rule id="103030" level="14">
+    <if_sid>86601</if_sid>
+    <field name="alert.src_ip" type="pcre2">^(23\.254\.164\.(92|123)|39\.107\.60\.51|207\.148\.(78\.36|75\.122))$</field>
+    <description>Suricata: Traffic from known IOC IP — Mastra npm RAT C2, JetBrains exfil, or FishMonger delivery (inbound; T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>ioc_c2,suricata,ids,</group>
+  </rule>
+
+  <rule id="103031" level="14">
+    <if_sid>86601</if_sid>
+    <field name="alert.dest_ip" type="pcre2">^(23\.254\.164\.(92|123)|39\.107\.60\.51|207\.148\.(78\.36|75\.122))$</field>
+    <description>Suricata: Traffic to known IOC IP — Mastra npm RAT C2, JetBrains exfil, or FishMonger C2 (outbound; T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>ioc_c2,suricata,ids,</group>
+  </rule>
+
+
+  <!-- ================================================================ -->
+  <!-- FORTIBLEED: VPN CREDENTIAL BRUTE FORCE (2026-06-17)             -->
+  <!-- Russian-speaking group; 1.16B credential attempts vs FortiGate   -->
+  <!-- and 2.1B attempts vs MSSQL; offline hash cracking via Hashtopolis -->
+  <!-- T1110.001 (Password Guessing), T1110.003 (Password Spraying)    -->
+  <!-- Note: these fire on rapid SSH auth failures; adapt for VPN if    -->
+  <!-- OPNsense/Fortinet auth logs are forwarded to Wazuh              -->
+  <!-- ================================================================ -->
+
+  <rule id="103040" level="10" frequency="10" timeframe="60">
+    <if_matched_sid>5710</if_matched_sid>
+    <same_source_ip />
+    <description>FortiBleed pattern: SSH brute force — 10+ failed auth attempts from same IP in 60s (T1110.001)</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+    <group>brute_force,authentication,fortibleed_pattern,</group>
+  </rule>
+
+  <rule id="103041" level="12" frequency="5" timeframe="60">
+    <if_matched_sid>5710</if_matched_sid>
+    <different_user />
+    <same_source_ip />
+    <description>FortiBleed pattern: SSH password spraying — 5+ failed auth attempts against different users from same IP in 60s (T1110.003)</description>
+    <mitre>
+      <id>T1110.003</id>
+    </mitre>
+    <group>brute_force,authentication,password_spray,fortibleed_pattern,</group>
+  </rule>
+
+  <rule id="103042" level="13" frequency="20" timeframe="120">
+    <if_matched_sid>5710</if_matched_sid>
+    <same_source_ip />
+    <description>FortiBleed pattern: SSH brute force escalation — 20+ failed auth attempts from same IP in 120s; consistent with automated credential stuffing (T1110.001)</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+    <group>brute_force,authentication,fortibleed_pattern,high_volume,</group>
+  </rule>
+
+</group>
