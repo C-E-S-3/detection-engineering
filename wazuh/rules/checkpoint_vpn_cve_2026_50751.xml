@@ -1,0 +1,209 @@
+<!-- ============================================================
+     Check Point VPN CVE-2026-50751 Detection Rules
+     MITRE ATT&CK Techniques:
+       T1190  - Exploit Public-Facing Application
+       T1110  - Brute Force
+       T1078  - Valid Accounts
+     Rule IDs: 101430-101437
+     Author: SecOps Engineer (ESKA-335)
+     Date: 2026-06-24
+     CVE: CVE-2026-50751
+
+     Vulnerability summary:
+       Logic flaw in IKEv1 certificate validation allows an
+       unauthenticated attacker to establish a fully-authenticated VPN
+       session without providing valid credentials. CVSS 9.3 (CWE-287).
+       Actively exploited by a Qilin ransomware affiliate from
+       May 7 2026; CISA KEV added June 8 2026 (sk185033).
+       Affected products: Check Point Remote Access VPN, Mobile Access,
+       and Spark Firewall configured to accept IKEv1/ISAKMP connections.
+
+     Detection approach:
+       1. Auth failure anchor + brute-force burst (N failures from same
+          source in a short window — typical credential spray before bypass)
+       2. Auth bypass pattern (auth success after 5+ failures from same
+          source within 5 minutes — core CVE-2026-50751 signal)
+       3. Deprecated IKEv1/ISAKMP usage detection (affected protocol
+          should be disabled per sk185033; flag any usage)
+       4. IKEv1 certificate validation errors (exploit error codes from
+          sk185033 advisory)
+       5. Management API access during active exploitation window (admin
+          pivot post-initial-access)
+       6. Off-hours VPN auth success (behavioral anomaly enrichment)
+       7. High-frequency IKEv1 negotiation bursts (exploit scanner fingerprint)
+
+     PRECAUTIONARY NOTE:
+       These rules target syslog from Check Point Security Gateway.
+       If your environment does not deploy Check Point Remote Access VPN
+       or Mobile Access, these rules are precautionary and will not
+       produce alerts. Deploy them now so coverage is in place if a
+       Check Point appliance is added to the environment.
+
+     Severity tiers:
+       Low (5)      - Base anchor (used for correlation; not alerted)
+       Medium (9)   - Behavioral anomaly (investigate in context)
+       High (11-12) - Strong indicator, investigate promptly
+       Critical (13-14) - Near-certain exploit activity, immediate response
+
+     Log source prerequisites:
+       - Check Point Security Gateway syslog forwarded to Wazuh manager
+         via Check Point Log Exporter or SmartConsole syslog forwarding
+       - Process names that appear in syslog: vpnd, cpd, fwd, cpmad, fw
+       - Default Wazuh syslog decoder provides: hostname, program_name, log
+       - For field extraction (srcip, username): deploy wazuh/decoders/
+         checkpoint decoder if available; rules work on log content if not
+
+     References:
+       - Check Point sk185033: https://support.checkpoint.com/results/sk/sk185033
+       - CISA KEV 2026-06-08: CVE-2026-50751
+       - Rapid7 ETR: https://www.rapid7.com/blog/post/etr-critical-check-point-vpn-zero-day-exploited-in-the-wild-cve-2026-50751/
+     ============================================================ -->
+
+<group name="checkpoint,vpn,initial_access,cve_2026_50751,">
+
+  <!-- ===========================================================
+       T1110 / T1190 — Auth failure anchor + brute-force burst
+       Rule IDs: 101430-101431
+       =========================================================== -->
+
+  <!-- Base anchor: Check Point VPN authentication failure via syslog     -->
+  <!-- Level 5 (low) — used for correlation only; not a standalone alert  -->
+  <rule id="101430" level="5">
+    <program_name type="pcre2">^(vpnd|cpd|fwd|cpmad|fw)$</program_name>
+    <match type="pcre2">(?i)(authentication\s+fail|auth\s+fail|login\s+fail|failed\s+to\s+authenticate|incorrect\s+(credentials|password)|invalid\s+credentials)</match>
+    <description>Check Point VPN: authentication failure on $(hostname) -- CVE-2026-50751 brute-force precursor anchor (T1110, T1190)</description>
+    <mitre>
+      <id>T1110</id>
+      <id>T1190</id>
+    </mitre>
+    <group>checkpoint_auth_fail,</group>
+  </rule>
+
+  <!-- Brute force: 5+ failures from same source in 120 seconds           -->
+  <!-- Typical credential spray precursor to CVE-2026-50751 bypass        -->
+  <rule id="101431" level="11" frequency="5" timeframe="120">
+    <if_matched_sid>101430</if_matched_sid>
+    <same_source_ip/>
+    <description>Check Point VPN brute force on $(hostname): 5+ authentication failures in 120 seconds from same source -- credential spray preceding CVE-2026-50751 IKEv1 bypass (T1110)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1110</id>
+      <id>T1190</id>
+    </mitre>
+    <group>checkpoint_brute_force,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190 / T1078 — Authentication bypass pattern
+       Rule IDs: 101432
+       Auth success following 5+ failures from same source within
+       5 minutes is the core CVE-2026-50751 exploitation signal.
+       IKEv1 cert bypass bypasses the password check, so the
+       gateway logs auth success with no corresponding valid
+       credential exchange.
+       =========================================================== -->
+
+  <rule id="101432" level="14" frequency="5" timeframe="300">
+    <if_matched_sid>101430</if_matched_sid>
+    <same_source_ip/>
+    <match type="pcre2">(?i)(user\s+authenticated|authentication\s+success|login\s+success|vpn\s+session\s+opened|connection\s+established|session\s+established|remote\s+access\s+granted)</match>
+    <description>Check Point VPN authentication bypass on $(hostname): auth success from source with 5+ recent failures -- high-confidence CVE-2026-50751 IKEv1 certificate bypass exploitation (T1190, T1078)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+      <id>T1078</id>
+    </mitre>
+    <group>checkpoint_auth_bypass,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190 — Deprecated IKEv1/ISAKMP usage
+       Rule IDs: 101433, 101437
+       IKEv1 (ISAKMP) is the deprecated protocol exploited in
+       CVE-2026-50751. Any IKEv1 negotiation log is a flag —
+       this protocol should be disabled per sk185033.
+       =========================================================== -->
+
+  <!-- IKEv1 usage detected: deprecated protocol that enables CVE-2026-50751 -->
+  <rule id="101433" level="12">
+    <program_name type="pcre2">^(vpnd|cpd|fwd|cpmad|fw)$</program_name>
+    <match type="pcre2">(?i)(IKEv1|IKE\s+v1|ISAKMP\s+[Pp]hase\s+1|aggressive\s+mode\s+SA|main\s+mode\s+SA)</match>
+    <description>Check Point VPN: deprecated IKEv1/ISAKMP key exchange detected on $(hostname) -- IKEv1 is the exploited protocol in CVE-2026-50751; disable per Check Point sk185033 (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>checkpoint_ikev1,</group>
+  </rule>
+
+  <!-- High-frequency IKEv1 bursts: exploit tool / scanner fingerprint    -->
+  <rule id="101437" level="12" frequency="10" timeframe="60">
+    <if_matched_sid>101433</if_matched_sid>
+    <same_source_ip/>
+    <description>Check Point VPN: high-frequency IKEv1 negotiations (10+ in 60s) on $(hostname) -- exploit tool or CVE-2026-50751 scanner activity, immediate investigation required (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>checkpoint_ikev1_burst,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190 — IKEv1 certificate validation errors (sk185033)
+       Rule IDs: 101434
+       Specific error codes and messages observed in logs during
+       CVE-2026-50751 exploitation per Check Point advisory sk185033:
+       certificate chain validation failures, IKE Phase 1 errors,
+       and IKE notification messages during cert exchange.
+       =========================================================== -->
+
+  <rule id="101434" level="13">
+    <program_name type="pcre2">^(vpnd|cpd|fwd|cpmad|fw)$</program_name>
+    <match type="pcre2">(?i)(certificate\s+validation\s+fail|cert\s+(auth|validation)\s+(bypass|fail)|invalid\s+certificate\s+chain|IKE\s+[Pp]hase.?1\s+fail|ike\s+notification.*cert|IKE.*no\s+proposal\s+chosen|IKE.*cert.*error)</match>
+    <description>Check Point VPN IKEv1 certificate validation anomaly on $(hostname) -- error pattern matches CVE-2026-50751 certificate bypass exploitation indicators from sk185033 (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>checkpoint_cert_fail,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190 / T1078 — Management API access
+       Rule IDs: 101435
+       After obtaining initial access via CVE-2026-50751, attackers
+       pivot to Check Point management API to expand access. Alert
+       on management API logins that are concurrent with other
+       CVE-2026-50751 indicators.
+       =========================================================== -->
+
+  <rule id="101435" level="12">
+    <program_name type="pcre2">^(cpmad|api_server|cpwmd|mgmtd)$</program_name>
+    <match type="pcre2">(?i)(management\s+api|smartconsole\s+login|web\s+api\s+login|api\s+login|admin\s+(login|authenticated))</match>
+    <description>Check Point management API login on $(hostname) -- correlate with CVE-2026-50751 VPN bypass indicators; admin console access may indicate post-initial-access pivot (T1190, T1078)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1078</id>
+    </mitre>
+    <group>checkpoint_mgmt_api,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190 / T1078 — Off-hours VPN authentication
+       Rule IDs: 101436
+       CVE-2026-50751 exploitation campaign ran during unusual hours
+       to evade detection. Flag any VPN auth success outside business
+       hours for analyst triage.
+       =========================================================== -->
+
+  <rule id="101436" level="9">
+    <program_name type="pcre2">^(vpnd|cpd|fwd|cpmad|fw)$</program_name>
+    <match type="pcre2">(?i)(user\s+authenticated|authentication\s+success|login\s+success|vpn\s+session\s+opened|session\s+established|remote\s+access\s+granted)</match>
+    <time>20:00 - 07:00</time>
+    <description>Check Point VPN session established outside business hours on $(hostname) -- off-hours VPN auth; triage against CVE-2026-50751 exploitation window and Qilin ransomware TTPs (T1190, T1078)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1078</id>
+    </mitre>
+    <group>checkpoint_off_hours,</group>
+  </rule>
+
+</group>
