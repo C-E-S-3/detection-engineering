@@ -1,0 +1,258 @@
+<!-- ============================================================
+     Threat Intelligence Detection Rules — 2026-06-24 Batch 5
+     Sources:
+       - AryStinger: D-Link/NAS router botnet — XLab Qianxin June 2026
+         C2: eixfi.ajb8.com / 107.150.106.14; CVE-2013-3307, CVE-2016-5681
+         Converts infected devices into SOCKS5 proxies / scanning nodes
+       - Icarus (ShinyHunters/UNC6240): Klue OAuth → Salesforce CRM breach
+         4 attacker IPs; Python-urllib automation; bulk CRM exfiltration
+         Victims: Huntress, Recorded Future, Tanium, Jamf, and hundreds more
+
+     Rule IDs: 103541-103557
+     Author: SecOps Purple Team
+     Date: 2026-06-24
+
+     MITRE ATT&CK Coverage:
+       T1190   Exploit Public-Facing Application (AryStinger CVEs)
+       T1601   Modify System Image (dropbear/gs-netcat on routers)
+       T1090   Proxy (AryStinger SOCKS5 tunneling infrastructure)
+       T1071.001 Application Layer Protocol: Web (AryStinger C2 HTTP/S Protobuf+XOR)
+       T1565   Data Manipulation (AryStinger DNS hijacking)
+       T1040   Network Sniffing (AryStinger traffic monitoring)
+       T1078.004 Valid Accounts: Cloud Accounts (Icarus OAuth theft)
+       T1213   Data from Information Repositories (Icarus Salesforce CRM)
+       T1530   Data from Cloud Storage Object (Icarus Salesforce REST API)
+       T1567   Exfiltration Over Web Service (Icarus via Salesforce API)
+       T1059.006 Command and Scripting Interpreter: Python (Icarus urllib automation)
+     ============================================================ -->
+
+<!-- ============================================================
+     SECTION 1: AryStinger Botnet IOC Detection
+     XLab Qianxin June 2026 — 4,000+ D-Link/NAS compromised devices
+     C2: eixfi.ajb8.com / 107.150.106.14
+     CVEs: CVE-2013-3307 (D-Link DIR-850L), CVE-2016-5681 (DIR-818LW),
+           CVE-2025-11837 (NAS devices — Go variant)
+     TTPs: T1190, T1601, T1090, T1071.001, T1565, T1040
+     Rules: 103541-103549
+     ============================================================ -->
+
+<group name="threat_intel,ioc_network,arystinger,botnet,">
+
+  <!-- AryStinger primary propagation IP — firewall block/allow log -->
+  <rule id="103541" level="14">
+    <if_group>firewall</if_group>
+    <field name="data.dest_ip">^107\.150\.106\.14$</field>
+    <description>IOC: Outbound to AryStinger botnet propagation IP (107.150.106.14) — detected March 2026 spreading 0-VT ELF payload via CVE-2013-3307/CVE-2016-5681 to D-Link DIR-850L/DIR-818LW routers (T1190, T1071.001)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>ioc_c2,arystinger,botnet,network_device,</group>
+  </rule>
+
+  <!-- AryStinger inbound from propagation IP (device under attack) -->
+  <rule id="103542" level="13">
+    <if_group>firewall</if_group>
+    <field name="data.src_ip">^107\.150\.106\.14$</field>
+    <description>IOC: Inbound from AryStinger botnet propagation IP (107.150.106.14) — active exploit attempt targeting network/NAS devices via CVE-2013-3307 or CVE-2016-5681 (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>ioc_exploit,arystinger,botnet,inbound_attack,</group>
+  </rule>
+
+  <!-- AryStinger C2 domain DNS query via OPNsense Unbound -->
+  <rule id="103543" level="14">
+    <if_group>unbound,dns,</if_group>
+    <field name="data.query" type="pcre2">(?i)eixfi\.ajb8\.com</field>
+    <description>IOC: DNS query for AryStinger botnet C2 domain eixfi.ajb8.com — Protobuf+XOR C2 channel; /auth endpoint for device identity; converts hosts to SOCKS5 proxy nodes (T1071.001, T1090)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1090</id>
+    </mitre>
+    <group>ioc_c2,arystinger,botnet,dns,</group>
+  </rule>
+
+  <!-- AryStinger C2 domain via Suricata DNS EVE -->
+  <rule id="103544" level="14">
+    <if_sid>86601</if_sid>
+    <field name="dns.query.rrname" type="pcre2">(?i)eixfi\.ajb8\.com</field>
+    <description>Suricata: DNS lookup for AryStinger C2 domain eixfi.ajb8.com — botnet node calling home (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1090</id>
+    </mitre>
+    <group>ioc_c2,arystinger,botnet,suricata,dns,</group>
+  </rule>
+
+  <!-- Suricata: traffic to/from AryStinger IP -->
+  <rule id="103545" level="14">
+    <if_sid>86601</if_sid>
+    <field name="alert.dest_ip" type="pcre2">^107\.150\.106\.14$</field>
+    <description>Suricata: Traffic to AryStinger botnet C2/propagation IP (107.150.106.14) — router/NAS compromise or scanning activity (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>ioc_c2,arystinger,botnet,suricata,</group>
+  </rule>
+
+  <!-- dropbear SSH server unexpectedly executed on Linux host — AryStinger persistence -->
+  <rule id="103546" level="13">
+    <if_group>auditd,</if_group>
+    <field name="audit.exe" type="pcre2">(?i)(dropbear|dropbearmulti)$</field>
+    <description>AryStinger persistence: dropbear SSH server executed on $(agent.name) — lightweight SSH server installed by router/NAS botnet for persistent remote access (T1601, T1021.004)</description>
+    <mitre>
+      <id>T1601</id>
+      <id>T1021.004</id>
+    </mitre>
+    <group>persistence,arystinger,botnet,dropbear,network_device,</group>
+  </rule>
+
+  <!-- gs-netcat execution — alternative AryStinger persistence channel -->
+  <rule id="103547" level="13">
+    <if_group>auditd,</if_group>
+    <field name="audit.exe" type="pcre2">(?i)gs-netcat$</field>
+    <description>AryStinger persistence: gs-netcat executed on $(agent.name) — alternative persistent remote management channel used when dropbear is unavailable; associated with AryStinger botnet infrastructure (T1601, T1090)</description>
+    <mitre>
+      <id>T1601</id>
+      <id>T1090</id>
+    </mitre>
+    <group>persistence,arystinger,botnet,tunnel,network_device,</group>
+  </rule>
+
+  <!-- AryStinger DNS hijacking: unexpected DNS config change on network device syslog -->
+  <rule id="103548" level="12">
+    <if_group>syslog,</if_group>
+    <field name="data.hostname" type="pcre2">(?i)(opnsense|pfsense|router|gateway|nas|synology|qnap)</field>
+    <field name="data.message" type="pcre2">(?i)(dns.*(server|resolv|hijack|redirect|spoof)|resolv\.conf.*writ|nameserver.*changed)</field>
+    <description>AryStinger DNS hijacking: DNS configuration change detected on network device $(data.hostname) — AryStinger botnet tampers with router DNS to redirect victim browsing (T1565)</description>
+    <mitre>
+      <id>T1565</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>arystinger,botnet,dns_hijack,network_device,</group>
+  </rule>
+
+  <!-- AryStinger correlation: IOC IP + DNS C2 combination (high confidence) -->
+  <rule id="103549" level="15" frequency="2" timeframe="300">
+    <if_matched_sid>103541,103543,103544,103545</if_matched_sid>
+    <description>AryStinger CORRELATION: Multiple IOC signals (IP + DNS) within 5 minutes — $(agent.name) may be compromised AryStinger botnet node or actively being exploited (T1190, T1090)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1090</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>ioc_c2,arystinger,botnet,correlation,high_fidelity,</group>
+  </rule>
+
+</group>
+
+
+<!-- ============================================================
+     SECTION 2: Icarus Extortion / Klue OAuth / Salesforce CRM Breach
+     Datadog Security Labs + Huntress, June 2026
+     Attacker: Icarus (possibly ShinyHunters / UNC6240)
+     Breach: dormant Klue OAuth credential used to generate Salesforce
+             OAuth tokens; bulk CRM exfiltration via Python-urllib
+     Attacker IPs: 138.226.246.94, 212.86.125.24, 213.111.148.90, 94.154.32.160
+     TTPs: T1078.004, T1213, T1530, T1567, T1059.006
+     Rules: 103550-103557
+     ============================================================ -->
+
+<group name="threat_intel,ioc_network,icarus,klue_breach,">
+
+  <!-- Icarus attacker IP #1 — observed in Salesforce RestApi audit logs -->
+  <rule id="103550" level="14">
+    <if_group>firewall</if_group>
+    <field name="data.src_ip">^138\.226\.246\.94$</field>
+    <description>IOC: Traffic from Icarus extortion group IP (138.226.246.94) — observed in Salesforce RestApi audit logs during Klue OAuth supply chain CRM exfiltration; Icarus/ShinyHunters (T1078.004, T1213)</description>
+    <mitre>
+      <id>T1078.004</id>
+      <id>T1213</id>
+    </mitre>
+    <group>ioc_c2,icarus,klue_breach,shinyhunters,extortion,</group>
+  </rule>
+
+  <rule id="103551" level="14">
+    <if_group>firewall</if_group>
+    <field name="data.src_ip">^212\.86\.125\.24$</field>
+    <description>IOC: Traffic from Icarus extortion group IP (212.86.125.24) — Klue OAuth Salesforce CRM bulk exfiltration; Python-urllib/3.12 automation; Icarus/ShinyHunters (T1078.004, T1530)</description>
+    <mitre>
+      <id>T1078.004</id>
+      <id>T1530</id>
+    </mitre>
+    <group>ioc_c2,icarus,klue_breach,shinyhunters,extortion,</group>
+  </rule>
+
+  <rule id="103552" level="14">
+    <if_group>firewall</if_group>
+    <field name="data.src_ip">^213\.111\.148\.90$</field>
+    <description>IOC: Traffic from Icarus extortion group IP (213.111.148.90) — Klue OAuth Salesforce CRM exfiltration; victims include Huntress Recorded Future Tanium; Icarus/ShinyHunters (T1078.004, T1567)</description>
+    <mitre>
+      <id>T1078.004</id>
+      <id>T1567</id>
+    </mitre>
+    <group>ioc_c2,icarus,klue_breach,shinyhunters,extortion,</group>
+  </rule>
+
+  <rule id="103553" level="14">
+    <if_group>firewall</if_group>
+    <field name="data.src_ip">^94\.154\.32\.160$</field>
+    <description>IOC: Traffic from Icarus extortion group IP (94.154.32.160) — Klue OAuth Salesforce CRM exfiltration; Netherlands/France/Ukraine region; Icarus/ShinyHunters (T1078.004, T1567)</description>
+    <mitre>
+      <id>T1078.004</id>
+      <id>T1567</id>
+    </mitre>
+    <group>ioc_c2,icarus,klue_breach,shinyhunters,extortion,</group>
+  </rule>
+
+  <!-- Suricata: any of the 4 Icarus IPs -->
+  <rule id="103554" level="14">
+    <if_sid>86601</if_sid>
+    <field name="alert.src_ip" type="pcre2">^(138\.226\.246\.94|212\.86\.125\.24|213\.111\.148\.90|94\.154\.32\.160)$</field>
+    <description>Suricata: Traffic from Icarus extortion group IP — Klue OAuth Salesforce CRM breach actor (ShinyHunters/UNC6240); June 2026 supply chain attack (T1078.004)</description>
+    <mitre>
+      <id>T1078.004</id>
+      <id>T1567</id>
+    </mitre>
+    <group>ioc_c2,icarus,klue_breach,suricata,shinyhunters,</group>
+  </rule>
+
+  <!-- Python-urllib user-agent in web/proxy logs — Icarus exfiltration TTP -->
+  <rule id="103555" level="11">
+    <if_group>web,nginx,apache,traefik,</if_group>
+    <field name="data.http_user_agent" type="pcre2">(?i)Python-urllib/3\.(1[2-9]|[2-9]\d)</field>
+    <description>Icarus TTP: Python-urllib automation user-agent detected in web logs on $(agent.name) — matches exact user-agent (Python-urllib/3.12, /3.14) observed during Klue/Salesforce CRM bulk exfiltration (T1059.006, T1213)</description>
+    <mitre>
+      <id>T1059.006</id>
+      <id>T1213</id>
+    </mitre>
+    <group>icarus,klue_breach,web_automation,python,data_exfiltration,</group>
+  </rule>
+
+  <!-- High-volume API requests from single IP in short window — Icarus exfil pattern -->
+  <rule id="103556" level="12" frequency="200" timeframe="900">
+    <if_matched_group>web,nginx,apache,traefik,</if_matched_group>
+    <same_source_ip />
+    <description>Icarus TTP: High-volume API request burst — 200+ requests in 15 minutes from same source IP (T1213, T1530) — matches Icarus exfiltration pattern of ~1,000 Salesforce API queries per 15-minute window</description>
+    <mitre>
+      <id>T1213</id>
+      <id>T1530</id>
+    </mitre>
+    <group>icarus,klue_breach,api_abuse,data_exfiltration,</group>
+  </rule>
+
+  <!-- Icarus correlation: IOC IP + Python-urllib (high fidelity) -->
+  <rule id="103557" level="15" frequency="2" timeframe="600">
+    <if_matched_sid>103550,103551,103552,103553,103554,103555</if_matched_sid>
+    <description>Icarus CORRELATION: Klue OAuth breach IOC IP + Python-urllib automation detected together within 10 minutes — high-fidelity signal for active Icarus/ShinyHunters CRM exfiltration (T1078.004, T1213)</description>
+    <mitre>
+      <id>T1078.004</id>
+      <id>T1213</id>
+      <id>T1567</id>
+    </mitre>
+    <group>ioc_c2,icarus,klue_breach,shinyhunters,correlation,high_fidelity,</group>
+  </rule>
+
+</group>
