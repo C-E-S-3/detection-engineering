@@ -1,0 +1,220 @@
+<!-- ============================================================
+     Cisco Unified Communications Manager CVE-2026-20230 SSRF Detection Rules
+     MITRE ATT&CK Techniques:
+       T1190  - Exploit Public-Facing Application
+       T1105  - Ingress Tool Transfer (file write via SSRF)
+       T1083  - File and Directory Discovery
+       T1059.004 - Command and Scripting Interpreter: Unix Shell
+     Rule IDs: 103579-103588
+     Author: SecOps Engineer
+     Date: 2026-06-24
+     CVE: CVE-2026-20230
+     CVSS: 8.6 (HIGH) — AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:N
+
+     Vulnerability summary:
+       Server-side request forgery (SSRF) in Cisco Unified Communications
+       Manager (UCM) and UCM Session Management Edition (SME). Inadequate
+       validation of HTTP requests allows an unauthenticated remote attacker
+       to send crafted HTTP requests through the vulnerable component,
+       potentially writing files to the system and escalating to root.
+       Requires WebDialer service enabled (disabled by default).
+       Actively exploited in the wild as of June 23, 2026.
+
+     Affected products:
+       - Cisco Unified Communications Manager (CUCM) all supported versions
+       - Cisco Unified Communications Manager Session Management Edition (SME)
+       Precondition: WebDialer service must be enabled
+
+     Detection approach:
+       1. HTTP request to WebDialer endpoint from external source (anchor)
+       2. SSRF payload patterns — internal IP references in WebDialer requests
+       3. Burst of WebDialer probes (scanner / exploit framework fingerprint)
+       4. File write events from Tomcat/UCM service user (post-SSRF file write)
+       5. Unusual process spawn from Tomcat parent (post-exploitation RCE)
+       6. Authentication-free WebDialer access (baseline for correlation)
+       7. SSRF to localhost/metadata endpoints (cloud pivot or privilege esc)
+       8. Correlated: external probe + file write within 5-minute window
+
+     Severity tiers:
+       Low (5)      - Base anchor (used for correlation; not standalone alert)
+       Medium (9)   - Behavioral anomaly; investigate in context
+       High (11-12) - Strong exploitation indicator; investigate promptly
+       Critical (14-15) - Near-certain active exploitation; immediate response
+
+     Log source prerequisites:
+       - Cisco UCM Apache/Tomcat access logs forwarded to Wazuh manager
+         (typically /var/log/active-cisco-ca/httpd/access_log or CiscoSSL log)
+       - UCM system audit log (auditlog on UCM CLI)
+       - Linux auditd on the UCM VM for file write and process exec events
+       - Syslog forwarding from UCM to Wazuh via UDP/TCP 514
+       - Process name anchor: "httpd" or "java" (Tomcat) in UCM log source
+
+     References:
+       - Cisco Advisory: cisco-sa-cucm-ssrf-cXPnHcW
+       - NVD: https://nvd.nist.gov/vuln/detail/CVE-2026-20230
+       - BleepingComputer: Cisco UCM CVE-2026-20230 exploited in attacks (2026-06-23)
+     ============================================================ -->
+
+<group name="cisco,cucm,ssrf,initial_access,cve_2026_20230,">
+
+  <!-- ===========================================================
+       T1190 — WebDialer HTTP request anchor
+       Rule IDs: 103579
+       Matches any HTTP request to the Cisco UCM WebDialer endpoint.
+       Level 5 anchor used for correlation; not a standalone alert.
+       The WebDialer endpoint is /ccmwebapi/WebDialerSrv or /webdialer/.
+       =========================================================== -->
+
+  <rule id="103579" level="5">
+    <decoded_as>web-log</decoded_as>
+    <url type="pcre2">(?i)(/ccmwebapi/|/webdialer/|WebDialerSrv|/ccm/webdialer)</url>
+    <description>Cisco UCM: HTTP request to WebDialer endpoint on $(hostname) -- CVE-2026-20230 attack surface; log source anchor for SSRF correlation (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>cucm_webdialer_access,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190 — SSRF payload in WebDialer request
+       Rule IDs: 103580
+       SSRF exploitation crafts HTTP request parameters containing
+       internal IP addresses, localhost, or metadata service addresses.
+       RFC1918 addresses or localhost in query parameters sent to
+       WebDialer is a high-confidence SSRF indicator.
+       =========================================================== -->
+
+  <rule id="103580" level="13">
+    <if_matched_sid>103579</if_matched_sid>
+    <url type="pcre2">(?i)(127\.0\.0\.1|localhost|169\.254\.169\.254|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|::1|file://|dict://|gopher://|ftp://)</url>
+    <description>Cisco UCM SSRF payload detected on $(hostname): WebDialer request contains internal address or SSRF protocol scheme -- active CVE-2026-20230 exploitation attempt (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>cucm_ssrf_payload,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190 — SSRF payload in request body/parameters (syslog variant)
+       Rule IDs: 103581
+       For environments where UCM logs appear via syslog rather than
+       web-log decoder. Matches SSRF-indicative content in any
+       Cisco UCM syslog message referencing WebDialer with internal
+       address or redirect chaining patterns.
+       =========================================================== -->
+
+  <rule id="103581" level="12">
+    <match type="pcre2">(?i)(webdialer|WebDialerSrv|ccmwebapi).*?(127\.0\.0\.1|localhost|169\.254\.169\.254|::1|file://|gopher://|dict://)</match>
+    <description>Cisco UCM syslog SSRF indicator on $(hostname): WebDialer reference combined with internal address or protocol redirect -- CVE-2026-20230 exploitation signature (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>cucm_ssrf_syslog,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190 — WebDialer probe burst (scanner/exploit framework)
+       Rule IDs: 103582
+       Automated exploit tools and scanners generate high-frequency
+       requests to the WebDialer endpoint during reconnaissance and
+       exploitation. 10+ requests in 60 seconds from the same source
+       is a reliable scanner fingerprint.
+       =========================================================== -->
+
+  <rule id="103582" level="11" frequency="10" timeframe="60">
+    <if_matched_sid>103579</if_matched_sid>
+    <same_source_ip/>
+    <description>Cisco UCM WebDialer burst on $(hostname): 10+ requests in 60 seconds from same source -- exploit scanner or automated CVE-2026-20230 exploitation tool (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>cucm_webdialer_burst,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190 / T1105 — File write from Tomcat/UCM service user
+       Rule IDs: 103583
+       Post-SSRF exploitation of CVE-2026-20230 allows an attacker
+       to write files to the system. Auditd will show file creation
+       by the tomcat or activemq process user (typically 'tomcat'
+       or 'cisco' on UCM VMs) in unexpected filesystem paths.
+       =========================================================== -->
+
+  <rule id="103583" level="14">
+    <if_group>audit,</if_group>
+    <match type="pcre2">(?i)(type=CREATE|SYSCALL.*open.*O_CREAT|type=PATH.*nametype=CREATE)</match>
+    <user type="pcre2">^(tomcat|cisco|ccmservice|ccmservice_user)$</user>
+    <match type="pcre2">(?i)(/(tmp|var/tmp|home|opt/cisco|usr/local)/.*\.(sh|py|pl|rb|php|jsp|war|jar|class)|/etc/(cron|init\.d|rc\.d|passwd|shadow|sudoers)|/.ssh/)</match>
+    <description>Cisco UCM service user file write in suspicious path on $(hostname): Tomcat/CCM service account created file in writable/sensitive directory -- potential CVE-2026-20230 post-SSRF file write leading to RCE (T1190, T1105)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1105</id>
+    </mitre>
+    <group>cucm_file_write,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1059.004 / T1190 — Unusual process spawn from Tomcat parent
+       Rule IDs: 103584
+       Following file write exploitation, attackers execute the dropped
+       payload. Process execution with Tomcat (java) as parent process
+       spawning shell interpreters or system utilities is post-exploitation.
+       =========================================================== -->
+
+  <rule id="103584" level="15">
+    <if_group>audit,</if_group>
+    <match type="pcre2">type=EXECVE|type=SYSCALL.*execve</match>
+    <field name="ppid_name" type="pcre2">^(java|tomcat|ccmservice)$</field>
+    <match type="pcre2">(?i)(/(bin|usr/bin|sbin)/(bash|sh|dash|zsh|python|perl|ruby|curl|wget|nc|ncat|socat|chmod|chown)|/tmp/)</match>
+    <description>Cisco UCM: shell spawned from Tomcat/CCM service on $(hostname) -- java/tomcat executing shell or download utility is near-certain post-CVE-2026-20230 code execution; immediate incident response required (T1190, T1059.004)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.004</id>
+    </mitre>
+    <group>cucm_rce,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1083 — File/directory discovery after WebDialer auth bypass
+       Rule IDs: 103585
+       Attackers performing reconnaissance after gaining access via
+       SSRF will enumerate directories. Path traversal sequences or
+       directory listing commands in HTTP requests are lateral recon
+       indicators when seen in WebDialer logs.
+       =========================================================== -->
+
+  <rule id="103585" level="11">
+    <if_matched_sid>103579</if_matched_sid>
+    <url type="pcre2">(?i)(\.\.\/|%2e%2e%2f|%252e%252e%252f|%c0%af|%c1%9c|\/etc\/|\/proc\/|\/sys\/|\/root\/|\/home\/)</url>
+    <description>Cisco UCM WebDialer path traversal attempt on $(hostname): request contains directory traversal sequence -- potential CVE-2026-20230 filesystem reconnaissance (T1190, T1083)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1083</id>
+    </mitre>
+    <group>cucm_path_traversal,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190 / T1105 — Correlated: probe burst + file write (5-min window)
+       Rule IDs: 103586
+       High-fidelity composite signal: WebDialer scan burst followed by
+       a file write from the UCM service user within 5 minutes indicates
+       a complete exploit chain — reconnaissance, SSRF delivery, payload
+       drop. This is a critical priority incident.
+       =========================================================== -->
+
+  <rule id="103586" level="15" frequency="1" timeframe="300">
+    <if_matched_sid>103582</if_matched_sid>
+    <if_matched_group>cucm_file_write,</if_matched_group>
+    <description>Cisco UCM FULL EXPLOIT CHAIN on $(hostname): WebDialer burst followed by UCM service user file write within 5 minutes -- CVE-2026-20230 complete exploitation chain confirmed; CRITICAL incident response required (T1190, T1105)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+      <id>T1105</id>
+    </mitre>
+    <group>cucm_exploit_chain,</group>
+  </rule>
+
+</group>
