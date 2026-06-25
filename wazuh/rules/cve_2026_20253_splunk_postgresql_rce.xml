@@ -1,0 +1,112 @@
+<!-- ================================================================
+     CVE-2026-20253: Splunk Enterprise PostgreSQL Sidecar Pre-Auth RCE
+     MITRE ATT&CK: T1190 (Exploit Public-Facing Application)
+                   T1059.004 (Unix Shell)
+                   T1505.003 (Web Shell)
+     Rule IDs: 102900-102912
+     Severity: CRITICAL — CVSS 9.8, CISA KEV (added June 18, 2026)
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-06-20
+
+     Description: Detects exploitation of CVE-2026-20253, a missing-
+     authentication vulnerability in Splunk Enterprise's PostgreSQL
+     sidecar service. The sidecar endpoint requires no credentials,
+     allowing remote attackers to use PostgreSQL lo_export to write
+     files and achieve RCE on the underlying system.
+
+     Log sources:
+       - Wazuh syscheck (file integrity monitoring on Splunk paths)
+       - Wazuh auditd (process execution on Splunk server)
+       - Wazuh parent-process rules (process chain detection)
+     ================================================================ -->
+
+<group name="exploit_pubfacing,initial_access,splunk,cve_2026_20253,">
+
+  <!-- ============================================================
+       T1190: HTTP access to Splunk PostgreSQL sidecar endpoint
+       Splunk logs go through decoder; this catches auditd syscall
+       exec events for PostgreSQL utility processes on Splunk host.
+       Rule 102900: Base - any auditd EXECVE on Splunk host
+       ============================================================ -->
+  <rule id="102900" level="3">
+    <if_sid>80792</if_sid>
+    <field name="audit.exe" type="pcre2">/opt/splunk|/usr/local/splunk</field>
+    <description>Splunk process event (auditd) on host $(hostname)</description>
+    <group>audit,splunk,</group>
+  </rule>
+
+  <!-- PostgreSQL utility (psql/pg_dump) spawned under Splunk context -->
+  <rule id="102901" level="12">
+    <if_sid>102900</if_sid>
+    <field name="audit.exe" type="pcre2">(psql|pg_dump|pg_restore|pg_dumpall)$</field>
+    <description>CVE-2026-20253: PostgreSQL utility $(audit.exe) executed in Splunk context — potential lo_export file-write exploitation (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.004</id>
+    </mitre>
+    <group>cve_2026_20253,postgresql,exploit_pubfacing,high,</group>
+  </rule>
+
+  <!-- Shell spawned as child of splunkd (post-exploitation) -->
+  <rule id="102902" level="14">
+    <if_sid>80792</if_sid>
+    <field name="audit.ppid" type="pcre2">\d+</field>
+    <field name="audit.exe" type="pcre2">/(bash|sh|dash|ksh|zsh)$</field>
+    <field name="audit.cwd" type="pcre2">/opt/splunk|/usr/local/splunk|/var/opt/splunk</field>
+    <description>CVE-2026-20253: Shell $(audit.exe) spawned within Splunk working directory — likely command injection via PostgreSQL sidecar RCE (T1059.004)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.004</id>
+    </mitre>
+    <group>cve_2026_20253,shell_exec,exploit_pubfacing,critical,</group>
+  </rule>
+
+  <!-- Network utility spawned in Splunk context (reverse shell download) -->
+  <rule id="102903" level="15">
+    <if_sid>80792</if_sid>
+    <field name="audit.exe" type="pcre2">/(curl|wget|nc|ncat|netcat|python|python3|perl)$</field>
+    <field name="audit.cwd" type="pcre2">/opt/splunk|/usr/local/splunk|/var/opt/splunk</field>
+    <description>CVE-2026-20253: Network/scripting utility $(audit.exe) spawned in Splunk directory — likely post-exploitation download or reverse shell (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.004</id>
+    </mitre>
+    <group>cve_2026_20253,reverse_shell,exploit_pubfacing,critical,</group>
+  </rule>
+
+  <!-- ============================================================
+       T1505.003: Web shell / unauthorized file creation in Splunk
+       Syscheck alerts on new files in Splunk app directories.
+       ============================================================ -->
+  <rule id="102910" level="3">
+    <if_sid>550,554</if_sid>
+    <field name="file" type="pcre2">/opt/splunk/etc/apps/|/opt/splunk/etc/deployment-apps/|/usr/local/splunk/etc/apps/</field>
+    <description>File change detected in Splunk application directory $(file)</description>
+    <group>syscheck,splunk,app_directory,</group>
+  </rule>
+
+  <!-- PHP file added to Splunk app directory (web shell) -->
+  <rule id="102911" level="14">
+    <if_sid>102910</if_sid>
+    <field name="file" type="pcre2">\.php$</field>
+    <description>CVE-2026-20253: PHP file $(file) created in Splunk app directory — likely web shell staging after RCE exploitation (T1505.003)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1505.003</id>
+    </mitre>
+    <group>cve_2026_20253,webshell,persistence,critical,</group>
+  </rule>
+
+  <!-- Shell script added to Splunk app directory -->
+  <rule id="102912" level="13">
+    <if_sid>102910</if_sid>
+    <field name="file" type="pcre2">\.(sh|bash|py)$</field>
+    <description>CVE-2026-20253: Script file $(file) created in Splunk app directory — potential post-exploitation persistence (T1505.003)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1505.003</id>
+    </mitre>
+    <group>cve_2026_20253,script_persistence,persistence,high,</group>
+  </rule>
+
+</group>

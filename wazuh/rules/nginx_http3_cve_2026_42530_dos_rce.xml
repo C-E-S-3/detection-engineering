@@ -1,0 +1,96 @@
+<!-- ================================================================
+     CVE-2026-42530 + CVE-2026-42055: NGINX HTTP/3 Critical Flaws
+     MITRE ATT&CK: T1190 (Exploit Public-Facing Application)
+                   T1499.004 (Endpoint DoS: Application Exploitation)
+     Rule IDs: 102913-102920
+     Severity: HIGH — CVSSv4 9.2, NGINX 1.31.0-1.31.1 affected
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-06-20
+
+     Description: Detects exploitation indicators for CVE-2026-42530,
+     a use-after-free in NGINX's ngx_http_v3_module (HTTP/3 QUIC)
+     triggered by a crafted QPACK encoder stream reopen sequence.
+     Reliable DoS; potential RCE on systems without ASLR.
+
+     Fixed in NGINX 1.31.2 (released June 17, 2026).
+
+     Log sources:
+       - NGINX error log (forwarded to Wazuh via localfile)
+       - Wazuh syscheck for NGINX binary version monitoring
+     ================================================================ -->
+
+<group name="exploit_pubfacing,initial_access,nginx,cve_2026_42530,">
+
+  <!-- ============================================================
+       NGINX error log base rule
+       Log format: YYYY/MM/DD HH:MM:SS [level] PID#TID: *CONN msg
+       ============================================================ -->
+  <rule id="102913" level="3">
+    <program_name>nginx</program_name>
+    <description>NGINX log event on host $(hostname)</description>
+    <group>nginx,</group>
+  </rule>
+
+  <!-- NGINX worker process crash/restart (DoS exploitation indicator) -->
+  <rule id="102914" level="11">
+    <if_sid>102913</if_sid>
+    <match type="pcre2">worker process \d+ exited|signal \d+ \(SIG(SEGV|ABRT|BUS|FPE)\)|worker processes were shutdown</match>
+    <description>CVE-2026-42530: NGINX worker process crash detected — potential HTTP/3 use-after-free exploitation or DoS (T1499.004)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1499.004</id>
+    </mitre>
+    <group>cve_2026_42530,nginx_crash,dos,high,</group>
+  </rule>
+
+  <!-- NGINX worker crash frequency — repeated crashes = active exploitation -->
+  <rule id="102915" level="13" frequency="3" timeframe="120">
+    <if_matched_sid>102914</if_matched_sid>
+    <same_field>hostname</same_field>
+    <description>CVE-2026-42530: NGINX worker process crash loop detected (3+ crashes in 120s) — high-confidence HTTP/3 exploitation attempt (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1499.004</id>
+    </mitre>
+    <group>cve_2026_42530,nginx_crash_loop,dos,critical,</group>
+  </rule>
+
+  <!-- NGINX HTTP/3 QUIC module error (specific to ngx_http_v3_module) -->
+  <rule id="102916" level="12">
+    <if_sid>102913</if_sid>
+    <match type="pcre2">ngx_http_v3|QUIC|quic|http3|HTTP/3|ngx_quic</match>
+    <match type="pcre2">error|failed|invalid|unexpected|unknown</match>
+    <description>CVE-2026-42530: NGINX HTTP/3 (QUIC) module error — $(log_data) — potential exploitation of ngx_http_v3_module use-after-free</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>cve_2026_42530,http3_error,high,</group>
+  </rule>
+
+  <!-- ============================================================
+       NGINX recv/QPACK errors correlating to CVE-2026-42530 trigger
+       ============================================================ -->
+  <rule id="102917" level="11">
+    <if_sid>102913</if_sid>
+    <match type="pcre2">recv\(\) failed|SSL_read\(\) failed|readv\(\) failed</match>
+    <match type="pcre2">peer closed connection|connection reset|broken pipe</match>
+    <description>CVE-2026-42530: NGINX QUIC connection anomaly — rapid recv failures consistent with malformed QPACK stream (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>cve_2026_42530,quic_anomaly,medium,</group>
+  </rule>
+
+  <!-- High volume of QUIC connection anomalies (scanning/exploitation) -->
+  <rule id="102918" level="13" frequency="10" timeframe="60">
+    <if_matched_sid>102917</if_matched_sid>
+    <same_field>hostname</same_field>
+    <description>CVE-2026-42530: High volume of NGINX QUIC connection anomalies (10+ in 60s) — likely active exploitation scan or DoS (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1499.004</id>
+    </mitre>
+    <group>cve_2026_42530,exploitation_scan,critical,</group>
+  </rule>
+
+</group>
