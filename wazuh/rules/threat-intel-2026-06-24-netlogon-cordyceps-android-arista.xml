@@ -58,7 +58,7 @@
        - Windows Security Event Log: Event ID 4742 (computer account change on DC)
        - Frequency correlation: burst of 5805/5827 errors preceding lsass crash = exploitation
      ============================================================== -->
-<group name="windows,netlogon,cve_2026_41089,exploitation,domain_controller,">
+<group name="threat_intel_2026_06_24,windows,netlogon,supply_chain,android,mobile,network,arista,">
 
   <!-- Rule 103627 — Anchor: Netlogon channel establishment failure (Event ID 5805)
        Event 5805 fires when a machine fails to establish a Netlogon secure channel.
@@ -175,7 +175,7 @@
     <group>ids,suricata,netlogon,cve_2026_41089,domain_controller,</group>
   </rule>
 
-</group>
+
 
 
 <!-- ==============================================================
@@ -195,7 +195,6 @@
          carrying Authorization headers or CI_* environment variable values
        - Agent: GitHub Enterprise audit log via webhook → Wazuh custom decoder
      ============================================================== -->
-<group name="supply_chain,cicd,cordyceps,github_actions,credential_access,">
 
   <!-- Rule 103634 — CI/CD workflow triggered by forked PR with write-secrets permission
        The core Cordyceps pattern: a workflow file grants write permission to pull_request
@@ -280,7 +279,7 @@
     <group>cicd,cordyceps,workflow_modification,github_audit,</group>
   </rule>
 
-</group>
+
 
 
 <!-- ==============================================================
@@ -298,7 +297,6 @@
        - Network-level: C2 beacon from compromised Android device (spyware pattern)
        - Wazuh agent on MDM log forwarder: device out-of-compliance event
      ============================================================== -->
-<group name="android,mobile,cve_2025_48595,privilege_escalation,lpe,">
 
   <!-- Rule 103639 — MDM: Android device reporting patch level below CVE-2025-48595 fix
        MDM platforms forward compliance events to SIEM. Devices below Android 2026-06-05
@@ -347,7 +345,7 @@
     <group>ids,suricata,android,cve_2025_48595,spyware_c2,</group>
   </rule>
 
-</group>
+
 
 
 <!-- ==============================================================
@@ -367,7 +365,6 @@
        - Suricata: east-west tunnel traffic between VLANs that should not communicate
        - Network flow: excessive VXLAN/GRE packets from unexpected source ranges
      ============================================================== -->
-<group name="network,arista,cve_2026_7473,tunnel_abuse,protocol_tunneling,">
 
   <!-- Rule 103642 — Suricata: unexpected VXLAN traffic to non-configured VTEP
        CVE-2026-7473 allows sending VXLAN to an Arista IP configured only for GRE.
