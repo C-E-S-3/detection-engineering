@@ -36,7 +36,7 @@
      Rules: 103541-103549
      ============================================================ -->
 
-<group name="threat_intel,ioc_network,arystinger,botnet,">
+<group name="threat_intel,ioc_network,arystinger,botnet,icarus,klue_breach,">
 
   <!-- AryStinger primary propagation IP — firewall block/allow log -->
   <rule id="103541" level="14">
@@ -146,7 +146,7 @@
     <group>ioc_c2,arystinger,botnet,correlation,high_fidelity,</group>
   </rule>
 
-</group>
+
 
 
 <!-- ============================================================
@@ -160,7 +160,7 @@
      Rules: 103550-103557
      ============================================================ -->
 
-<group name="threat_intel,ioc_network,icarus,klue_breach,">
+
 
   <!-- Icarus attacker IP #1 — observed in Salesforce RestApi audit logs -->
   <rule id="103550" level="14">
