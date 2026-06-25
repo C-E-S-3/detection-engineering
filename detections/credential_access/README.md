@@ -30,6 +30,7 @@ Detections for techniques adversaries use to steal credentials, including Kerber
 | [UNC6671 AiTM MFA Device Registration Abuse](unc6671_aitm_mfa_device_registration_abuse.md) | T1111, T1556, T1557.002 | Detects attacker-controlled MFA device registration on Okta or Azure AD following vishing-facilitated AiTM credential capture; UNC6671/BlackFile post-access persistence |
 | [Tycoon 2FA Post-Compromise Token Abuse](tycoon2fa_device_code_token_abuse.md) | T1550.001, T1528 | Node.js (`node`/`undici`) user-agent in Entra sign-in logs indicating Tycoon2FA operator token-replay automation after device code phishing; supplemental rules for known operator IPs (AS45102) and Trustifi redirect chain |
 | [SonicWall SSL-VPN CLI Session Brute Force — CVE-2024-12802 MFA Bypass](sonicwall_vpn_upn_mfa_bypass_brute_force.md) | T1110.001, T1133, T1556 | Detects automated brute-force using `sess="CLI"` session type (no legitimate interactive session uses this value) against SonicWall Gen6 SSL-VPN; CVE-2024-12802 allows MFA bypass via UPN format on insufficiently patched appliances; attributed to Akira ransomware affiliates |
+| [Linux /proc Filesystem and Shadow File Credential Dumping](linux_proc_filesystem_credential_dumping.md) | T1003.007, T1003.008 | Linux credential dumping via ptrace PEEK ops, process_vm_readv, /proc/kcore, and /etc/shadow reads by unprivileged users; Wazuh rules 100620-100626 |
 
 ---
 
