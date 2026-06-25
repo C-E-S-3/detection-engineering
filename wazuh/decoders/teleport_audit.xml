@@ -1,0 +1,68 @@
+<!-- ================================================================
+     Teleport Access Platform — Audit Log Decoder
+     Parses Teleport JSON audit events forwarded to Wazuh via
+     localfile (log_format: json) or syslog multiline.
+
+     Teleport audit log format (JSON-lines):
+       {"ei":N,"event":"<type>","code":"<T####I/W/E>","uid":"...","time":"..."}
+
+     Wazuh localfile configuration (on Teleport host):
+       <localfile>
+         <log_format>json</log_format>
+         <location>/var/lib/teleport/log/events.log</location>
+       </localfile>
+
+     OR via syslog with program_name "teleport":
+       <localfile>
+         <log_format>syslog</log_format>
+         <location>/var/log/teleport.log</location>
+       </localfile>
+
+     Field mapping:
+       teleport.event   → Teleport event type (user.login, auth, session.start…)
+       teleport.code    → Event code  (T1000I, T1006W, T3002I…)
+       teleport.user    → Subject user
+       teleport.success → Boolean success flag
+       teleport.error   → Error string on failure
+       teleport.remote  → Client IP (addr.remote field)
+       teleport.uid     → Event UUID
+
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-06-20
+     ================================================================ -->
+
+<!--
+  Path A: JSON-format localfile (log_format: json)
+  The built-in "json" decoder extracts top-level fields directly;
+  we only need a lightweight parent to anchor Teleport-specific rules.
+  Teleport JSON events always have the key "ei" (event index) as the
+  first field, and "event" as the second.
+-->
+<decoder name="teleport-audit-json">
+  <prematch>{"ei":</prematch>
+  <plugin_decoder>JSON_Decoder</plugin_decoder>
+</decoder>
+
+<!-- Teleport audit events decoded from JSON: re-map field aliases. -->
+<decoder name="teleport-audit-json-fields">
+  <parent>teleport-audit-json</parent>
+  <regex>^{"ei":\d+,"event":"(\w[\w.]+)","code":"(T\d{4}[IWE])"</regex>
+  <order>teleport.event, teleport.code</order>
+</decoder>
+
+<!--
+  Path B: syslog-wrapped Teleport events (program_name = teleport)
+  Teleport can ship events to syslog; the JSON payload follows the
+  syslog header: "teleport: {...}"
+-->
+<decoder name="teleport-syslog">
+  <program_name>teleport</program_name>
+  <prematch>{"ei":</prematch>
+  <plugin_decoder>JSON_Decoder</plugin_decoder>
+</decoder>
+
+<decoder name="teleport-syslog-fields">
+  <parent>teleport-syslog</parent>
+  <regex>^{"ei":\d+,"event":"(\w[\w.]+)","code":"(T\d{4}[IWE])"</regex>
+  <order>teleport.event, teleport.code</order>
+</decoder>

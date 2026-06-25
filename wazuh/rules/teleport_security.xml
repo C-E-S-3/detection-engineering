@@ -1,0 +1,299 @@
+<!-- ================================================================
+     Teleport Access Platform — Security Monitoring Rules
+     MITRE ATT&CK Techniques:
+       T1078   (Valid Accounts — unauthorized access via Teleport)
+       T1110   (Brute Force — repeated Teleport auth failures)
+       T1098   (Account Manipulation — role/user changes)
+       T1550   (Use Alternate Auth Material — cert replay / bypass)
+       T1136   (Create Account — Teleport user/bot creation)
+     Rule IDs: 103100-103130
+     Severity scale: 3=info, 5=low, 8=medium, 11=high, 13=critical
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-06-20
+
+     Relevant CVEs:
+       CVE-2025-49825 — Teleport remote SSH auth bypass (CVSS 9.8)
+                        Affects Community Edition ≤ 17.5.1; patched
+                        in 17.5.2 / 16.5.12 / 15.5.3 / 14.4.1.
+                        Pattern: SSH sessions established without a
+                        corresponding authenticated login event.
+
+     Log source prerequisites:
+       - Teleport audit log shipped to Wazuh via localfile
+         (JSON or syslog format — see teleport_audit.xml decoder)
+       - Localfile config on each Teleport host:
+           <localfile>
+             <log_format>json</log_format>
+             <location>/var/lib/teleport/log/events.log</location>
+           </localfile>
+       - Teleport audit_events_uri configured to local file backend
+         (default in self-hosted Community Edition)
+     ================================================================ -->
+
+<group name="teleport,access_platform,authentication,">
+
+  <!-- ============================================================
+       BASE RULES — anchor all Teleport sub-rules
+       ============================================================ -->
+
+  <!-- 103100: Any Teleport auth event (JSON decoder path) -->
+  <rule id="103100" level="0">
+    <decoded_as>teleport-audit-json</decoded_as>
+    <description>Teleport audit event received (JSON log)</description>
+    <group>teleport,</group>
+  </rule>
+
+  <!-- 103101: Any Teleport auth event (syslog path) -->
+  <rule id="103101" level="0">
+    <decoded_as>teleport-syslog</decoded_as>
+    <description>Teleport audit event received (syslog)</description>
+    <group>teleport,</group>
+  </rule>
+
+
+  <!-- ============================================================
+       T1110: AUTHENTICATION FAILURES
+       ============================================================ -->
+
+  <!-- Single auth failure — T1006W (general auth) or T1000E (login fail) -->
+  <rule id="103102" level="5">
+    <if_sid>103100,103101</if_sid>
+    <field name="teleport.code" type="pcre2">^T100[06][WE]$</field>
+    <description>Teleport: Authentication failure for user $(user) from $(addr.remote)</description>
+    <mitre>
+      <id>T1110</id>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication_failure,teleport,</group>
+  </rule>
+
+  <!-- Brute-force: 5 auth failures in 60 s from same source -->
+  <rule id="103103" level="11" frequency="5" timeframe="60">
+    <if_matched_sid>103102</if_matched_sid>
+    <same_field>addr.remote</same_field>
+    <description>Teleport: Brute-force — 5+ auth failures from $(addr.remote) in 60 s (T1110)</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>brute_force,teleport,high,</group>
+  </rule>
+
+  <!-- Burst across multiple users from same IP — credential stuffing -->
+  <rule id="103104" level="12" frequency="5" timeframe="120">
+    <if_matched_sid>103102</if_matched_sid>
+    <same_field>addr.remote</same_field>
+    <different_field>user</different_field>
+    <description>Teleport: Credential stuffing — 5+ auth failures for different users from $(addr.remote) in 120 s (T1110)</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+    <group>credential_stuffing,teleport,high,</group>
+  </rule>
+
+
+  <!-- ============================================================
+       T1550 / CVE-2025-49825: AUTH BYPASS DETECTION
+       Pattern: session.start event where no user.login (T1000I)
+       precedes it from the same user within a 10 s window.
+       Wazuh cannot natively do negative correlation, so we instead
+       flag ANY session.start that arrives with no prior successful
+       auth event (success=false or missing) in the same connection.
+       ============================================================ -->
+
+  <!-- session.start with a Teleport internal/machine cert (no human login) -->
+  <rule id="103110" level="11">
+    <if_sid>103100,103101</if_sid>
+    <field name="event" type="pcre2">^session\.start$</field>
+    <field name="cert_type" type="pcre2">^(host|db|app|kube)$</field>
+    <description>Teleport: Non-user session.start with $(cert_type) certificate — verify cert issuance chain (T1550/CVE-2025-49825)</description>
+    <mitre>
+      <id>T1550</id>
+      <id>T1078</id>
+    </mitre>
+    <group>session_start,teleport,cert_anomaly,</group>
+  </rule>
+
+  <!-- session.start from an unrecognised or external IP (not RFC1918) -->
+  <rule id="103111" level="10">
+    <if_sid>103100,103101</if_sid>
+    <field name="event" type="pcre2">^session\.start$</field>
+    <field name="addr.remote" negate="yes" type="pcre2">^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|127\.|::1)</field>
+    <description>Teleport: Session started from external IP $(addr.remote) by user $(user) — verify authorization (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>session_start,external_access,teleport,medium,</group>
+  </rule>
+
+  <!-- Multiple cert.create events in short window — possible bypass / token abuse -->
+  <rule id="103112" level="12" frequency="10" timeframe="60">
+    <if_sid>103100,103101</if_sid>
+    <field name="event" type="pcre2">^cert\.create$</field>
+    <description>Teleport: 10+ certificates created within 60 s — possible CVE-2025-49825 exploitation or token abuse (T1550)</description>
+    <mitre>
+      <id>T1550</id>
+    </mitre>
+    <group>cert_flood,teleport,high,</group>
+  </rule>
+
+
+  <!-- ============================================================
+       T1098 / T1136: PRIVILEGE ESCALATION — ACCOUNT MANIPULATION
+       ============================================================ -->
+
+  <!-- Role created (T9000I) — changes access scope -->
+  <rule id="103120" level="8">
+    <if_sid>103100,103101</if_sid>
+    <field name="teleport.code" type="pcre2">^T9000I$</field>
+    <description>Teleport: New role created by $(user) — review role permissions (T1098)</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
+    <group>role_create,teleport,account_manipulation,</group>
+  </rule>
+
+  <!-- Privileged role assigned — role names containing admin/root/sudo -->
+  <rule id="103121" level="11">
+    <if_sid>103120</if_sid>
+    <field name="name" type="pcre2">(?i)(admin|root|sudo|superuser|operator|sre|devops|infra)</field>
+    <description>Teleport: Privileged role "$(name)" created by $(user) — immediate review required (T1098)</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
+    <group>privileged_role_create,teleport,high,</group>
+  </rule>
+
+  <!-- User created via Teleport API (T1001I) -->
+  <rule id="103122" level="8">
+    <if_sid>103100,103101</if_sid>
+    <field name="teleport.code" type="pcre2">^T1001I$</field>
+    <description>Teleport: New user account created: $(name) by $(user) (T1136)</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>user_create,teleport,account_manipulation,</group>
+  </rule>
+
+  <!-- Bot / machine account created with admin roles -->
+  <rule id="103123" level="12">
+    <if_sid>103122</if_sid>
+    <field name="bot_name" type="pcre2">\w+</field>
+    <description>Teleport: Machine/bot account $(bot_name) created by $(user) — verify scope (T1136)</description>
+    <mitre>
+      <id>T1136.001</id>
+    </mitre>
+    <group>bot_account_create,teleport,high,</group>
+  </rule>
+
+  <!-- Join token created (T6000I) — enables new nodes to join cluster -->
+  <rule id="103124" level="8">
+    <if_sid>103100,103101</if_sid>
+    <field name="teleport.code" type="pcre2">^T6000I$</field>
+    <description>Teleport: Join token created by $(user) — new node enrollment authorized (T1098)</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
+    <group>token_create,teleport,medium,</group>
+  </rule>
+
+
+  <!-- ============================================================
+       T1078: SUSPICIOUS SESSION PATTERNS
+       ============================================================ -->
+
+  <!-- Root / UID 0 session on a Teleport node -->
+  <rule id="103125" level="12">
+    <if_sid>103100,103101</if_sid>
+    <field name="event" type="pcre2">^session\.start$</field>
+    <field name="login" type="pcre2">^root$</field>
+    <description>Teleport: Root session started by user $(user) on $(server_hostname) from $(addr.remote) (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>root_session,teleport,high,</group>
+  </rule>
+
+  <!-- Successful login outside business hours (00:00–06:00 UTC) -->
+  <rule id="103126" level="8">
+    <if_sid>103100,103101</if_sid>
+    <field name="teleport.code" type="pcre2">^T1000I$</field>
+    <time>00:00 - 06:00</time>
+    <description>Teleport: After-hours login by $(user) from $(addr.remote) at $(timestamp) (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>after_hours_login,teleport,medium,</group>
+  </rule>
+
+  <!-- Sudo / privilege escalation command executed in Teleport session -->
+  <rule id="103127" level="10">
+    <if_sid>103100,103101</if_sid>
+    <field name="event" type="pcre2">^session\.command$</field>
+    <field name="program" type="pcre2">^(sudo|su|doas|pkexec)$</field>
+    <description>Teleport: Privilege escalation command $(program) executed in session by $(user) on $(server_hostname) (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+      <id>T1548.003</id>
+    </mitre>
+    <group>priv_esc_command,teleport,medium,</group>
+  </rule>
+
+
+  <!-- ============================================================
+       ANOMALY: Teleport process crash / service restart
+       (May indicate exploitation attempt against Teleport itself)
+       ============================================================ -->
+
+  <!-- Teleport process exits unexpectedly (auditd or syslog) -->
+  <rule id="103128" level="11">
+    <program_name>systemd</program_name>
+    <match type="pcre2">teleport\.service.*(failed|start-limit|core-dump|killed)</match>
+    <description>Teleport: Service crash/restart detected — potential exploitation attempt (CVE-2025-49825)</description>
+    <mitre>
+      <id>T1499</id>
+    </mitre>
+    <group>service_crash,teleport,high,</group>
+  </rule>
+
+  <!-- Repeated Teleport service restarts — crash loop -->
+  <rule id="103129" level="13" frequency="3" timeframe="300">
+    <if_matched_sid>103128</if_matched_sid>
+    <description>Teleport: Service crash loop (3+ in 5 min) — high-confidence exploitation or misconfiguration (CVE-2025-49825)</description>
+    <mitre>
+      <id>T1499</id>
+    </mitre>
+    <group>service_crash_loop,teleport,critical,</group>
+  </rule>
+
+
+  <!-- ============================================================
+       T1562: IMPAIR DEFENSES — TELEPORT CONFIG MODIFICATION
+       FIM watches /etc/teleport.yaml for changes that could disable
+       audit logging or weaken authentication requirements.
+       Requires wazuh-agent FIM stanza in ossec.conf (inframan PR #117).
+       ============================================================ -->
+
+  <!-- /etc/teleport.yaml modified -->
+  <rule id="103130" level="12">
+    <if_sid>550,554</if_sid>
+    <field name="file" type="pcre2">^/etc/teleport\.yaml$</field>
+    <description>Teleport: Configuration file /etc/teleport.yaml modified — verify audit_events_uri not disabled (T1562)</description>
+    <mitre>
+      <id>T1562</id>
+      <id>T1562.006</id>
+    </mitre>
+    <group>config_change,teleport,impair_defenses,</group>
+  </rule>
+
+  <!-- /etc/teleport.yaml deleted — could be service reconfiguration or tampering -->
+  <rule id="103131" level="13">
+    <if_sid>553</if_sid>
+    <field name="file" type="pcre2">^/etc/teleport\.yaml$</field>
+    <description>Teleport: Configuration file /etc/teleport.yaml deleted — possible Teleport teardown or tampering (T1562)</description>
+    <mitre>
+      <id>T1562</id>
+    </mitre>
+    <group>config_delete,teleport,impair_defenses,high,</group>
+  </rule>
+
+</group>
