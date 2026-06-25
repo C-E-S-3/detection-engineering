@@ -1,0 +1,203 @@
+<!-- ============================================================
+     Gentlemen Ransomware (Storm-2697) Detection Rules
+     MITRE ATT&CK:
+       T1486  - Data Encrypted for Impact
+       T1053.005 - Scheduled Task/Job: Scheduled Task
+       T1570  - Lateral Tool Transfer
+       T1047  - Windows Management Instrumentation
+     Rule IDs: 102000-102011
+     Author: SecOps Engineer
+     Date: 2026-06-15
+
+     Threat Actor: Storm-2697 ("The Gentlemen")
+     Reference: https://www.microsoft.com/en-us/security/blog/2026/05/28/
+                the-gentlemen-ransomware-dissecting-a-self-propagating-go-encryptor/
+
+     Severity tiers:
+       High     (12) - Strong indicator, investigate promptly
+       Critical (13) - Near-certain attack signal, immediate response
+       Critical (14) - Campaign-specific IOC, confirmed attack
+       Critical (15) - Active encryption in progress or confirmed infection
+
+     Log source prerequisites:
+       - Sysmon EventID 1 (ProcessCreate) forwarded to Wazuh
+         (Sysmon config must enable process hashing for rule 102010-102011)
+       - Sysmon EventID 11 (FileCreate) forwarded to Wazuh
+       - Windows Security EventID 4698 (Task Created) forwarded to Wazuh
+
+     Known IOC hashes (SHA256):
+       22b38dad7da097ea03aa28d0614164cd25fafeb1383dbc15047e34c8050f6f67
+         Gentlemen encryptor binary (Go/Garble, XChaCha20+Curve25519)
+       fe1033335a045c696c900d435119d210361966e2fb5cd1ba3382608cfa2c8e68
+         gentlemen.bmp ransom wallpaper bitmap
+     ============================================================ -->
+
+<group name="ransomware,impact,">
+
+  <!-- ===========================================================
+       T1053.005 - Scheduled Task Persistence
+       Campaign-specific task names used by Gentlemen ransomware
+       =========================================================== -->
+
+  <!-- Sysmon ProcessCreate: schtasks creating campaign-named tasks -->
+  <rule id="102000" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)schtasks.*\s(gentlemen_system|UpdateGU2|UpdateSvc2|DefSvc)\b</field>
+    <description>Gentlemen Ransomware: Campaign scheduled task created via schtasks -- Storm-2697 persistence (T1053.005)</description>
+    <mitre>
+      <id>T1053.005</id>
+      <id>T1486</id>
+    </mitre>
+    <group>gentlemen_ransomware,storm_2697,scheduled_task,windows,</group>
+  </rule>
+
+  <!-- Windows Security EventID 4698: Task Scheduler audit - campaign task name -->
+  <rule id="102001" level="14">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4698$</field>
+    <field name="win.eventdata.taskName" type="pcre2">(?i)(gentlemen_system|UpdateGU2|UpdateSvc2|DefSvc)</field>
+    <description>Gentlemen Ransomware: Campaign scheduled task registered in Task Scheduler -- Storm-2697 persistence (T1053.005)</description>
+    <mitre>
+      <id>T1053.005</id>
+      <id>T1486</id>
+    </mitre>
+    <group>gentlemen_ransomware,storm_2697,scheduled_task,windows,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1486 - Data Encrypted for Impact
+       Ransomware-specific file system artifacts
+       =========================================================== -->
+
+  <!-- Sysmon EventID 11: FileCreate with .umc16h encrypted file extension -->
+  <rule id="102002" level="14">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.umc16h$</field>
+    <description>Gentlemen Ransomware: Encrypted file with .umc16h extension created -- active encryption in progress (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>gentlemen_ransomware,storm_2697,file_encryption,windows,</group>
+  </rule>
+
+  <!-- Sysmon EventID 11: Ransom note README-GENTLEMEN.txt creation -->
+  <rule id="102003" level="14">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)README-GENTLEMEN\.txt$</field>
+    <description>Gentlemen Ransomware: Ransom note README-GENTLEMEN.txt dropped - post-encryption indicator (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>gentlemen_ransomware,storm_2697,ransom_note,windows,</group>
+  </rule>
+
+  <!-- Sysmon EventID 11: Wallpaper artifact gentlemen.bmp creation -->
+  <rule id="102004" level="14">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)gentlemen\.bmp$</field>
+    <description>Gentlemen Ransomware: Wallpaper bitmap gentlemen.bmp dropped -- Storm-2697 post-encryption artifact (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>gentlemen_ransomware,storm_2697,ransom_wallpaper,windows,</group>
+  </rule>
+
+  <!-- Frequency rule: 10+ .umc16h files in 60 seconds = mass encryption underway -->
+  <rule id="102005" level="15">
+    <if_matched_sid>102002</if_matched_sid>
+    <frequency>10</frequency>
+    <timeframe>60</timeframe>
+    <same_field>agent.name</same_field>
+    <description>Gentlemen Ransomware: Mass file encryption in progress -- 10+ .umc16h files created in 60s (T1486)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>gentlemen_ransomware,storm_2697,mass_encryption,windows,</group>
+  </rule>
+
+  <!-- Composite: ransom note seen AND recent .umc16h encryption on same host = confirmed infection -->
+  <rule id="102006" level="15">
+    <if_sid>102003</if_sid>
+    <if_matched_sid>102002</if_matched_sid>
+    <description>Gentlemen Ransomware: CONFIRMED INFECTION -- ransom note and encrypted files on same host (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>gentlemen_ransomware,storm_2697,confirmed_infection,windows,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1570 / T1047 - Lateral Tool Transfer / WMI
+       Wormable self-propagation via PsExec and WMIC
+       =========================================================== -->
+
+  <!-- Sysmon ProcessCreate: PsExec copying to admin C$\Temp (worm spreading stage) -->
+  <rule id="102007" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(psexec|psexec64).*\\\\[^\\]+\\C\$\\Temp\\</field>
+    <description>Gentlemen Ransomware: PsExec copying binary to remote C$\Temp -- worm spreading stage (T1570)</description>
+    <mitre>
+      <id>T1570</id>
+      <id>T1486</id>
+    </mitre>
+    <group>gentlemen_ransomware,storm_2697,worm_spread,psexec,lateral_movement,windows,</group>
+  </rule>
+
+  <!-- Sysmon ProcessCreate: WMIC remote process create targeting C:\Temp (worm stage) -->
+  <rule id="102008" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)wmic\s+/node:.*process\s+call\s+create.*C:\\Temp\\</field>
+    <description>Gentlemen Ransomware: WMIC remote process creation from C:\Temp -- worm lateral movement (T1047/T1570)</description>
+    <mitre>
+      <id>T1047</id>
+      <id>T1570</id>
+    </mitre>
+    <group>gentlemen_ransomware,storm_2697,worm_spread,wmi,lateral_movement,windows,</group>
+  </rule>
+
+  <!-- Composite: PsExec worm spread AND recent scheduled task creation = active worm campaign -->
+  <rule id="102009" level="15">
+    <if_sid>102007</if_sid>
+    <if_matched_sid>102000</if_matched_sid>
+    <description>Gentlemen Ransomware: PsExec worm spreading AND campaign task creation on same host -- active worm campaign (T1570/T1053.005)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1570</id>
+      <id>T1053.005</id>
+    </mitre>
+    <group>gentlemen_ransomware,storm_2697,worm_campaign,windows,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Known IOC Hash Matching
+       Sysmon EventID 1 process hash matching for known binaries
+       Requires Sysmon config with HashAlgorithms=SHA256
+       =========================================================== -->
+
+  <!-- Known encryptor binary hash: 22b38dad...50f6f67 -->
+  <rule id="102010" level="15">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.hashes" type="pcre2">(?i)SHA256=22b38dad7da097ea03aa28d0614164cd25fafeb1383dbc15047e34c8050f6f67</field>
+    <description>Gentlemen Ransomware: Known encryptor binary executed (Storm-2697, Garble-obfuscated Go, SHA256 match) (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>gentlemen_ransomware,storm_2697,known_hash,ioc_match,windows,</group>
+  </rule>
+
+  <!-- Known wallpaper bitmap hash: fe103333...c8e68 -->
+  <rule id="102011" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.hashes" type="pcre2">(?i)SHA256=fe1033335a045c696c900d435119d210361966e2fb5cd1ba3382608cfa2c8e68</field>
+    <description>Gentlemen Ransomware: Known wallpaper bitmap binary detected (Storm-2697 gentlemen.bmp SHA256 match) (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>gentlemen_ransomware,storm_2697,known_hash,ioc_match,windows,</group>
+  </rule>
+
+</group>

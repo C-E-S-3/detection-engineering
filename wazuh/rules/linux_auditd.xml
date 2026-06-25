@@ -133,17 +133,30 @@
   <rule id="100620" level="11">
     <if_sid>100600</if_sid>
     <field name="audit.key">etcpasswd</field>
-    <description>Linux: /etc/passwd or /etc/shadow modified - user account or credential change (T1098)</description>
+    <description>Linux: /etc/passwd or /etc/shadow accessed or modified - credential file access (T1003.008/T1098)</description>
     <mitre>
+      <id>T1003.008</id>
       <id>T1098</id>
     </mitre>
     <group>credential_access,persistence,</group>
   </rule>
 
+  <!-- /etc/shadow READ by non-root user — T1003.008 credential dump, not just account change -->
+  <rule id="100623" level="14">
+    <if_sid>100620</if_sid>
+    <field name="audit.auid" negate="yes">^0$</field>
+    <field name="audit.auid" negate="yes">^4294967295$</field>
+    <description>Linux: /etc/shadow or /etc/passwd accessed by unprivileged user - likely credential dump (T1003.008)</description>
+    <mitre>
+      <id>T1003.008</id>
+    </mitre>
+    <group>credential_access,credential_dumping,</group>
+  </rule>
+
   <rule id="100621" level="10">
     <if_sid>100600</if_sid>
     <field name="audit.key">etcgroup</field>
-    <description>Linux: /etc/group or /etc/gshadow modified - group membership changed (T1098)</description>
+    <description>Linux: /etc/group or /etc/gshadow accessed or modified - group membership changed (T1098)</description>
     <mitre>
       <id>T1098</id>
     </mitre>
@@ -153,11 +166,46 @@
   <rule id="100622" level="11">
     <if_sid>100600</if_sid>
     <field name="audit.key">opasswd</field>
-    <description>Linux: /etc/security/opasswd (password history) modified - credential data tampering (T1003)</description>
+    <description>Linux: /etc/security/opasswd (password history) accessed or modified - credential data access (T1003)</description>
     <mitre>
       <id>T1003</id>
     </mitre>
     <group>credential_access,</group>
+  </rule>
+
+  <!-- T1003.007 — Proc Filesystem credential dumping (requires inframan PR #111) -->
+  <!-- Fires on ptrace PEEK ops (gdb, gcore) and process_vm_readv                  -->
+  <rule id="100624" level="13">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">credential_dumping</field>
+    <description>Linux: Process memory read via ptrace(PEEK) or process_vm_readv - possible credential dump (T1003.007)</description>
+    <mitre>
+      <id>T1003.007</id>
+    </mitre>
+    <group>credential_access,credential_dumping,</group>
+  </rule>
+
+  <!-- High severity when unprivileged user reads process memory -->
+  <rule id="100625" level="15">
+    <if_sid>100624</if_sid>
+    <field name="audit.auid" negate="yes">^0$</field>
+    <field name="audit.auid" negate="yes">^4294967295$</field>
+    <description>Linux: Unprivileged user reading process memory via ptrace/process_vm_readv - credential theft likely (T1003.007)</description>
+    <mitre>
+      <id>T1003.007</id>
+    </mitre>
+    <group>credential_access,credential_dumping,</group>
+  </rule>
+
+  <!-- /proc/kcore raw kernel memory access — extremely high risk -->
+  <rule id="100626" level="15">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">proc_kcore</field>
+    <description>Linux: /proc/kcore (raw kernel memory) accessed - kernel credential extraction attempt (T1003.007)</description>
+    <mitre>
+      <id>T1003.007</id>
+    </mitre>
+    <group>credential_access,credential_dumping,</group>
   </rule>
 
 

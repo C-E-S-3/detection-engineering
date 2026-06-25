@@ -40,3 +40,7 @@ HASH,38d053135ddceaef0abb8296f3b0bf6114b25e10e6fa1bb8050aeecec4ba8f55,SHA256,UAT
 HASH,5e6060df7e8114cb7b412260870efd1dc05979454bd907d8750c669ae6fcbcfe,SHA256,UAT-10608,Unknown,W32.5E6060DF7E-100.SBX.TG from UAT-10608 React2Shell campaign,uat10608-nextjs-credential-harvesting
 HASH,e303ac1a9b378382830fc6a0b5a9574eca415d14d9282e2b4aced725db9cfbc5,SHA256,UAT-10608,Unknown,W32.E303AC1A9B-95.SBX.TG from UAT-10608 React2Shell campaign,uat10608-nextjs-credential-harvesting
 DOMAIN,drnatashachinn.com,,Unknown,TDS/Recon JS,Phishing redirect domain delivering Traffic Distribution System and JS reconnaissance payload,fake-vscode-github-phishing
+DOMAIN,svs-verificationdate.beer,,AMOS MaaS Operators,AMOS (Atomic macOS Stealer),AMOS C2 domain from macOS ClickFix DMG campaign (Unit 42 2026-06-23),macos-clickfix-amos-dmg-2026-06-23
+DOMAIN,hgodpcx.ajb8.com,,AMOS MaaS Operators,AMOS (Atomic macOS Stealer),AMOS secondary C2 domain from ClickFix campaign (Unit 42 2026-06-23),macos-clickfix-amos-dmg-2026-06-23
+IP,91.92.242.30,,ClawHavoc/AMOS MaaS,AMOS/ClawHavoc backdoor,Shared C2 IP used by macOS ClickFix AMOS campaign and OpenClaw ClawHavoc supply chain (Unit 42 2026-06-23),macos-clickfix-amos-dmg-2026-06-23
+HASH,a5101caf0a1789d6a4bc30e644d6b152,MD5,AMOS MaaS Operators,AMOS (Atomic macOS Stealer),AMOS stealer sample hash from ClickFix DMG delivery campaign (Unit 42 2026-06-23),macos-clickfix-amos-dmg-2026-06-23
