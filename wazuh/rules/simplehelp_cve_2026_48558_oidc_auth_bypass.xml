@@ -1,0 +1,133 @@
+<!-- ============================================================
+     SimpleHelp OIDC Authentication Bypass - Rogue Account Creation
+     CVE-2026-48558 (SimpleHelp 5.5.15 and earlier / 6.0 pre-release)
+     MITRE ATT&amp;CK:
+       T1190 - Exploit Public-Facing Application
+       T1136.001 - Create Account: Local Account
+       T1078 - Valid Accounts (rogue technician session use)
+     Rule IDs: 102500-102508
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-06-17
+
+     Vulnerability Summary:
+       CVE-2026-48558: SimpleHelp improperly validates OIDC identity
+       assertions when OIDC authentication is enabled. An unauthenticated
+       attacker can send a forged OIDC callback to create and log in as a
+       new Technician account, bypassing MFA entirely. Fixed in 5.5.16
+       and 6.0RC2 (released 2026-06-09).
+
+     Log source prerequisites:
+       - Traefik access log in JSON format forwarded to Wazuh
+       - Built-in Wazuh JSON decoder (decoded_as=json)
+       - SimpleHelp server.log optionally forwarded via Wazuh localfile
+         if SimpleHelp host is a Wazuh agent
+     ============================================================ -->
+
+<group name="initial_access,exploit_pubfacing,persistence,simplehelp,oidc,">
+
+  <!-- T1190: POST to SimpleHelp OIDC callback - authentication bypass -->
+  <rule id="102500" level="12">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">^/remote/oidc/(?:callback|token|login|auth)</field>
+    <description>SimpleHelp CVE-2026-48558: POST to OIDC endpoint from $(ClientHost) to $(RequestHost)$(RequestPath) - OIDC auth bypass attempt (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>simplehelp,oidc,initial_access,exploit_pubfacing,cve_2026_48558,</group>
+  </rule>
+
+  <!-- OIDC callback returned 2xx - rogue Technician account likely created -->
+  <rule id="102501" level="15">
+    <if_sid>102500</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>SimpleHelp CVE-2026-48558: OIDC endpoint returned 2xx to $(ClientHost) - rogue Technician account creation LIKELY SUCCEEDED (T1136.001/T1190)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1136</id>
+    </mitre>
+    <group>simplehelp,oidc,initial_access,exploit_pubfacing,persistence,cve_2026_48558,rce_success,high_confidence,</group>
+  </rule>
+
+  <!-- SimpleHelp remote management endpoint - rogue session activity -->
+  <rule id="102502" level="12">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">^/remote/(?:admin|technician|session|support)</field>
+    <description>SimpleHelp remote management endpoint accessed from $(ClientHost) to $(RequestHost)$(RequestPath) - technician session activity (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>simplehelp,initial_access,exploit_pubfacing,cve_2026_48558,</group>
+  </rule>
+
+  <!-- SimpleHelp OIDC endpoint probe - reconnaissance -->
+  <rule id="102503" level="9">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">^/remote/oidc/</field>
+    <description>SimpleHelp OIDC endpoint accessed from $(ClientHost) to $(RequestHost)$(RequestPath) - OIDC flow reconnaissance (T1590)</description>
+    <mitre>
+      <id>T1590</id>
+    </mitre>
+    <group>simplehelp,oidc,reconnaissance,initial_access,cve_2026_48558,</group>
+  </rule>
+
+  <!-- 3+ OIDC POST attempts in 120s - automated exploit tool -->
+  <rule id="102504" level="14" frequency="3" timeframe="120">
+    <if_matched_sid>102500</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>SimpleHelp CVE-2026-48558: 3+ OIDC POST attempts from $(ClientHost) in 120s - automated account creation exploit (T1190/T1136)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+      <id>T1136</id>
+    </mitre>
+    <group>simplehelp,oidc,initial_access,exploit_pubfacing,cve_2026_48558,scanner,</group>
+  </rule>
+
+  <!-- Two-stage: OIDC bypass then session access - confirmed attack -->
+  <rule id="102505" level="15" frequency="2" timeframe="300">
+    <if_matched_sid>102500,102502</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>SimpleHelp CVE-2026-48558 two-stage attack: $(ClientHost) abused OIDC callback then initiated technician session - rogue account creation and active session confirmed (T1190/T1136/T1078)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+      <id>T1136</id>
+      <id>T1078</id>
+    </mitre>
+    <group>simplehelp,oidc,initial_access,exploit_pubfacing,persistence,cve_2026_48558,high_confidence,</group>
+  </rule>
+
+  <!-- New technician registration event in server.log -->
+  <rule id="102506" level="13">
+    <match>New technician registered|technician.*created|OIDC.*registered|Technician account created</match>
+    <description>SimpleHelp CVE-2026-48558: new technician account registration in SimpleHelp server.log - rogue account creation event (T1136.001)</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>simplehelp,persistence,account_creation,cve_2026_48558,</group>
+  </rule>
+
+  <!-- OIDC login event in server.log -->
+  <rule id="102507" level="12">
+    <match>OIDC.*login|oidc.*auth|OIDC.*technician</match>
+    <description>SimpleHelp CVE-2026-48558: OIDC login event in SimpleHelp server.log - verify this account is legitimate (T1078/T1190)</description>
+    <mitre>
+      <id>T1078</id>
+      <id>T1190</id>
+    </mitre>
+    <group>simplehelp,oidc,credential_access,cve_2026_48558,</group>
+  </rule>
+
+  <!-- Remote script execution in server.log - post-exploitation activity -->
+  <rule id="102508" level="14">
+    <match>script.*executed|Script.*run|remote script|PowerShell.*executed|bash.*executed</match>
+    <description>SimpleHelp CVE-2026-48558: script execution in SimpleHelp server.log - possible post-exploitation command execution via rogue technician account (T1059)</description>
+    <mitre>
+      <id>T1059</id>
+      <id>T1078</id>
+    </mitre>
+    <group>simplehelp,execution,cve_2026_48558,post_exploitation,</group>
+  </rule>
+
+</group>
