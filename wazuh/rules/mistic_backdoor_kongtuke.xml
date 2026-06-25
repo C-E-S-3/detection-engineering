@@ -1,0 +1,285 @@
+<!-- ============================================================
+     Mistic Backdoor / KongTuke Access Broker Detection Rules
+     MITRE ATT&CK Techniques:
+       T1566.002 - Phishing: Spearphishing Link (Teams ClickFix delivery)
+       T1574.002 - Hijack Execution Flow: DLL Side-Loading
+       T1055    - Process Injection (in-memory BOF execution)
+       T1056.004 - Input Capture: Credential API Hooking / Fake UI
+       T1071.001 - Application Layer Protocol: Web Protocols (C2)
+       T1140    - Deobfuscate/Decode Files or Information
+       T1070.004 - File Deletion (self-deletion / kill switch)
+     Rule IDs: 103590-103599
+     Author: SecOps Engineer
+     Date: 2026-06-24
+
+     Threat actor summary:
+       KongTuke is a financially-motivated access broker targeting insurance,
+       education, IT, and professional services. It deploys Mistic (also called
+       MTLBackdoor) as a stealthy implant to establish persistent access for
+       ransomware affiliates. First reported publicly June 24, 2026.
+
+     Attack chain:
+       1. Social engineering via Microsoft Teams (fake IT/HR notifications)
+       2. ClickFix lure delivers multi-stage infection:
+          - ModeloRAT deployed first as initial implant
+          - Mistic deployed as follow-on persistent backdoor
+       3. DLL side-loading: legitimate MpExtMs.exe loads malicious version.dll
+          which loads EndpointDlp.dll (Mistic core, mimics MDATP naming)
+       4. .NET DLL presents fake credential/MFA prompt (T1056.004)
+       5. Mistic runs payloads in memory via BOF with no disk artifacts
+       6. Self-deletion kill switch removes all trace on operator command
+
+     Key IOCs (at time of publication — no specific C2 domains/IPs disclosed):
+       - MpExtMs.exe loading version.dll from non-standard path
+       - EndpointDlp.dll loaded by MpExtMs.exe from %TEMP% or user-writable dirs
+       - .NET DLL spawning fake UI credential prompt
+       - DLL loaded by MpExtMs.exe performing outbound HTTP/HTTPS connections
+
+     Detection approach:
+       1. MpExtMs.exe loading version.dll from non-Program Files path (sideload)
+       2. EndpointDlp.dll created/accessed outside MDATP install directory
+       3. MpExtMs.exe making outbound network connections (atypical for this binary)
+       4. .NET executable spawning GUI window presenting credential prompts
+       5. Fake Teams notification leading to CLI command execution (ClickFix anchor)
+       6. File self-deletion immediately after in-memory DLL execution
+       7. MpExtMs.exe child process creation (atypical for Microsoft binary)
+       8. In-memory BOF execution indicators (unsigned code in process memory)
+       9. Correlated DLL sideload + outbound C2 connection chain
+
+     Severity tiers:
+       Low (5)      - Base anchor (correlation only)
+       Medium (9)   - Suspicious but context-dependent; investigate
+       High (11-12) - Strong KongTuke/Mistic indicator; investigate promptly
+       Critical (13-15) - Near-certain Mistic implant; immediate incident response
+
+     Log source prerequisites:
+       - Windows Sysmon (EventID 1/3/7/11) forwarded to Wazuh via NXLog/Winlogbeat
+       - Windows Security Event Log (4688, 4663, 4624) via Wazuh Windows agent
+       - Wazuh FIM enabled for %TEMP%, %APPDATA%, C:\Windows\Temp
+       - Sysmon Event 7 (ImageLoad) requires Sysmon configured with DLL load logging
+       - Sysmon Event 3 (NetworkConnect) enabled for all processes
+
+     References:
+       - BleepingComputer: "Stealthy Mistic Backdoor Linked to Ransomware Access
+         Broker KongTuke" (2026-06-24)
+       - MITRE ATT&CK: T1574.002 (DLL Side-Loading)
+     ============================================================ -->
+
+<group name="windows,kongtuke,mistic,malware,defense_evasion,credential_access,">
+
+  <!-- ===========================================================
+       T1574.002 — DLL side-loading anchor: MpExtMs.exe base event
+       Rule IDs: 103590
+       MpExtMs.exe is a legitimate Microsoft Defender for Endpoint
+       helper binary. KongTuke places a malicious version.dll in the
+       same directory and runs MpExtMs.exe to trigger the sideload.
+       Any execution of MpExtMs.exe outside of MDATP/MsSense install
+       paths is suspicious.
+       =========================================================== -->
+
+  <rule id="103590" level="9">
+    <if_group>windows,sysmon</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)MpExtMs\.exe</field>
+    <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)(C:\\Program Files\\Windows Defender|C:\\ProgramData\\Microsoft\\Windows Defender|C:\\Program Files\\Microsoft Security Client)</field>
+    <description>Mistic/KongTuke: MpExtMs.exe executed from non-standard path on $(hostname) -- DLL side-loading precursor; MpExtMs.exe should only run from Windows Defender install directory (T1574.002)</description>
+    <mitre>
+      <id>T1574.002</id>
+    </mitre>
+    <group>mistic_dll_sideload,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1574.002 — version.dll loaded by MpExtMs.exe from wrong path
+       Rule IDs: 103591
+       Sysmon Event 7 (ImageLoad): MpExtMs.exe loading version.dll
+       from any path outside System32 is the core DLL sideload signal.
+       version.dll is a legitimate Windows DLL; the malicious copy
+       is planted in the same directory as MpExtMs.exe.
+       =========================================================== -->
+
+  <rule id="103591" level="14">
+    <if_group>windows,sysmon</if_group>
+    <field name="win.system.eventID">7</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)MpExtMs\.exe</field>
+    <field name="win.eventdata.imageLoaded" type="pcre2">(?i)version\.dll</field>
+    <field name="win.eventdata.imageLoaded" negate="yes" type="pcre2">(?i)(C:\\Windows\\System32\\version\.dll|C:\\Windows\\SysWOW64\\version\.dll)</field>
+    <description>Mistic/KongTuke DLL sideload confirmed on $(hostname): MpExtMs.exe loaded version.dll from non-System32 path -- matches KongTuke Mistic implant delivery technique (T1574.002); immediate investigation required</description>
+    <mitre>
+      <id>T1574.002</id>
+    </mitre>
+    <group>mistic_dll_sideload,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1574.002 — EndpointDlp.dll created/accessed outside MDATP
+       Rule IDs: 103592
+       EndpointDlp.dll is the filename used by Mistic core implant,
+       chosen to mimic Microsoft Defender for Endpoint's legitimate
+       endpoint DLP component. Any creation or load of EndpointDlp.dll
+       outside the official MDATP install path is malicious.
+       =========================================================== -->
+
+  <rule id="103592" level="13">
+    <if_group>windows,sysmon</if_group>
+    <field name="win.eventdata.targetFilename|win.eventdata.imageLoaded" type="pcre2">(?i)EndpointDlp\.dll</field>
+    <field name="win.eventdata.targetFilename|win.eventdata.imageLoaded" negate="yes" type="pcre2">(?i)(C:\\Program Files\\Windows Defender|C:\\ProgramData\\Microsoft\\Windows Defender Advanced Threat Protection)</field>
+    <description>Mistic backdoor artifact on $(hostname): EndpointDlp.dll found/loaded outside MDATP directory -- Mistic uses this filename to masquerade as Microsoft DLP component (T1574.002, T1036.005)</description>
+    <mitre>
+      <id>T1574.002</id>
+    </mitre>
+    <group>mistic_endpoint_dlp,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1071.001 — MpExtMs.exe outbound network connection
+       Rule IDs: 103593
+       MpExtMs.exe is a Microsoft Defender helper binary that does not
+       initiate outbound network connections in normal operation. Any
+       network connection from this process indicates Mistic is
+       communicating with C2 infrastructure via the sideloaded DLL.
+       =========================================================== -->
+
+  <rule id="103593" level="14">
+    <if_group>windows,sysmon</if_group>
+    <field name="win.system.eventID">3</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)MpExtMs\.exe</field>
+    <field name="win.eventdata.destinationPort" negate="yes" type="pcre2">^(135|445|389|636|88|53)$</field>
+    <description>Mistic/KongTuke C2 communication on $(hostname): MpExtMs.exe initiated outbound network connection -- this binary should not make network connections; Mistic is beaconing via sideloaded DLL (T1574.002, T1071.001)</description>
+    <mitre>
+      <id>T1574.002</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>mistic_c2_connection,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1574.002 + T1071.001 — Composite: sideload confirmed + C2
+       Rule IDs: 103594
+       High-fidelity correlation: DLL sideload event (103591/103592)
+       followed by outbound connection from MpExtMs.exe (103593)
+       within 5 minutes is a near-certain Mistic implant active session.
+       =========================================================== -->
+
+  <rule id="103594" level="15" frequency="1" timeframe="300">
+    <if_matched_sid>103591</if_matched_sid>
+    <if_matched_group>mistic_c2_connection,</if_matched_group>
+    <description>MISTIC IMPLANT ACTIVE on $(hostname): DLL sideload via MpExtMs.exe/version.dll confirmed + outbound C2 connection from MpExtMs.exe within 5 minutes -- KongTuke Mistic backdoor fully operational; CRITICAL incident response required (T1574.002, T1071.001)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1574.002</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>mistic_active_implant,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1056.004 — Fake credential prompt (.NET UI DLL)
+       Rule IDs: 103595
+       KongTuke deploys a .NET DLL alongside Mistic that renders a
+       fake MFA or login window to harvest credentials. Detection:
+       .NET executable presenting a credential window with parent
+       being MpExtMs.exe or a suspicious loader.
+       Sysmon Event 1: process creation with parent MpExtMs.exe
+       spawning a .NET executable with UI characteristics.
+       =========================================================== -->
+
+  <rule id="103595" level="12">
+    <if_group>windows,sysmon</if_group>
+    <field name="win.system.eventID">1</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)MpExtMs\.exe</field>
+    <description>Mistic/KongTuke fake credential UI on $(hostname): process created with MpExtMs.exe as parent -- KongTuke deploys .NET credential harvesting DLL loaded by MpExtMs.exe; child process creation from this binary is anomalous (T1056.004, T1574.002)</description>
+    <mitre>
+      <id>T1056.004</id>
+      <id>T1574.002</id>
+    </mitre>
+    <group>mistic_credential_harvest,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1566.002 / T1204.001 — ClickFix Teams delivery anchor
+       Rule IDs: 103596
+       KongTuke delivers Mistic via Teams ClickFix social engineering.
+       The lure instructs the victim to copy-paste a PowerShell or
+       cmd command into a terminal. Detection: Teams process spawning
+       shell or executing mshta/wscript with Base64 encoded command.
+       =========================================================== -->
+
+  <rule id="103596" level="11">
+    <if_group>windows,sysmon</if_group>
+    <field name="win.system.eventID">1</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)(Teams\.exe|msedge\.exe|chrome\.exe|msedgewebview2\.exe)</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)(powershell\.exe|pwsh\.exe|cmd\.exe|mshta\.exe|wscript\.exe|cscript\.exe|rundll32\.exe)</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(-enc\s+[A-Za-z0-9+/=]{20,}|-EncodedCommand|FromBase64String|[A-Za-z0-9+/]{50,}={0,2})</field>
+    <description>ClickFix lure execution on $(hostname): Teams/browser spawned PowerShell/cmd with Base64-encoded command -- KongTuke Teams ClickFix delivery pattern; Mistic implant deployment likely in progress (T1566.002, T1204.001)</description>
+    <mitre>
+      <id>T1566.002</id>
+      <id>T1204.001</id>
+    </mitre>
+    <group>kongtuke_clickfix,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1070.004 — Mistic self-deletion (kill switch artifact)
+       Rule IDs: 103597
+       Mistic includes a self-deletion kill switch: on operator
+       command, it deletes itself and its loader DLLs.
+       Detection: cmd.exe spawned by MpExtMs.exe using del or
+       ping-then-delete self-deletion pattern (cmd /c ping -n 3
+       127.0.0.1 & del <path>).
+       =========================================================== -->
+
+  <rule id="103597" level="13">
+    <if_group>windows,sysmon</if_group>
+    <field name="win.system.eventID">1</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)MpExtMs\.exe</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)(cmd\.exe|powershell\.exe)</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(del\s+.*\.(dll|exe)|remove-item.*\.(dll|exe)|ping.*&amp;.*del|timeout.*&amp;.*del|erase\s+.*\.(dll|exe))</field>
+    <description>Mistic self-deletion on $(hostname): MpExtMs.exe spawned cmd/PowerShell with file deletion command -- Mistic kill switch triggered; implant attempting to remove itself; capture memory image immediately (T1070.004, T1574.002)</description>
+    <mitre>
+      <id>T1070.004</id>
+      <id>T1574.002</id>
+    </mitre>
+    <group>mistic_self_delete,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1574.002 — Unsigned/untrusted DLL loaded by MpExtMs.exe
+       Rule IDs: 103598
+       Sysmon Event 7 with Signature=false or invalid signature on
+       any DLL loaded by MpExtMs.exe. The malicious version.dll
+       and EndpointDlp.dll will not have valid Microsoft signatures.
+       =========================================================== -->
+
+  <rule id="103598" level="12">
+    <if_group>windows,sysmon</if_group>
+    <field name="win.system.eventID">7</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)MpExtMs\.exe</field>
+    <field name="win.eventdata.signed" type="pcre2">(?i)^(false|no|0)$</field>
+    <description>Mistic/KongTuke unsigned DLL loaded on $(hostname): MpExtMs.exe loaded an unsigned DLL -- malicious sideload DLL (version.dll or EndpointDlp.dll) identified; investigate DLL path and file hash (T1574.002)</description>
+    <mitre>
+      <id>T1574.002</id>
+    </mitre>
+    <group>mistic_unsigned_dll,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1574.002 — General KongTuke/Mistic filename IOC sweep
+       Rule IDs: 103599
+       FIM/Sysmon file create events for the known Mistic filenames
+       in any user-writable location. Cast wide — covers cases where
+       the binary name is used as a staging artifact.
+       =========================================================== -->
+
+  <rule id="103599" level="11">
+    <if_group>windows,sysmon</if_group>
+    <field name="win.system.eventID">11</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)(EndpointDlp\.dll|MpExtMs\.exe|MTLBackdoor)</field>
+    <field name="win.eventdata.targetFilename" negate="yes" type="pcre2">(?i)(C:\\Program Files\\Windows Defender|C:\\ProgramData\\Microsoft\\Windows Defender Advanced Threat Protection)</field>
+    <description>Mistic/KongTuke file artifact on $(hostname): known Mistic implant filename (EndpointDlp.dll / MpExtMs.exe outside MDATP / MTLBackdoor) written to disk -- active staging; collect file sample and investigate (T1574.002)</description>
+    <mitre>
+      <id>T1574.002</id>
+    </mitre>
+    <group>mistic_file_artifact,</group>
+  </rule>
+
+</group>
