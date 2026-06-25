@@ -1,0 +1,207 @@
+<!-- ============================================================
+     Microsoft June 2026 Patch Tuesday — CVE Detection Rules
+     MITRE ATT&CK:
+       T1190  - Exploit Public-Facing Application
+       T1566.002 - Phishing: Spearphishing Link (Exchange XSS)
+       T1210  - Exploitation of Remote Services (WinRM/RDP)
+       T1595.002 - Active Scanning: Vulnerability Scanning
+     Rule IDs: 101900-101912
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-06-15
+
+     References:
+       CVE-2026-47291 - CVSS Critical — Windows HTTP Protocol Stack (http.sys)
+         integer overflow. Wormable, unauthenticated RCE via crafted HTTP
+         packet to IIS/WinRM/WS-Management. Exploitation not yet observed
+         but rated "More Likely" (follows CVE-2022-21907 pattern). All
+         Windows hosts with IIS, WinRM, or WS-Management enabled are
+         affected.
+       CVE-2026-42897 - CVSS 8.1 — Exchange Server OWA XSS, actively
+         exploited since before May 2026 patch. CISA KEV since 2026-05-15.
+         Unauthenticated attackers send weaponized email; JavaScript
+         executes in victim browser when opened in OWA.
+       CVE-2026-44815 - CVSS 9.8 — DHCP Client RCE from rogue server
+         on local LAN; all Windows hosts requesting DHCP leases affected.
+       CVE-2026-45657 - CVSS 9.8 — Windows Kernel UAF; local escalation
+         to SYSTEM; used in sandbox escapes via phishing docs.
+
+     Log source prerequisites:
+       - Traefik access log in JSON format forwarded to Wazuh
+         (localfile block with log_format=json in ossec.conf)
+       - Built-in Wazuh JSON decoder (decoded_as=json)
+       - JSON fields: RequestPath, RequestMethod, RequestHost,
+           DownstreamStatus, ClientHost, request_User-Agent
+       - Suricata rules for network-layer HTTP.sys signatures (86601)
+
+     Severity tiers:
+       Info     (0)  - Baseline / frequency anchor
+       High     (11) - WinRM/IIS endpoint probe, low specificity
+       High     (12) - Targeted WinRM or Exchange OWA path, higher specificity
+       Critical (13) - Known exploit path + right method/response
+       Critical (14) - Burst scan of HTTP.sys attack surface or confirmed XSS
+     ============================================================ -->
+
+<group name="initial_access,exploit_pubfacing,ms_patch_tuesday_2026,">
+
+  <!-- ===========================================================
+       CVE-2026-47291 — HTTP.sys Wormable RCE
+       T1190 / T1595.002
+       Detection via Traefik JSON access logs and Suricata IDS
+       =========================================================== -->
+
+  <!-- Baseline: any HTTP request to WinRM / WS-Management endpoints   -->
+  <!-- These paths do not exist in this Linux/container environment;    -->
+  <!-- any hit is anomalous and warrants investigation.                 -->
+  <rule id="101900" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)^/(wsman|WSManagement|PowerShell|wsman/subscription|RPC|MSExchangeRPC)</field>
+    <description>HTTP access to WinRM/WS-Management endpoint: $(RequestPath) from $(ClientHost) [baseline 101900]</description>
+    <group>winrm,wsman,http_sys,</group>
+  </rule>
+
+  <!-- WinRM/WS-Management endpoint probed — anomalous on Linux infra  -->
+  <rule id="101901" level="11">
+    <if_sid>101900</if_sid>
+    <description>WinRM/WS-Management endpoint $(RequestPath) probed from $(ClientHost) — CVE-2026-47291 reconnaissance or exploitation attempt (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>winrm,wsman,http_sys,cve_2026_47291,initial_access,</group>
+  </rule>
+
+  <!-- POST/PUT to WinRM returning 200 — potential successful exploitation -->
+  <!-- On a Linux host Traefik will 404 or 502; 200 means the backend  -->
+  <!-- accepted it, which should never happen for these paths.          -->
+  <rule id="101902" level="13">
+    <if_sid>101900</if_sid>
+    <field name="RequestMethod" type="pcre2">^(POST|PUT)$</field>
+    <field name="DownstreamStatus" type="pcre2">^(200|201)$</field>
+    <description>WinRM/WS-Management POST accepted (HTTP $(DownstreamStatus)) from $(ClientHost) path $(RequestPath) — potential CVE-2026-47291 HTTP.sys exploitation success (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>winrm,wsman,http_sys,cve_2026_47291,exploit_attempt,critical,</group>
+  </rule>
+
+  <!-- Burst scan of WinRM surface: 5+ requests in 60s from one IP    -->
+  <rule id="101903" level="14" frequency="5" timeframe="60">
+    <if_sid>101900</if_sid>
+    <same_field>ClientHost</same_field>
+    <description>WinRM/HTTP.sys scanning burst: $(ClientHost) sent 5+ requests to WinRM paths in 60s — automated CVE-2026-47291 exploitation tooling (T1190 / T1595.002)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1595.002</id>
+    </mitre>
+    <group>winrm,wsman,http_sys,cve_2026_47291,scanning,critical,</group>
+  </rule>
+
+  <!-- Suricata IDS: ET rules for HTTP.sys exploit signatures           -->
+  <rule id="101904" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature" type="pcre2">(?i)(ET WEB_SERVER|ET EXPLOIT|CVE.2026.47291|HTTP\.sys|wsman|winrm.exploit)</field>
+    <description>Suricata: HTTP.sys/WinRM exploit signature — potential CVE-2026-47291 exploitation in-flight (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>ids,suricata,http_sys,cve_2026_47291,initial_access,</group>
+  </rule>
+
+  <!-- IIS-specific paths indicating Windows server scanning            -->
+  <!-- These paths indicate an attacker probing for IIS presence,      -->
+  <!-- which is the HTTP.sys attack surface for CVE-2026-47291.        -->
+  <rule id="101905" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)^/(aspnet_client|certsrv|iisstart\.htm|_vti_bin|_vti_inf\.html|default\.aspx|global\.asax)</field>
+    <description>HTTP probe of IIS-specific path $(RequestPath) from $(ClientHost) [baseline 101905]</description>
+    <group>iis,http_sys,windows_scan,</group>
+  </rule>
+
+  <!-- IIS path probe — indicates scanning for HTTP.sys attack surface -->
+  <rule id="101906" level="11">
+    <if_sid>101905</if_sid>
+    <description>IIS-specific path $(RequestPath) probed from $(ClientHost) — CVE-2026-47291 attack surface fingerprinting (T1595.002)</description>
+    <mitre>
+      <id>T1595.002</id>
+    </mitre>
+    <group>iis,http_sys,cve_2026_47291,windows_scan,</group>
+  </rule>
+
+  <!-- Combined: WinRM scan + IIS fingerprinting from same source      -->
+  <rule id="101907" level="14" timeframe="120">
+    <if_matched_sid>101901</if_matched_sid>
+    <if_sid>101906</if_sid>
+    <description>CRITICAL: WinRM probe + IIS fingerprinting from same source in 120s — active CVE-2026-47291 HTTP.sys exploitation campaign (T1190 / T1595.002)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1595.002</id>
+    </mitre>
+    <group>http_sys,cve_2026_47291,exploit_campaign,critical,high_fidelity,</group>
+  </rule>
+
+
+  <!-- ===========================================================
+       CVE-2026-42897 — Exchange Server OWA XSS (Actively Exploited)
+       T1190 / T1566.002
+       CISA KEV since 2026-05-15
+       =========================================================== -->
+
+  <!-- Baseline: any request to Exchange OWA / EWS endpoints           -->
+  <rule id="101908" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)^/(OWA|EWS|autodiscover|mapi|ews/exchange\.asmx|ecp|Microsoft-Server-ActiveSync)</field>
+    <description>HTTP access to Exchange OWA/EWS endpoint: $(RequestPath) from $(ClientHost) [baseline 101908]</description>
+    <group>exchange,owa,ews,</group>
+  </rule>
+
+  <!-- OWA/EWS accessed — anomalous on this environment                -->
+  <rule id="101909" level="11">
+    <if_sid>101908</if_sid>
+    <description>Exchange OWA/EWS endpoint $(RequestPath) accessed from $(ClientHost) — CVE-2026-42897 reconnaissance or XSS weaponized-email delivery (T1566.002 / T1190)</description>
+    <mitre>
+      <id>T1566.002</id>
+      <id>T1190</id>
+    </mitre>
+    <group>exchange,owa,ews,cve_2026_42897,initial_access,</group>
+  </rule>
+
+  <!-- OWA GET with XSS indicators in URL (encoding evasion common)    -->
+  <!-- Detect common XSS payload encodings in OWA path parameters      -->
+  <rule id="101910" level="13">
+    <if_sid>101908</if_sid>
+    <field name="RequestPath" type="pcre2">(?i)(%3[Cc]|%3[Ee]|%22|%27|%3[Cc]script|javascript:|onerror=|onload=|%2[Ff]%2[Ff]|data%3[Aa]text)</field>
+    <description>Exchange OWA XSS payload in URL from $(ClientHost): $(RequestPath) — CVE-2026-42897 cross-site scripting weaponized link (T1566.002)</description>
+    <mitre>
+      <id>T1566.002</id>
+      <id>T1190</id>
+    </mitre>
+    <group>exchange,owa,cve_2026_42897,xss,initial_access,</group>
+  </rule>
+
+  <!-- OWA burst from single IP — scanning for CVE-2026-42897 surface  -->
+  <rule id="101911" level="13" frequency="8" timeframe="60">
+    <if_sid>101908</if_sid>
+    <same_field>ClientHost</same_field>
+    <description>Exchange OWA/EWS scanning burst from $(ClientHost): 8+ requests in 60s — automated CVE-2026-42897 exploitation tooling (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>exchange,owa,cve_2026_42897,scanning,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Correlation: Combined MS June 2026 Patch Tuesday Attack Chain
+       Multiple CVE attack surface probed in short window
+       =========================================================== -->
+
+  <!-- HTTP.sys + Exchange scanning together: coordinated PT campaign  -->
+  <rule id="101912" level="14" timeframe="300">
+    <if_matched_sid>101901</if_matched_sid>
+    <if_sid>101909</if_sid>
+    <description>CRITICAL: WinRM/HTTP.sys + Exchange OWA probed in 5 min — coordinated June 2026 Patch Tuesday exploitation campaign (CVE-2026-47291 + CVE-2026-42897) (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>ms_patch_tuesday_2026,exploit_campaign,critical,high_fidelity,</group>
+  </rule>
+
+</group>
