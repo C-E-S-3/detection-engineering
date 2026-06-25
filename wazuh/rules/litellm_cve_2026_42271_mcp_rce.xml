@@ -1,0 +1,205 @@
+<!-- ============================================================
+     LiteLLM MCP Preview Endpoint Command Injection
+     CVE-2026-42271 (BerriAI LiteLLM) + CVE-2026-48710 (Starlette BadHost)
+     MITRE ATT&CK:
+       T1190 - Exploit Public-Facing Application
+       T1552 - Unsecured Credentials (API key exfiltration post-exploit)
+       T1078 - Valid Accounts (credential bypass via CVE-2026-48710)
+     Rule IDs: 102100-102112
+     CISA KEV: Added 2026-06-08, Federal Deadline 2026-06-22
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-06-15
+
+     Vulnerability Summary:
+       CVE-2026-42271: LiteLLM >= 1.74.2 < 1.83.7 accepts an MCP stdio
+       transport config (command/args/env) in POST body to:
+         /mcp-rest/test/connection
+         /mcp-rest/test/tools/list
+       The server executes this as a subprocess — OS command injection.
+       LLM provider API keys (OpenAI, Anthropic, Azure), cloud credentials,
+       and CI/CD tokens stored by the proxy are exposed to the attacker.
+
+       CVE-2026-48710 (Starlette BadHost): Starlette <= 1.0.0 host-header
+       validation bypass that upgrades authenticated RCE to unauthenticated
+       RCE when paired with CVE-2026-42271.
+
+     Log source prerequisites:
+       - Traefik access log in JSON format forwarded to Wazuh
+         (localfile block with log_format=json in ossec.conf)
+       - Built-in Wazuh JSON decoder (decoded_as=json)
+       - JSON field names follow Traefik defaults:
+           RequestPath, RequestMethod, RequestHost, DownstreamStatus,
+           ClientHost, entryPointName, RouterName, ServiceName
+     ============================================================ -->
+
+<group name="initial_access,exploit_pubfacing,litellm,ai_security,">
+
+  <!-- ===========================================================
+       T1190 - LiteLLM MCP stdio endpoint probing
+       Rules 102100-102104
+       =========================================================== -->
+
+  <!-- POST to /mcp-rest/test/connection — RCE injection vector -->
+  <rule id="102100" level="13">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">^/mcp-rest/test/connection</field>
+    <description>LiteLLM MCP stdio connection endpoint probed via POST from $(ClientHost) to $(RequestHost) -- CVE-2026-42271 OS command injection attempt (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>litellm,mcp_rce,initial_access,exploit_pubfacing,cve_2026_42271,cisa_kev,</group>
+  </rule>
+
+  <!-- POST to /mcp-rest/test/tools/list — alternate RCE injection vector -->
+  <rule id="102101" level="13">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">^/mcp-rest/test/tools/list</field>
+    <description>LiteLLM MCP stdio tools/list endpoint probed via POST from $(ClientHost) to $(RequestHost) -- CVE-2026-42271 OS command injection attempt (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>litellm,mcp_rce,initial_access,exploit_pubfacing,cve_2026_42271,cisa_kev,</group>
+  </rule>
+
+  <!-- Successful response (2xx) from MCP test endpoint — exploitation succeeded -->
+  <rule id="102102" level="15">
+    <if_sid>102100</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>LiteLLM CVE-2026-42271: MCP connection endpoint returned 2xx to $(ClientHost) -- successful OS command injection (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>litellm,mcp_rce,initial_access,exploit_pubfacing,cve_2026_42271,cisa_kev,rce_success,</group>
+  </rule>
+
+  <!-- Successful response (2xx) from tools/list endpoint — exploitation succeeded -->
+  <rule id="102103" level="15">
+    <if_sid>102101</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>LiteLLM CVE-2026-42271: MCP tools/list endpoint returned 2xx to $(ClientHost) -- successful OS command injection (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>litellm,mcp_rce,initial_access,exploit_pubfacing,cve_2026_42271,cisa_kev,rce_success,</group>
+  </rule>
+
+  <!-- Any HTTP method against /mcp-rest/ prefix — reconnaissance / scanning -->
+  <rule id="102104" level="10">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">^/mcp-rest/</field>
+    <description>HTTP request to LiteLLM MCP REST namespace from $(ClientHost) to $(RequestHost)$(RequestPath) -- AI gateway reconnaissance (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>litellm,mcp_rce,initial_access,exploit_pubfacing,cve_2026_42271,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rate-based correlation rules
+       Rules 102105-102108
+       =========================================================== -->
+
+  <!-- 3+ MCP probe attempts from same IP in 60s — automated scanner -->
+  <rule id="102105" level="13" frequency="3" timeframe="60">
+    <if_matched_sid>102104</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>LiteLLM MCP endpoint scanning: 3+ /mcp-rest/ requests from $(ClientHost) in 60s -- automated CVE-2026-42271 scanner (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>litellm,mcp_rce,initial_access,exploit_pubfacing,cve_2026_42271,scanner,</group>
+  </rule>
+
+  <!-- 3+ MCP probe attempts against the same host from different IPs — distributed attack -->
+  <rule id="102106" level="13" frequency="3" timeframe="120">
+    <if_matched_sid>102104</if_matched_sid>
+    <same_field>RequestHost</same_field>
+    <different_field>ClientHost</different_field>
+    <description>LiteLLM MCP distributed probe: 3+ sources targeting $(RequestHost)/mcp-rest/ in 120s -- distributed CVE-2026-42271 scanning campaign (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>litellm,mcp_rce,initial_access,exploit_pubfacing,cve_2026_42271,scanner,distributed,</group>
+  </rule>
+
+  <!-- ===========================================================
+       CVE-2026-48710 Starlette BadHost auth bypass indicators
+       Rules 102107-102108
+       =========================================================== -->
+
+  <!-- LiteLLM MCP endpoint accessed with unusual Host header format
+       Starlette BadHost: host header containing port+path tricks middleware
+       Traefik logs RequestHost field; abnormal host with embedded path/port colons
+       indicates CVE-2026-48710 auth bypass attempt                           -->
+  <rule id="102107" level="12">
+    <if_sid>102100,102101</if_sid>
+    <field name="RequestHost" type="pcre2">^[^:]+:\d+/.+</field>
+    <description>LiteLLM CVE-2026-48710 (Starlette BadHost): malformed Host header in MCP request from $(ClientHost) -- authentication bypass attempt (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+      <id>T1190</id>
+    </mitre>
+    <group>litellm,mcp_rce,starlette_badhost,initial_access,cve_2026_42271,cve_2026_48710,auth_bypass,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Post-exploitation: credential / API key harvest indicators
+       Rules 102109-102112
+       =========================================================== -->
+
+  <!-- POST to /key/generate or /key/info after MCP probe — attacker enumerating
+       LiteLLM virtual keys / API keys post-exploit (T1552)                   -->
+  <rule id="102109" level="12">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">^/key/(generate|info|list|delete|update|block)</field>
+    <description>LiteLLM key management endpoint accessed from $(ClientHost) to $(RequestHost)$(RequestPath) -- possible post-exploitation API key harvest (T1552)</description>
+    <mitre>
+      <id>T1552</id>
+    </mitre>
+    <group>litellm,credential_access,api_key_harvest,cve_2026_42271,</group>
+  </rule>
+
+  <!-- POST to /health or /config after MCP test probe — attacker fingerprinting
+       LiteLLM deployment and connected providers (T1082)                      -->
+  <rule id="102110" level="10">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">^/(health|config|model/info|v1/models)</field>
+    <description>LiteLLM info endpoint accessed from $(ClientHost) to $(RequestHost)$(RequestPath) -- AI gateway reconnaissance and provider enumeration (T1590)</description>
+    <mitre>
+      <id>T1590</id>
+    </mitre>
+    <group>litellm,reconnaissance,ai_security,</group>
+  </rule>
+
+  <!-- MCP probe followed by key harvest from same source within 300s
+       Classic two-stage CVE-2026-42271 exploit: RCE -> key exfil   -->
+  <rule id="102111" level="15" frequency="2" timeframe="300">
+    <if_matched_sid>102104,102109</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>LiteLLM CVE-2026-42271 two-stage attack: $(ClientHost) probed MCP endpoints then accessed key management -- RCE followed by API key exfiltration (T1190/T1552)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+      <id>T1552</id>
+    </mitre>
+    <group>litellm,mcp_rce,credential_access,cve_2026_42271,cisa_kev,high_confidence,</group>
+  </rule>
+
+  <!-- GET to /mcp-rest endpoints (non-POST) — may indicate scanning tool
+       probing LiteLLM presence before attempting POST-based RCE             -->
+  <rule id="102112" level="9">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">GET</field>
+    <field name="RequestPath" type="pcre2">^/mcp-rest/</field>
+    <description>HTTP GET to LiteLLM MCP REST namespace from $(ClientHost) -- AI gateway fingerprinting probe (T1590)</description>
+    <mitre>
+      <id>T1590</id>
+    </mitre>
+    <group>litellm,reconnaissance,ai_security,mcp_rce,</group>
+  </rule>
+
+</group>

@@ -1,0 +1,187 @@
+<!-- ============================================================
+     LiteSpeed cPanel Plugin Symlink Following → Root
+     CVE-2026-54420 (LiteSpeed cPanel / WHM Plugin)
+     MITRE ATT&CK:
+       T1068 - Exploitation for Privilege Escalation
+       T1055 - Process Injection (via privileged child)
+       T1562.006 - Impair Defenses: Indicator Blocking
+     Rule IDs: 102300-102312
+     CISA KEV: Added 2026-06-15, Federal Deadline 2026-06-29
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-06-16
+
+     Vulnerability Summary:
+       CVE-2026-54420: LiteSpeed Web Server's cPanel integration plugin
+       (lsws-cpanel / LSWrap) runs as root to manage virtual host
+       configurations. When processing user-controlled virtual host
+       document root paths, the plugin follows symbolic links without
+       validating the symlink target. An authenticated cPanel user
+       (typically limited to their home directory) can:
+         1. Create a symlink inside their document root pointing to
+            /etc/passwd, /etc/shadow, /root/.ssh/authorized_keys, or
+            /etc/cron.d/
+         2. Trigger LiteSpeed config reload or vhost rebuild
+         3. The root-privileged LSWrap process follows the symlink,
+            giving the attacker read/write access to the target file
+
+       Exploitation leads to full root compromise of the hosting server
+       via SSH key injection or cron persistence.
+
+     Log source prerequisites:
+       - Linux auditd rules for symlink creation (AUDIT_SYMLINK / key
+         "symlink_priv_path") deployed via inframan roles/auditd
+       - Auditd events forwarded to Wazuh via wazuh-agent
+       - Built-in Wazuh auditd decoder active (decoded_as=auditd)
+       - Wazuh agent on cPanel / LiteSpeed hosts
+       - Syslog (auth.log) from hosting servers for SSH key changes
+     ============================================================ -->
+
+<group name="privilege_escalation,litespeed,cpanel,linux,symlink,">
+
+  <!-- ===========================================================
+       T1068 - LiteSpeed symlink following detection
+       Rules 102300-102305 (auditd-based)
+       =========================================================== -->
+
+  <!-- Symlink creation targeting privileged system paths via auditd -->
+  <rule id="102300" level="14">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">symlink_priv_path</field>
+    <description>LiteSpeed CVE-2026-54420: symlink created targeting privileged system path -- potential symlink-following privilege escalation (T1068)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>litespeed,cpanel,symlink_privesc,privilege_escalation,cve_2026_54420,cisa_kev,</group>
+  </rule>
+
+  <!-- Symlink creation under web document root pointing outside it (auditd) -->
+  <rule id="102301" level="12">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">web_docroot_write</field>
+    <field name="audit.syscall">symlink</field>
+    <description>LiteSpeed CVE-2026-54420: symlink syscall in web document root -- possible CVE-2026-54420 symlink placement (T1068)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>litespeed,cpanel,symlink_privesc,privilege_escalation,cve_2026_54420,</group>
+  </rule>
+
+  <!-- LiteSpeed config reload / restart triggered by non-root user (syslog) -->
+  <rule id="102302" level="10">
+    <decoded_as>osyslog</decoded_as>
+    <match>lshttpd|litespeed|lsws</match>
+    <regex>config.*reload|vhost.*rebuild|graceful.*restart</regex>
+    <description>LiteSpeed config reload triggered -- may indicate attacker triggering LSWrap to follow a planted symlink (CVE-2026-54420 T1068)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>litespeed,cpanel,symlink_privesc,cve_2026_54420,config_reload,</group>
+  </rule>
+
+  <!-- LiteSpeed process (lshttpd/lsphp) opening /etc/shadow or /etc/passwd -->
+  <rule id="102303" level="15">
+    <if_sid>100600</if_sid>
+    <field name="audit.key">sensitive_file_access</field>
+    <field name="audit.exe" type="pcre2">(?i)/(lshttpd|lsphp|lswrap|lsws)</field>
+    <description>LiteSpeed CVE-2026-54420: LiteSpeed process accessing sensitive system file -- successful symlink-following privilege escalation (T1068)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>litespeed,cpanel,symlink_privesc,privilege_escalation,cve_2026_54420,cisa_kev,exploit_success,</group>
+  </rule>
+
+  <!-- SSH authorized_keys modified in root home -- post-exploitation persistence -->
+  <rule id="102304" level="15">
+    <if_sid>100600</if_sid>
+    <field name="audit.file.name" type="pcre2">/root/\.ssh/authorized_keys</field>
+    <field name="audit.exe" type="pcre2">(?i)/(lshttpd|lsphp|lswrap|lsws)</field>
+    <description>LiteSpeed CVE-2026-54420: LiteSpeed process wrote to /root/.ssh/authorized_keys -- root SSH key injected, persistent access established (T1068/T1098.004)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1098.004</id>
+    </mitre>
+    <group>litespeed,cpanel,symlink_privesc,privilege_escalation,cve_2026_54420,cisa_kev,persistence,ssh_key_injection,</group>
+  </rule>
+
+  <!-- Cron entry written by LiteSpeed process -- root cron persistence -->
+  <rule id="102305" level="15">
+    <if_sid>100600</if_sid>
+    <field name="audit.file.name" type="pcre2">/etc/cron\.(d/|daily/|hourly/|weekly/|monthly/)</field>
+    <field name="audit.exe" type="pcre2">(?i)/(lshttpd|lsphp|lswrap|lsws)</field>
+    <description>LiteSpeed CVE-2026-54420: LiteSpeed process wrote to cron directory -- root persistence installed via symlink-following exploit (T1068/T1053.003)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1053.003</id>
+    </mitre>
+    <group>litespeed,cpanel,symlink_privesc,privilege_escalation,cve_2026_54420,cisa_kev,persistence,cron,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Syslog / auth-based detection
+       Rules 102306-102309
+       =========================================================== -->
+
+  <!-- Unexpected root login (or su to root) after LiteSpeed config reload -->
+  <rule id="102306" level="13">
+    <decoded_as>osyslog</decoded_as>
+    <match>session opened for user root</match>
+    <description>Root session opened on LiteSpeed/cPanel host -- may follow CVE-2026-54420 SSH key injection (T1068/T1078.003)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1078.003</id>
+    </mitre>
+    <group>litespeed,cpanel,privilege_escalation,cve_2026_54420,root_session,</group>
+  </rule>
+
+  <!-- LiteSpeed process spawning an interactive shell -- command execution as root -->
+  <rule id="102307" level="15">
+    <if_sid>100600</if_sid>
+    <field name="audit.exe" type="pcre2">(?i)/(lshttpd|lsphp|lswrap|lsws)</field>
+    <field name="audit.key">exec_shell</field>
+    <description>LiteSpeed CVE-2026-54420: LiteSpeed process spawned a shell -- root command execution via symlink exploitation (T1068)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>litespeed,cpanel,symlink_privesc,privilege_escalation,cve_2026_54420,cisa_kev,shell_spawn,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rate-based and temporal correlation
+       Rules 102310-102312
+       =========================================================== -->
+
+  <!-- Multiple symlink creations in docroot within 60s -- scripted exploitation -->
+  <rule id="102310" level="14" frequency="3" timeframe="60">
+    <if_matched_sid>102301</if_matched_sid>
+    <description>LiteSpeed CVE-2026-54420: 3+ symlinks created in web document root within 60s -- automated symlink attack (T1068)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>litespeed,cpanel,symlink_privesc,privilege_escalation,cve_2026_54420,cisa_kev,scanner,</group>
+  </rule>
+
+  <!-- Symlink placement followed by config reload within 5 minutes -- exploitation sequence -->
+  <rule id="102311" level="15" frequency="2" timeframe="300">
+    <if_matched_sid>102300,102302</if_matched_sid>
+    <description>LiteSpeed CVE-2026-54420: symlink-to-privpath followed by config reload within 5 min -- full exploitation sequence detected (T1068)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>litespeed,cpanel,symlink_privesc,privilege_escalation,cve_2026_54420,cisa_kev,high_confidence,</group>
+  </rule>
+
+  <!-- Symlink chain: place + reload + root session -- three-stage exploit confirmed -->
+  <rule id="102312" level="15" frequency="3" timeframe="600">
+    <if_matched_sid>102300,102302,102306</if_matched_sid>
+    <description>LiteSpeed CVE-2026-54420 full kill chain: symlink placed → config reload → root session opened within 10 min -- CONFIRMED exploitation (T1068/T1078.003)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1068</id>
+      <id>T1078.003</id>
+    </mitre>
+    <group>litespeed,cpanel,symlink_privesc,privilege_escalation,cve_2026_54420,cisa_kev,high_confidence,full_killchain,</group>
+  </rule>
+
+</group>
