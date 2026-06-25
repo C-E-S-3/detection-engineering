@@ -63,7 +63,7 @@
            network-layer detection comes from OPNsense/Suricata IDS.
      ============================================================== -->
 
-<group name="initial_access,exploit_pubfacing,ubiquiti_unifi,cve_2026_34908,cve_2026_34909,cve_2026_34910,">
+<group name="threat_intel_2026_06_24,initial_access,exploit_pubfacing,ubiquiti_unifi,execution,macos_clickfix,ot_device,supply_chain,">
 
   <!-- ================================================================
        Rule 103558 — Suricata: path traversal attempt to UniFi management port
@@ -174,7 +174,6 @@
     <group>ids,suricata,ubiquiti_unifi,cisa_kev,exploit_chain,critical,</group>
   </rule>
 
-</group>
 
 
 <!-- ==============================================================
@@ -193,8 +192,6 @@
      Parent process field: data.audit.ppid_name or data.process.parent.name
      Process field: data.audit.command or data.process.name
      ============================================================== -->
-
-<group name="execution,macos_clickfix,amos_stealer,t1204_002,">
 
   <!-- ================================================================
        Rule 103564 — macOS: hdiutil attach with -quiet flag from shell parent
@@ -341,8 +338,6 @@
     <group>ids,suricata,amos,clickfix,c2_ioc,</group>
   </rule>
 
-</group>
-
 
 <!-- ==============================================================
      SECTION 3: CVE-2025-67038 — Lantronix EDS5000 OS Command Injection
@@ -359,8 +354,6 @@
        - Network scanning discovery: probe bursts against typical OT management ports
        - IOC-based: Suricata signature matching CVE identifier
      ============================================================== -->
-
-<group name="initial_access,ot_device,lantronix_eds5000,cve_2025_67038,">
 
   <!-- ================================================================
        Rule 103572 — Suricata: CVE-2025-67038 exploitation attempt
@@ -414,8 +407,6 @@
     <group>ids,suricata,ot_device,scanning,cisa_kev,</group>
   </rule>
 
-</group>
-
 
 <!-- ==============================================================
      SECTION 4: CVE-2026-25253 — OpenClaw ClawHub AI Supply Chain (ClawHavoc)
@@ -432,8 +423,6 @@
      NOTE: C2 IOC rules 103570/103571 above already cover the shared
            infrastructure. Rules below add CVE-specific and supply-chain signals.
      ============================================================== -->
-
-<group name="initial_access,supply_chain,openclaw_clawhavoc,cve_2026_25253,">
 
   <!-- ================================================================
        Rule 103575 — Suricata: CVE-2026-25253 OpenClaw exploitation probe
