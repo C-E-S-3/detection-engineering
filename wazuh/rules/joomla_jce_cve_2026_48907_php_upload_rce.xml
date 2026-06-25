@@ -1,0 +1,185 @@
+<!-- ============================================================
+     Widget Factory Joomla Content Editor (JCE) PHP Upload RCE
+     CVE-2026-48907 (Joomla JCE Extension)
+     MITRE ATT&amp;CK:
+       T1190 - Exploit Public-Facing Application
+       T1505.003 - Server Software Component: Web Shell
+       T1059.004 - Command and Scripting Interpreter: Unix Shell
+     Rule IDs: 102400-102412
+     CISA KEV: Added 2026-06-16, Federal Deadline 2026-06-30
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-06-17
+
+     Vulnerability Summary:
+       CVE-2026-48907: JCE (Joomla Content Editor) extension allows
+       unauthenticated users to create new editor profiles via:
+         /index.php?option=com_jce&amp;task=plugin.save
+       The profile creation workflow accepts file uploads and bypasses
+       Joomla authentication gate, permitting attackers to upload and
+       execute arbitrary PHP code. CVSS v4.0 score: 10.0 (CRITICAL).
+
+     Log source prerequisites:
+       - Traefik access log in JSON format forwarded to Wazuh
+       - Built-in Wazuh JSON decoder (decoded_as=json)
+       - JSON field names follow Traefik defaults:
+           RequestPath, RequestMethod, RequestHost, DownstreamStatus,
+           ClientHost
+     ============================================================ -->
+
+<group name="initial_access,exploit_pubfacing,joomla,webshell,">
+
+  <!-- T1190: JCE plugin task POST - unauthenticated profile/upload -->
+  <rule id="102400" level="13">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">option=com_jce.*task=plugin\.(save|upload|display)</field>
+    <description>Joomla JCE CVE-2026-48907: POST to JCE plugin task from $(ClientHost) to $(RequestHost)$(RequestPath) - unauthenticated profile creation/upload attempt (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,jce,initial_access,exploit_pubfacing,cve_2026_48907,cisa_kev,</group>
+  </rule>
+
+  <!-- JCE plugin task returned 2xx - exploitation likely succeeded -->
+  <rule id="102401" level="15">
+    <if_sid>102400</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>Joomla JCE CVE-2026-48907: JCE plugin endpoint returned 2xx to $(ClientHost) - unauthenticated profile creation SUCCEEDED, PHP webshell upload likely (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,jce,initial_access,exploit_pubfacing,cve_2026_48907,cisa_kev,rce_success,</group>
+  </rule>
+
+  <!-- PHP file in Joomla upload path - webshell execution -->
+  <rule id="102402" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?:/images/stories/|/images/banners/|/images/headers/|/media/com_jce/|/components/com_jce/).*\.php(?:\?|$)</field>
+    <description>Joomla JCE CVE-2026-48907: PHP file in Joomla upload path from $(ClientHost) to $(RequestHost)$(RequestPath) - likely webshell execution post-upload (T1505.003)</description>
+    <mitre>
+      <id>T1505</id>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,jce,webshell,initial_access,exploit_pubfacing,cve_2026_48907,cisa_kev,rce_success,</group>
+  </rule>
+
+  <!-- JCE component access - fingerprinting probe (anchor for rate rules) -->
+  <rule id="102403" level="10">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">option=com_jce</field>
+    <description>Joomla JCE CVE-2026-48907: JCE editor component accessed from $(ClientHost) to $(RequestHost)$(RequestPath) - JCE fingerprinting probe (T1590)</description>
+    <mitre>
+      <id>T1590</id>
+    </mitre>
+    <group>joomla,jce,reconnaissance,initial_access,cve_2026_48907,</group>
+  </rule>
+
+  <!-- Joomla administrator area access - pre-exploitation recon -->
+  <rule id="102404" level="8">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">^/administrator(?:/index\.php)?</field>
+    <description>Joomla administrator area accessed from $(ClientHost) to $(RequestHost)$(RequestPath) - pre-exploitation reconnaissance (T1590)</description>
+    <mitre>
+      <id>T1590</id>
+    </mitre>
+    <group>joomla,reconnaissance,initial_access,</group>
+  </rule>
+
+  <!-- PHP extension in POST to Joomla - webshell upload attempt -->
+  <rule id="102405" level="13">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?:option=com_jce|/index\.php).*(?:\.php|%2Ephp|%252Ephp)</field>
+    <description>Joomla JCE CVE-2026-48907: PHP extension in POST to $(RequestHost)$(RequestPath) from $(ClientHost) - PHP webshell upload attempt via JCE (T1505.003)</description>
+    <mitre>
+      <id>T1505</id>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,jce,webshell,initial_access,exploit_pubfacing,cve_2026_48907,cisa_kev,</group>
+  </rule>
+
+  <!-- PHP file upload returned 2xx - webshell upload confirmed -->
+  <rule id="102406" level="15">
+    <if_sid>102405</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>Joomla JCE CVE-2026-48907: PHP upload returned 2xx to $(ClientHost) at $(RequestHost)$(RequestPath) - webshell upload CONFIRMED (T1505.003)</description>
+    <mitre>
+      <id>T1505</id>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,jce,webshell,initial_access,exploit_pubfacing,cve_2026_48907,cisa_kev,rce_success,high_confidence,</group>
+  </rule>
+
+  <!-- 5+ JCE probes from same IP in 60s - automated scanner -->
+  <rule id="102407" level="13" frequency="5" timeframe="60">
+    <if_matched_sid>102403</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>Joomla JCE CVE-2026-48907: 5+ JCE component requests from $(ClientHost) in 60s - automated CVE-2026-48907 scanner (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,jce,scanner,initial_access,exploit_pubfacing,cve_2026_48907,cisa_kev,</group>
+  </rule>
+
+  <!-- JCE probing across multiple hosts - distributed scanning campaign -->
+  <rule id="102408" level="14" frequency="3" timeframe="120">
+    <if_matched_sid>102403</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <different_field>RequestHost</different_field>
+    <description>Joomla JCE CVE-2026-48907: $(ClientHost) probing multiple Joomla hosts - distributed CVE-2026-48907 scanning campaign (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,jce,scanner,initial_access,exploit_pubfacing,cve_2026_48907,cisa_kev,distributed,</group>
+  </rule>
+
+  <!-- Two-stage attack: JCE probe then PHP file access - confirmed attack -->
+  <rule id="102409" level="15" frequency="2" timeframe="600">
+    <if_matched_sid>102403,102402</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>Joomla JCE CVE-2026-48907 two-stage attack: $(ClientHost) probed JCE then accessed PHP in upload path - webshell upload and execution confirmed (T1190/T1505.003)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+      <id>T1505</id>
+    </mitre>
+    <group>joomla,jce,webshell,initial_access,exploit_pubfacing,cve_2026_48907,cisa_kev,high_confidence,</group>
+  </rule>
+
+  <!-- Webshell command execution parameter in upload path -->
+  <rule id="102410" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?:/images/stories/|/images/banners/|/media/com_jce/).*\.php.*(?:cmd=|command=|exec=|shell=|c=|pass=|passwd=)</field>
+    <description>Joomla JCE CVE-2026-48907: webshell command parameter in $(RequestPath) from $(ClientHost) - active PHP webshell execution (T1059.004/T1505.003)</description>
+    <mitre>
+      <id>T1059</id>
+      <id>T1505</id>
+    </mitre>
+    <group>joomla,jce,webshell,execution,cve_2026_48907,cisa_kev,high_confidence,</group>
+  </rule>
+
+  <!-- JCE task/view endpoint - broad anchor for correlation -->
+  <rule id="102411" level="9">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">option=com_jce.*(?:task|format|view)=(?:plugin|editor|image|file)</field>
+    <description>Joomla JCE component endpoint from $(ClientHost) to $(RequestHost)$(RequestPath) - JCE functionality probe (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,jce,initial_access,exploit_pubfacing,cve_2026_48907,</group>
+  </rule>
+
+  <!-- JCE endpoint returned 2xx - unauthenticated access confirmed -->
+  <rule id="102412" level="12">
+    <if_sid>102411</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>Joomla JCE CVE-2026-48907: JCE component returned 2xx to $(ClientHost) - unauthenticated JCE access confirmed (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,jce,initial_access,exploit_pubfacing,cve_2026_48907,cisa_kev,</group>
+  </rule>
+
+</group>

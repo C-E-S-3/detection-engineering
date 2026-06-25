@@ -47,6 +47,30 @@ False positive sources: Legitimate Langflow file uploads to the configured uploa
 | table firstTime lastTime src dest uri_path uri_query status http_user_agent risk_score
 ```
 
+## Wazuh Detection Rules
+
+Rules are in `wazuh/rules/langflow_cve_2026_5027.xml` (IDs 101700–101712).
+
+| Rule ID | Level | Description |
+|---------|-------|-------------|
+| 101700 | 0 | Base anchor: POST to /api/v2/files |
+| 101701 | 0 | Base anchor: POST to /api/v1/auto_login |
+| 101702 | 7 | Langflow file upload visibility |
+| 101703 | 15 | **Path traversal sequences in /api/v2/files — CVE-2026-5027 exploitation** |
+| 101704 | 15 | Path traversal + HTTP 200/201 — successful file write |
+| 101705 | 11 | Auto-login POST — possible auth bypass |
+| 101706 | 14 | Auto-login + file upload from same IP in 2 min — exploitation chain |
+| 101710 | 15 | **Cron directory write by Python/uvicorn process — cron injection RCE** |
+| 101711 | 14 | Web app process writing cron configuration (broad) |
+| 101712 | 15 | **Correlation: path traversal + cron write in 5 min — confirmed RCE** |
+
+**Auditd prerequisites** (must be in `/etc/audit/rules.d/` on Langflow hosts):
+```
+-w /etc/cron.d/ -p wa -k cron
+-w /etc/crontab -p wa -k cron
+-w /var/spool/cron/ -p wa -k cron
+```
+
 ## Risk Score Logic
 
 | Condition | Score | Rationale |
@@ -54,6 +78,7 @@ False positive sources: Legitimate Langflow file uploads to the configured uploa
 | POST /api/v2/files with `../` or URL-encoded traversal in query/body | 95 | Direct exploitation attempt — path traversal in filename field is the CVE-2026-5027 attack pattern |
 | POST /api/v2/files returns HTTP 200/201 | 70 | Successful file upload; without traversal indicator warrants investigation |
 | Any POST /api/v2/files | 60 | Baseline visibility; correlate with downstream cron or shell activity |
+| Cron write by Python/uvicorn process | 100 | No legitimate baseline; canonical cron injection RCE path |
 
 ## Associated Threat Actors
 

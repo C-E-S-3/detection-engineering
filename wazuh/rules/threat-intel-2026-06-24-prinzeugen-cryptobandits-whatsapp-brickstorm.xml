@@ -1,0 +1,666 @@
+<!-- ============================================================
+     Threat Intelligence Detection Rules — 2026-06-24 Batch 4
+     Sources:
+       - Prinz Eugen: Go-based ransomware (ROOTBOY) — BleepingComputer/ThreatDown 2026-06-20
+         File ext: .prinzeugen; dropper: servertool.exe; via RDP; no ransom note
+       - CryptoBandits: USB LNK worm + Tor crypto clipper — Microsoft 2026-06-17
+         ugate.exe Tor proxy; WScript from C:\Users\Public\Documents\[5char]\
+       - WhatsApp VBScript / ManageEngine RMM — Kaspersky Securelist 2026-06-22
+         Chinese-linked actor; VBScript via WhatsApp; UAC bypass; RMM backdoor
+         C2: 202.61.160[.]201 (ValleyRAT/Gh0st RAT infra overlap)
+       - QUIETVAULT: AI-assisted credential stealer — M-Trends 2026
+         Ollama/LLM CLI spawns shell; accesses .ssh/.aws/credential paths
+       - GreatXML: WinRE BitLocker bypass PoC — Nightmare Eclipse 2026-06-22
+         Physical access; WinRE answer file spawns SYSTEM cmd.exe; no CVE yet
+       - BRICKSTORM: In-memory network appliance backdoor — UNC6201/UNC5807
+         Targets Ivanti/Fortinet/Cisco edge devices; syslog shell pattern detection
+
+     Rule IDs: 103496-103540
+     Author: SecOps Purple Team
+     Date: 2026-06-24
+
+     MITRE ATT&CK Coverage:
+       T1486  Data Encrypted for Impact (Prinz Eugen)
+       T1070.004  Indicator Removal: File Deletion (Prinz Eugen self-delete)
+       T1489  Service Stop (Prinz Eugen process kill)
+       T1091  Replication Through Removable Media (CryptoBandits)
+       T1059.007  Command and Scripting Interpreter: JavaScript (CryptoBandits)
+       T1053.005  Scheduled Task/Job (CryptoBandits persistence)
+       T1090.003  Proxy: Multi-hop Proxy (CryptoBandits Tor)
+       T1562.001  Impair Defenses: Disable or Modify Tools (CryptoBandits Defender exclusion)
+       T1059.005  Command and Scripting Interpreter: Visual Basic (WhatsApp VBScript)
+       T1548.002  Abuse Elevation Control Mechanism: Bypass UAC (WhatsApp campaign)
+       T1219  Remote Access Software (ManageEngine RMM abuse)
+       T1105  Ingress Tool Transfer (WhatsApp C2 download)
+       T1552.001  Unsecured Credentials: Credentials in Files (QUIETVAULT)
+       T1083  File and Directory Discovery (QUIETVAULT AI enumeration)
+       T1542.001  Pre-OS Boot: System Firmware (GreatXML WinRE)
+       T1505.003  Server Software Component: Web Shell (BRICKSTORM)
+     ============================================================ -->
+
+<!-- =============================================================
+     SECTION 1: Prinz Eugen Ransomware (ROOTBOY, Go-based)
+     T1486 / T1489 / T1070.004
+     Rules: 103496-103502
+     Detection: .prinzeugen extension, servertool.exe, process kill bursts
+     ============================================================= -->
+
+<group name="impact,ransomware,prinz_eugen,initial_access,cryptobandits,usb_worm,execution,whatsapp_vbscript_rmm,credential_access,quietvault,ai_malware,defense_evasion,greatxml,winre_bypass,persistence,brickstorm,network_appliance,">
+
+  <!-- .prinzeugen extension via Wazuh FIM (requires FIM on user data dirs) -->
+  <rule id="103496" level="15">
+    <if_group>syscheck</if_group>
+    <field name="syscheck.path" type="pcre2">(?i)\.prinzeugen$</field>
+    <description>Prinz Eugen ransomware: encrypted file with .prinzeugen extension detected on $(agent.name) — ROOTBOY ransomware (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,prinz_eugen,impact,high_fidelity,</group>
+  </rule>
+
+  <!-- .prinzeugen extension via Sysmon Event 11 (file create) -->
+  <rule id="103497" level="15">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.prinzeugen$</field>
+    <description>Prinz Eugen ransomware: Sysmon file-create with .prinzeugen extension on $(agent.name) — ROOTBOY active encryption (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,prinz_eugen,impact,high_fidelity,</group>
+  </rule>
+
+  <!-- servertool.exe — known Prinz Eugen dropper binary name -->
+  <rule id="103498" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\servertool\.exe$</field>
+    <description>Prinz Eugen ransomware: servertool.exe execution detected on $(agent.name) — known Prinz Eugen encryptor dropper (T1486, T1036.005)</description>
+    <mitre>
+      <id>T1486</id>
+      <id>T1036.005</id>
+    </mitre>
+    <group>ransomware,prinz_eugen,impact,</group>
+  </rule>
+
+  <!-- servertool.exe process self-deletion (T1070.004 — binary deletes itself after encryption) -->
+  <rule id="103499" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(cmd\.exe\s+/c\s+del|del\s+/[fqs]+)\s+.*servertool\.exe</field>
+    <description>Prinz Eugen ransomware: servertool.exe self-deletion command detected on $(agent.name) — post-encryption anti-forensic cleanup (T1070.004)</description>
+    <mitre>
+      <id>T1070.004</id>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,prinz_eugen,defense_evasion,</group>
+  </rule>
+
+  <!-- Mass process termination — Prinz Eugen kills processes holding file handles -->
+  <rule id="103500" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(taskkill\s+/f\s+(/im\s+\S+\s+){3,}|net\s+stop\s+.+&amp;&amp;\s*net\s+stop)</field>
+    <description>Ransomware: Bulk process/service termination to release file handles on $(agent.name) — pre-encryption preparation (T1489)</description>
+    <mitre>
+      <id>T1489</id>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,impact,service_stop,</group>
+  </rule>
+
+  <!-- Multiple .prinzeugen files created in short burst — active encryption in progress -->
+  <rule id="103501" level="15" frequency="10" timeframe="60">
+    <if_matched_sid>103497</if_matched_sid>
+    <same_field>agent.name</same_field>
+    <description>Prinz Eugen ransomware: mass encryption burst — 10+ files with .prinzeugen extension in 60s on $(agent.name) — active ransomware execution (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,prinz_eugen,impact,high_fidelity,</group>
+  </rule>
+
+  <!-- Prinz Eugen RDP initial access marker: servertool.exe parent is mstsc/rdp session -->
+  <rule id="103502" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\servertool\.exe$</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(explorer|cmd|powershell|mstsc)\.exe$</field>
+    <description>Prinz Eugen ransomware: servertool.exe spawned interactively from $(win.eventdata.parentImage) on $(agent.name) — hands-on-keyboard RDP operator pattern (T1486, T1078)</description>
+    <mitre>
+      <id>T1486</id>
+      <id>T1078</id>
+    </mitre>
+    <group>ransomware,prinz_eugen,impact,initial_access,</group>
+  </rule>
+
+
+
+<!-- =============================================================
+     SECTION 2: CryptoBandits USB LNK Worm + Tor Crypto Clipper
+     T1091 / T1059.007 / T1053.005 / T1090.003 / T1562.001
+     Rules: 103503-103511
+     Detection: ugate.exe, WScript from Public\Documents, schtasks by scripts,
+                PowerShell Defender exclusion for public path
+     ============================================================= -->
+
+
+
+  <!-- ugate.exe — renamed Tor binary; high-confidence IOC -->
+  <rule id="103503" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\ugate\.exe$</field>
+    <description>CryptoBandits: ugate.exe (renamed Tor proxy) execution on $(agent.name) — USB LNK worm Tor C2 component active (T1090.003)</description>
+    <mitre>
+      <id>T1090.003</id>
+      <id>T1091</id>
+    </mitre>
+    <group>cryptobandits,tor_proxy,command_and_control,high_fidelity,</group>
+  </rule>
+
+  <!-- WScript/CScript executing JS from C:\Users\Public\Documents\[5char]\ staging path -->
+  <rule id="103504" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(wscript|cscript)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)Users\\Public\\Documents\\[a-z]{4,6}\\</field>
+    <description>CryptoBandits: WScript/CScript executing from Public\Documents staging path on $(agent.name) — USB LNK worm JS payload execution (T1059.007)</description>
+    <mitre>
+      <id>T1059.007</id>
+      <id>T1091</id>
+    </mitre>
+    <group>cryptobandits,execution,initial_access,</group>
+  </rule>
+
+  <!-- WScript/CScript parent is Explorer — indicates USB LNK shortcut opened by user -->
+  <rule id="103505" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(wscript|cscript)\.exe$</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\explorer\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)Users\\Public\\</field>
+    <description>CryptoBandits: Explorer spawning scripting engine in Public path on $(agent.name) — user executed USB LNK shortcut (T1059.007, T1091)</description>
+    <mitre>
+      <id>T1059.007</id>
+      <id>T1091</id>
+    </mitre>
+    <group>cryptobandits,execution,initial_access,</group>
+  </rule>
+
+  <!-- schtasks created by scripting engine — CryptoBandits persistence via scheduled task -->
+  <rule id="103506" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\schtasks\.exe$</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(wscript|cscript|powershell|cmd)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)/create\s+</field>
+    <description>CryptoBandits: Scheduled task created by scripting engine on $(agent.name) — USB worm persistence installation (T1053.005)</description>
+    <mitre>
+      <id>T1053.005</id>
+      <id>T1091</id>
+    </mitre>
+    <group>cryptobandits,persistence,scheduled_task,</group>
+  </rule>
+
+  <!-- PowerShell Add-MpPreference ExclusionPath for Public\Documents — Defender exclusion -->
+  <rule id="103507" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\powershell\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)Add-MpPreference\s+.*ExclusionPath</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)Users\\Public\\Documents</field>
+    <description>CryptoBandits: PowerShell adding Defender exclusion for Public\Documents path on $(agent.name) — USB worm evasion setup (T1562.001)</description>
+    <mitre>
+      <id>T1562.001</id>
+      <id>T1091</id>
+    </mitre>
+    <group>cryptobandits,defense_evasion,disable_defender,</group>
+  </rule>
+
+  <!-- File created in CryptoBandits 5-char staging directory pattern -->
+  <rule id="103508" level="12">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)Users\\Public\\Documents\\[a-z]{4,6}\\[a-z]{4,6}\.(js|vbs|ps1|bat|cmd)$</field>
+    <description>CryptoBandits: Malicious script staged in Public\Documents\[5char]\ directory on $(agent.name) — USB worm payload drop (T1027)</description>
+    <mitre>
+      <id>T1027</id>
+      <id>T1091</id>
+    </mitre>
+    <group>cryptobandits,execution,</group>
+  </rule>
+
+  <!-- Correlation: ugate.exe + schtasks creation within 60s — high confidence CryptoBandits -->
+  <rule id="103509" level="15" frequency="2" timeframe="60">
+    <if_matched_sid>103503,103506</if_matched_sid>
+    <same_field>agent.name</same_field>
+    <description>CryptoBandits: Tor proxy (ugate.exe) AND scheduled task creation detected in 60s on $(agent.name) — high confidence USB LNK worm activity (T1090.003, T1053.005)</description>
+    <mitre>
+      <id>T1090.003</id>
+      <id>T1053.005</id>
+      <id>T1091</id>
+    </mitre>
+    <group>cryptobandits,command_and_control,persistence,high_fidelity,correlation,</group>
+  </rule>
+
+  <!-- .lnk file replacing document file in a removable drive path -->
+  <rule id="103510" level="11">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.(doc|docx|xlsx|xls|pdf|pptx?|txt)\.lnk$</field>
+    <description>USB Worm: LNK file created masquerading as document extension on $(agent.name) — possible USB LNK worm file replacement (T1091, T1036)</description>
+    <mitre>
+      <id>T1091</id>
+      <id>T1036</id>
+    </mitre>
+    <group>usb_worm,initial_access,</group>
+  </rule>
+
+  <!-- SOCKS5 on localhost:9050 — Tor proxy configured by ugate.exe -->
+  <rule id="103511" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\ugate\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(--socks5|9050|localhost.*9050|127\.0\.0\.1.*9050)</field>
+    <description>CryptoBandits: ugate.exe Tor SOCKS5 proxy configured on localhost:9050 — all C2 traffic tunneled via Tor (T1090.003)</description>
+    <mitre>
+      <id>T1090.003</id>
+    </mitre>
+    <group>cryptobandits,tor_proxy,command_and_control,</group>
+  </rule>
+
+
+
+<!-- =============================================================
+     SECTION 3: WhatsApp VBScript / ManageEngine RMM Campaign
+     T1059.005 / T1548.002 / T1219 / T1105
+     Rules: 103512-103520
+     Chinese-linked actor; VBScript phishing via WhatsApp;
+     ManageEngine Endpoint Central deployed as RMM backdoor
+     C2 server: 202.61.160.201 (ValleyRAT/Gh0st RAT infra)
+     ============================================================= -->
+
+
+
+  <!-- VBScript execution from Downloads or AppData user-writable paths -->
+  <rule id="103512" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(wscript|cscript)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)\.(vbs|vbe)\s</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(\\Downloads\\|\\AppData\\(Roaming|Local)\\|\\Desktop\\|\\Temp\\)</field>
+    <description>WhatsApp VBScript campaign: VBScript executed from user-writable path on $(agent.name) — possible WhatsApp lure execution (T1059.005)</description>
+    <mitre>
+      <id>T1059.005</id>
+      <id>T1566.004</id>
+    </mitre>
+    <group>whatsapp_vbscript,execution,</group>
+  </rule>
+
+  <!-- VBScript with financial document keywords in filename — lure indicator -->
+  <rule id="103513" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(wscript|cscript)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(invoice|payment|statement|factura|rechnung|facture|debt|receipt|remittance|payslip|bankstatement)</field>
+    <description>WhatsApp VBScript campaign: VBScript with financial document lure name on $(agent.name) — high confidence phishing via messaging app (T1059.005, T1566.004)</description>
+    <mitre>
+      <id>T1059.005</id>
+      <id>T1566.004</id>
+    </mitre>
+    <group>whatsapp_vbscript,execution,spearphishing,</group>
+  </rule>
+
+  <!-- UAC bypass via HKCU\Software\Classes\ms-settings\shell\open\command -->
+  <rule id="103514" level="14">
+    <if_sid>61645</if_sid>
+    <field name="win.system.eventID">^13$</field>
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)\\Software\\Classes\\ms-settings\\(shell\\open\\command|DelegateExecute)</field>
+    <description>WhatsApp VBScript campaign: UAC bypass registry key ms-settings modification on $(agent.name) — silent elevation for RMM installation (T1548.002)</description>
+    <mitre>
+      <id>T1548.002</id>
+    </mitre>
+    <group>whatsapp_vbscript,uac_bypass,privilege_escalation,</group>
+  </rule>
+
+  <!-- UAC bypass via HKCU\Software\Classes\mscfile\shell\open\command -->
+  <rule id="103515" level="14">
+    <if_sid>61645</if_sid>
+    <field name="win.system.eventID">^13$</field>
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)\\Software\\Classes\\mscfile\\shell\\open\\command</field>
+    <description>WhatsApp VBScript campaign: UAC bypass via mscfile registry key on $(agent.name) — eventvwr.exe UAC bypass technique (T1548.002)</description>
+    <mitre>
+      <id>T1548.002</id>
+    </mitre>
+    <group>whatsapp_vbscript,uac_bypass,privilege_escalation,</group>
+  </rule>
+
+  <!-- ManageEngine Endpoint Central installation by scripting engine parent -->
+  <rule id="103516" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(ManageEngine|DesktopCentral|EndpointCentral|dcagenttrayicon|dcagent)</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(wscript|cscript|cmd|powershell|mshta)\.exe$</field>
+    <description>WhatsApp VBScript campaign: ManageEngine Endpoint Central installed by scripting engine on $(agent.name) — RMM backdoor deployment (T1219)</description>
+    <mitre>
+      <id>T1219</id>
+      <id>T1059.005</id>
+    </mitre>
+    <group>whatsapp_vbscript,rmm_abuse,command_and_control,</group>
+  </rule>
+
+  <!-- Network connection to WhatsApp VBScript C2: 202.61.160.201 -->
+  <rule id="103517" level="15">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">202\.61\.160\.201</field>
+    <description>WhatsApp VBScript campaign: Connection attempt to known C2 IP 202.61.160.201 on $(agent.name) — ValleyRAT/Gh0st RAT infrastructure (T1105)</description>
+    <mitre>
+      <id>T1105</id>
+      <id>T1059.005</id>
+    </mitre>
+    <group>whatsapp_vbscript,ioc_match,command_and_control,high_fidelity,</group>
+  </rule>
+
+  <!-- VBScript downloading secondary payload from web (Invoke-WebRequest/curl/bitsadmin in VBS child) -->
+  <rule id="103518" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(wscript|cscript)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(powershell|certutil|bitsadmin|mshta|curl|wget)\s+.*http</field>
+    <description>WhatsApp VBScript campaign: Scripting engine spawning downloader child process on $(agent.name) — Stage-2 VBScript download pattern (T1105, T1059.005)</description>
+    <mitre>
+      <id>T1105</id>
+      <id>T1059.005</id>
+    </mitre>
+    <group>whatsapp_vbscript,ingress_tool_transfer,</group>
+  </rule>
+
+  <!-- Correlation: VBScript execution + UAC bypass registry within 120s — high confidence -->
+  <rule id="103519" level="15" frequency="2" timeframe="120">
+    <if_matched_sid>103512,103514</if_matched_sid>
+    <same_field>agent.name</same_field>
+    <description>WhatsApp VBScript campaign: VBScript execution AND UAC bypass registry modification within 120s on $(agent.name) — high confidence RMM dropper chain (T1059.005, T1548.002)</description>
+    <mitre>
+      <id>T1059.005</id>
+      <id>T1548.002</id>
+    </mitre>
+    <group>whatsapp_vbscript,uac_bypass,high_fidelity,correlation,</group>
+  </rule>
+
+
+
+<!-- =============================================================
+     SECTION 4: QUIETVAULT AI-Assisted Credential Stealer
+     T1552.001 / T1083 / T1059.001
+     Rules: 103520-103526
+     AI CLI tools (ollama/llm/gpt4all) used to enumerate and
+     access credential stores at runtime; M-Trends 2026 technique
+     ============================================================= -->
+
+
+
+  <!-- Base: AI CLI process execution anchor -->
+  <rule id="103520" level="3">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(ollama|ollama\.exe|llm\.exe|gpt4all|lmstudio|koboldcpp|llamafile|jan\.exe|msty\.exe)$</field>
+    <description>QUIETVAULT: AI CLI tool execution on $(agent.name) — base anchor for credential stealer detection (T1552.001)</description>
+    <mitre>
+      <id>T1552.001</id>
+    </mitre>
+    <group>quietvault,ai_tool,</group>
+  </rule>
+
+  <!-- AI CLI spawning shell/cmd/powershell — lateral pivot to credential access -->
+  <rule id="103521" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(ollama|ollama\.exe|llm\.exe|gpt4all|lmstudio|koboldcpp|llamafile|jan\.exe|msty\.exe)$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(cmd|powershell|pwsh|wscript|cscript|python|python3)\.exe$</field>
+    <description>QUIETVAULT: AI CLI tool spawning shell/interpreter on $(agent.name) — AI-assisted lateral command execution (T1552.001, T1059)</description>
+    <mitre>
+      <id>T1552.001</id>
+      <id>T1059.001</id>
+    </mitre>
+    <group>quietvault,execution,credential_access,</group>
+  </rule>
+
+  <!-- AI process command line accessing credential paths (.aws/.ssh/.kube/id_rsa) -->
+  <rule id="103522" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(ollama|ollama\.exe|llm\.exe|gpt4all|lmstudio)$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(\.aws|\.ssh|id_rsa|id_ed25519|\.pem|\.pfx|\.key|secret|password|passwd|credential|api.key|token)</field>
+    <description>QUIETVAULT: AI-spawned process accessing credential-related paths on $(agent.name) — AI-guided credential enumeration (T1552.001)</description>
+    <mitre>
+      <id>T1552.001</id>
+      <id>T1083</id>
+    </mitre>
+    <group>quietvault,credential_access,high_fidelity,</group>
+  </rule>
+
+  <!-- AI process accessing credential paths via directory enumeration commands -->
+  <rule id="103523" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(ollama|ollama\.exe|llm\.exe|gpt4all|lmstudio)$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(\.env|config\.ini|settings\.py|web\.config|appsettings\.json|\.npmrc|kubeconfig|\.docker\\config\.json)</field>
+    <description>QUIETVAULT: AI-spawned process searching config/secrets files on $(agent.name) — AI-guided configuration enumeration (T1083, T1552.001)</description>
+    <mitre>
+      <id>T1083</id>
+      <id>T1552.001</id>
+    </mitre>
+    <group>quietvault,credential_access,file_discovery,</group>
+  </rule>
+
+  <!-- Sysmon file create: AI process writing to credential-adjacent path -->
+  <rule id="103524" level="13">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(ollama|ollama\.exe|llm\.exe|gpt4all)$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)(\.aws|\.ssh|AppData.*Pass|AppData.*Cred|AppData.*Wallet)</field>
+    <description>QUIETVAULT: AI tool writing to credential path on $(agent.name) — credential exfiltration staging by AI-assisted stealer (T1552.001)</description>
+    <mitre>
+      <id>T1552.001</id>
+    </mitre>
+    <group>quietvault,credential_access,</group>
+  </rule>
+
+  <!-- Linux: AI process (ollama) accessing /etc/passwd or /etc/shadow via auditd -->
+  <rule id="103525" level="14">
+    <if_sid>100600</if_sid>
+    <field name="audit.exe" type="pcre2">(?i)/usr/(bin|local/bin)/(ollama|llm|gpt4all|llamafile)$</field>
+    <field name="audit.name" type="pcre2">^(/etc/(passwd|shadow|group|gshadow)|/root/\.ssh/|/home/[^/]+/\.ssh/|/home/[^/]+/\.aws/)</field>
+    <description>QUIETVAULT: AI CLI tool accessing system credential files on Linux $(agent.name) — AI-assisted credential theft (T1552.001)</description>
+    <mitre>
+      <id>T1552.001</id>
+    </mitre>
+    <group>quietvault,credential_access,linux,</group>
+  </rule>
+
+  <!-- Correlation: AI tool spawning shell + accessing credential path within 60s -->
+  <rule id="103526" level="15" frequency="2" timeframe="60">
+    <if_matched_sid>103521,103522</if_matched_sid>
+    <same_field>agent.name</same_field>
+    <description>QUIETVAULT: AI CLI tool spawning shell AND accessing credential paths within 60s on $(agent.name) — confirmed AI-assisted credential theft (T1552.001)</description>
+    <mitre>
+      <id>T1552.001</id>
+      <id>T1059.001</id>
+    </mitre>
+    <group>quietvault,credential_access,high_fidelity,correlation,</group>
+  </rule>
+
+
+
+<!-- =============================================================
+     SECTION 5: GreatXML WinRE / BitLocker Bypass PoC
+     T1542.001 / T1059.003
+     Rules: 103527-103532
+     Physical access required; WinRE answer file spawns SYSTEM cmd.exe;
+     No CVE assigned as of 2026-06-23; PoC by Nightmare Eclipse
+     Detection: Autounattend.xml in system paths, reagentc.exe, bcdedit WinRE
+     ============================================================= -->
+
+
+
+  <!-- Autounattend.xml or unattend.xml created outside deployment context -->
+  <rule id="103527" level="14">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)(Autounattend|unattend)\.xml$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)(^[A-Z]:\\[^\\]+\\(Autounattend|unattend)|\\Recovery\\|\\EFI\\|\\Windows\\System32\\sysprep\\)</field>
+    <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)\\(setup|sysprep|msiexec|dism|sccm|cmtrace|wuauserv|windows\\system32\\services)\.exe$</field>
+    <description>GreatXML WinRE bypass: Autounattend.xml or unattend.xml created in system/recovery path on $(agent.name) by $(win.eventdata.image) — possible GreatXML BitLocker bypass PoC (T1542.001)</description>
+    <mitre>
+      <id>T1542.001</id>
+    </mitre>
+    <group>greatxml,winre_bypass,defense_evasion,high_fidelity,</group>
+  </rule>
+
+  <!-- reagentc.exe executed — WinRE management; legitimate use rare outside IT -->
+  <rule id="103528" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\reagentc\.exe$</field>
+    <description>GreatXML WinRE bypass: reagentc.exe (WinRE management) executed on $(agent.name) — monitor for WinRE configuration changes (T1542.001)</description>
+    <mitre>
+      <id>T1542.001</id>
+    </mitre>
+    <group>greatxml,winre_bypass,</group>
+  </rule>
+
+  <!-- reagentc.exe with disable/setimage/enable arguments — explicit WinRE manipulation -->
+  <rule id="103529" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\reagentc\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(\/disable|\/enable|\/setimage|\/boottore|\/setosimage)</field>
+    <description>GreatXML WinRE bypass: reagentc.exe modifying WinRE image or state on $(agent.name) — WinRE configuration manipulation (T1542.001)</description>
+    <mitre>
+      <id>T1542.001</id>
+    </mitre>
+    <group>greatxml,winre_bypass,defense_evasion,</group>
+  </rule>
+
+  <!-- bcdedit.exe modifying WinRE or boot sequence settings -->
+  <rule id="103530" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\bcdedit\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(\/set\s+.*winre|\/set\s+.*recoveryenabled|\/bootsequence|\/default\s+\{recovery\}|\/bootems|\/set\s+\{fwbootmgr\})</field>
+    <description>GreatXML WinRE bypass: bcdedit.exe modifying WinRE boot configuration on $(agent.name) — may indicate GreatXML pre-attack WinRE enablement (T1542.001)</description>
+    <mitre>
+      <id>T1542.001</id>
+    </mitre>
+    <group>greatxml,winre_bypass,defense_evasion,</group>
+  </rule>
+
+  <!-- bcdedit.exe executed by non-standard/scripting parent -->
+  <rule id="103531" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\bcdedit\.exe$</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(powershell|cmd|wscript|cscript|mshta|rundll32)\.exe$</field>
+    <description>GreatXML WinRE bypass: bcdedit.exe spawned by scripting engine on $(agent.name) — non-interactive boot configuration manipulation (T1542.001)</description>
+    <mitre>
+      <id>T1542.001</id>
+    </mitre>
+    <group>greatxml,winre_bypass,defense_evasion,</group>
+  </rule>
+
+  <!-- Correlation: Autounattend.xml creation + reagentc/bcdedit in 300s window -->
+  <rule id="103532" level="15" frequency="2" timeframe="300">
+    <if_matched_sid>103527,103529</if_matched_sid>
+    <same_field>agent.name</same_field>
+    <description>GreatXML WinRE bypass: Answer file creation AND reagentc WinRE manipulation within 5min on $(agent.name) — high confidence GreatXML BitLocker bypass preparation (T1542.001)</description>
+    <mitre>
+      <id>T1542.001</id>
+    </mitre>
+    <group>greatxml,winre_bypass,high_fidelity,correlation,</group>
+  </rule>
+
+
+
+<!-- =============================================================
+     SECTION 6: BRICKSTORM Network Appliance In-Memory Backdoor
+     T1505.003 / T1040 / T1059 / T1027.011
+     Rules: 103533-103540
+     Chinese-nexus UNC6201/UNC5807; targets Ivanti/Fortinet/Cisco
+     Detection via OPNsense/network device syslog forwarded to Wazuh
+     Shell command patterns and unexpected process execution on appliance
+     ============================================================= -->
+
+
+
+  <!-- Base: OPNsense/network device syslog event anchor (source tag: opnsense/cisco/fortinet) -->
+  <rule id="103533" level="0">
+    <decoded_as>syslog</decoded_as>
+    <field name="hostname" type="pcre2">(?i)(opnsense|pfsense|fortinet|cisco|asa|fortigate|ivanti)</field>
+    <description>BRICKSTORM: Network device syslog event anchor for appliance implant detection</description>
+    <group>brickstorm,network_appliance,</group>
+  </rule>
+
+  <!-- Shell commands from network device syslog — curl/wget HTTP download -->
+  <rule id="103534" level="14">
+    <if_sid>103533</if_sid>
+    <match type="pcre2">(?i)(curl\s+.*(http|ftp)|wget\s+.*http|python[23]?\s+-c.*urllib|python[23]?\s+-c.*requests\.get)</match>
+    <description>BRICKSTORM: HTTP download command in network device syslog on $(hostname) — possible appliance implant staging tool download (T1105, T1505.003)</description>
+    <mitre>
+      <id>T1105</id>
+      <id>T1505.003</id>
+    </mitre>
+    <group>brickstorm,ingress_tool_transfer,network_appliance,</group>
+  </rule>
+
+  <!-- /tmp/ execution or mkfifo from network device — classic implant pattern -->
+  <rule id="103535" level="14">
+    <if_sid>103533</if_sid>
+    <match type="pcre2">(?i)(/tmp/[a-zA-Z0-9_\-\.]+\s+[&amp;|;]|mkfifo\s+/tmp/|/tmp/\S+\s+-[a-z])</match>
+    <description>BRICKSTORM: /tmp/ binary execution or named pipe creation in network device syslog on $(hostname) — memory-resident implant execution pattern (T1505.003, T1059)</description>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1059</id>
+      <id>T1027.011</id>
+    </mitre>
+    <group>brickstorm,network_appliance,execution,</group>
+  </rule>
+
+  <!-- chmod +x on /tmp/ file — making implant executable after drop -->
+  <rule id="103536" level="13">
+    <if_sid>103533</if_sid>
+    <match type="pcre2">(?i)(chmod\s+[0-7]*[x+][x0-7]*\s+/tmp/|chmod\s+\+x\s+/tmp/)</match>
+    <description>BRICKSTORM: chmod +x in /tmp/ seen in network device syslog on $(hostname) — implant executable permission change (T1505.003)</description>
+    <mitre>
+      <id>T1505.003</id>
+    </mitre>
+    <group>brickstorm,network_appliance,defense_evasion,</group>
+  </rule>
+
+  <!-- bash -i or exec fd redirection — reverse shell from network device -->
+  <rule id="103537" level="15">
+    <if_sid>103533</if_sid>
+    <match type="pcre2">(?i)(bash\s+-i\s+&gt;&amp;|exec\s+[0-9]+&lt;&gt;/dev/tcp|bash\s+-c\s+.*[0-9]{1,3}\.[0-9]{1,3}|nc\s+-e\s+/bin/(bash|sh)|python.*pty\.spawn)</match>
+    <description>BRICKSTORM: Reverse shell pattern in network device syslog on $(hostname) — interactive backdoor session via appliance (T1505.003, T1059)</description>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1059</id>
+    </mitre>
+    <group>brickstorm,network_appliance,command_and_control,high_fidelity,</group>
+  </rule>
+
+  <!-- Perl/Python one-liner in network device syslog — implant secondary payload -->
+  <rule id="103538" level="13">
+    <if_sid>103533</if_sid>
+    <match type="pcre2">(?i)(perl\s+-e\s+'[^']*socket|python[23]?\s+-c\s+'[^']*socket|python[23]?\s+-c\s+'[^']*subprocess)</match>
+    <description>BRICKSTORM: Python/Perl socket one-liner in network device syslog on $(hostname) — in-memory C2 channel from appliance (T1505.003)</description>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1059</id>
+    </mitre>
+    <group>brickstorm,network_appliance,command_and_control,</group>
+  </rule>
+
+  <!-- Packet capture command from network device — BRICKSTORM credential sniffing (T1040) -->
+  <rule id="103539" level="13">
+    <if_sid>103533</if_sid>
+    <match type="pcre2">(?i)(tcpdump\s+.*-w\s+/tmp/|tshark\s+.*-w\s+/tmp/|dumpcap\s+.*-w\s+/tmp/|tcpdump\s+.*port\s+(21|23|25|80|110|143|389|636))</match>
+    <description>BRICKSTORM: Packet capture to /tmp/ in network device syslog on $(hostname) — credential harvesting via network sniffing (T1040)</description>
+    <mitre>
+      <id>T1040</id>
+      <id>T1505.003</id>
+    </mitre>
+    <group>brickstorm,network_appliance,credential_access,</group>
+  </rule>
+
+  <!-- Correlation: Multiple suspicious shell patterns from same device in 120s -->
+  <rule id="103540" level="15" frequency="3" timeframe="120">
+    <if_matched_sid>103534,103535,103536,103537,103538,103539</if_matched_sid>
+    <same_field>hostname</same_field>
+    <description>BRICKSTORM: Multiple shell/download/execution patterns from network device $(hostname) in 120s — high confidence appliance implant active (T1505.003)</description>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1059</id>
+    </mitre>
+    <group>brickstorm,network_appliance,high_fidelity,correlation,</group>
+  </rule>
+
+</group>

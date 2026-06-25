@@ -1,0 +1,146 @@
+<!-- Langflow CVE-2026-5027: Path Traversal Unauthenticated RCE via Cron Injection -->
+<!-- Rule IDs: 101700-101712                                                          -->
+<!-- MITRE ATT&CK: T1190 (Exploit Public-Facing Application)                         -->
+<!--               T1053.003 (Scheduled Task/Job: Cron)                               -->
+<!--               T1059.004 (Command and Scripting Interpreter: Unix Shell)           -->
+<!-- CVE: CVE-2026-5027 (CVSS 8.8) — Langflow ≤ 1.8.4 path traversal in             -->
+<!--      POST /api/v2/files; unauthenticated when auto-login enabled (default);      -->
+<!--      cron injection achieves unauthenticated RCE as root                         -->
+<!-- Added: 2026-06-14 | Actively exploited June 10 2026; patched in 1.10.0          -->
+
+<group name="local,web,langflow,initial_access,persistence,">
+
+  <!-- ================================================================ -->
+  <!-- BASE ANCHORS — Level 0, informational                            -->
+  <!-- ================================================================ -->
+
+  <!-- Base: any POST to Langflow file upload endpoint -->
+  <rule id="101700" level="0">
+    <if_group>web|accesslog</if_group>
+    <match type="pcre2">POST\s+/api/v2/files</match>
+    <description>Langflow: HTTP POST to file upload endpoint /api/v2/files (base anchor)</description>
+    <group>web,langflow,file_upload,</group>
+  </rule>
+
+  <!-- Base: any POST to Langflow auto-login endpoint -->
+  <rule id="101701" level="0">
+    <if_group>web|accesslog</if_group>
+    <match type="pcre2">POST\s+/api/v1/auto_login</match>
+    <description>Langflow: HTTP POST to auto-login endpoint /api/v1/auto_login (base anchor)</description>
+    <group>web,langflow,auth,</group>
+  </rule>
+
+  <!-- ================================================================ -->
+  <!-- CVE-2026-5027: PATH TRAVERSAL IN FILE UPLOAD (T1190)            -->
+  <!-- ================================================================ -->
+
+  <!-- Langflow file upload — any POST (low-level visibility) -->
+  <rule id="101702" level="7">
+    <if_matched_sid>101700</if_matched_sid>
+    <description>Langflow: File upload endpoint POST — monitor for exploitation (CVE-2026-5027, T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>web,langflow,file_upload,</group>
+  </rule>
+
+  <!-- Path traversal sequences in Langflow file upload request -->
+  <rule id="101703" level="15">
+    <if_matched_sid>101700</if_matched_sid>
+    <url type="pcre2">(?i)(\.\./|\.\.\\|%2e%2e%2f|%252e%252e%252f|%2e%2e/|\.\.%2f)</url>
+    <description>CRITICAL: Langflow path traversal attempt in /api/v2/files — CVE-2026-5027 exploitation, unauthenticated RCE risk (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>web,langflow,path_traversal,cve_2026_5027,critical,high_fidelity,</group>
+  </rule>
+
+  <!-- Path traversal detected and request returned 200/201 (successful file write) -->
+  <rule id="101704" level="15">
+    <if_matched_sid>101703</if_matched_sid>
+    <field name="http_response_code" type="pcre2">^(200|201)$</field>
+    <description>CRITICAL: Langflow CVE-2026-5027 path traversal SUCCEEDED — arbitrary file write achieved, cron injection RCE imminent (T1190, T1053.003)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1053.003</id>
+    </mitre>
+    <group>web,langflow,path_traversal,cve_2026_5027,file_write_success,critical,</group>
+  </rule>
+
+  <!-- ================================================================ -->
+  <!-- CVE-2026-5027: AUTH BYPASS CHAIN (T1190)                        -->
+  <!-- POST to auto_login followed by file upload = unauthenticated     -->
+  <!-- exploit chain even without path traversal in URL                 -->
+  <!-- ================================================================ -->
+
+  <!-- Langflow auto-login request from external source -->
+  <rule id="101705" level="11">
+    <if_matched_sid>101701</if_matched_sid>
+    <description>Langflow: auto-login endpoint POST — possible authentication bypass attempt (CVE-2026-5027, T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>web,langflow,auth_bypass,</group>
+  </rule>
+
+  <!-- Auth bypass followed by file upload within 120 seconds — exploitation chain -->
+  <rule id="101706" level="14" timeframe="120">
+    <if_matched_sid>101705</if_matched_sid>
+    <if_sid>101702</if_sid>
+    <same_field>data.srcip</same_field>
+    <description>Langflow: auto-login followed by /api/v2/files upload from same IP in 2 min — CVE-2026-5027 exploitation chain (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>web,langflow,auth_bypass,file_upload,exploitation_chain,high_fidelity,</group>
+  </rule>
+
+  <!-- ================================================================ -->
+  <!-- CVE-2026-5027: CRON INJECTION POST-EXPLOITATION (T1053.003)     -->
+  <!-- Detects cron file writes via auditd when parent is a web app    -->
+  <!-- process (Python/uvicorn/gunicorn) — canonical Langflow RCE path -->
+  <!-- ================================================================ -->
+
+  <!-- Cron directory write by Python/uvicorn/gunicorn process (webshell execution)
+       Requires auditd rule: -w /etc/cron.d/ -p wa -k cron
+                             -w /etc/crontab -p wa -k cron
+                             -w /var/spool/cron/ -p wa -k cron           -->
+  <rule id="101710" level="15">
+    <if_sid>100630</if_sid>
+    <field name="audit.exe" type="pcre2">(?i)(/usr/bin/python\d*|/usr/local/bin/python\d*|uvicorn|gunicorn|/usr/bin/env)</field>
+    <description>CRITICAL: Cron directory written by Python/uvicorn/gunicorn process — Langflow CVE-2026-5027 cron injection RCE as root (T1053.003, T1059.004)</description>
+    <mitre>
+      <id>T1053.003</id>
+      <id>T1059.004</id>
+    </mitre>
+    <group>persistence,langflow,cron_injection,cve_2026_5027,critical,high_fidelity,</group>
+  </rule>
+
+  <!-- Generic web app process writing to cron directories (broader coverage) -->
+  <rule id="101711" level="14">
+    <if_sid>100630</if_sid>
+    <field name="audit.exe" type="pcre2">(?i)(node|npm|ruby|php-fpm|php|java|\.jar|nginx|apache|httpd|flask|django|fastapi|langflow|uvicorn|gunicorn|celery)</field>
+    <description>Web application process writing cron configuration — possible RCE via cron injection (T1053.003)</description>
+    <mitre>
+      <id>T1053.003</id>
+    </mitre>
+    <group>persistence,cron_injection,web_process,</group>
+  </rule>
+
+  <!-- ================================================================ -->
+  <!-- CORRELATION: PATH TRAVERSAL + CRON MODIFICATION (HIGH FIDELITY) -->
+  <!-- ================================================================ -->
+
+  <!-- Langflow path traversal request followed by cron modification within 5 min -->
+  <rule id="101712" level="15" timeframe="300">
+    <if_matched_sid>101703</if_matched_sid>
+    <if_sid>101710</if_sid>
+    <description>CRITICAL: Langflow CVE-2026-5027 path traversal followed by cron modification — confirmed RCE exploitation chain (T1190, T1053.003)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1053.003</id>
+    </mitre>
+    <group>langflow,cve_2026_5027,exploitation_chain,confirmed_rce,critical,high_fidelity,</group>
+  </rule>
+
+</group>

@@ -1,0 +1,126 @@
+<!-- ============================================================
+     DragonForce Backdoor.Turn Detection Rules
+     MITRE ATT&amp;CK Techniques:
+       T1090.002 - Proxy: External Proxy (Teams TURN relay C2)
+       T1071.001 - Application Layer Protocol: Web Protocols (QUIC via TURN)
+       T1102     - Web Service (anonymous Teams visitor token abuse)
+       T1055     - Process Injection (into DbgView64.exe)
+       T1036     - Masquerading (traffic appears as legitimate Teams relay)
+     Rule IDs: 102600-102605
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-06-17
+     References:
+       - Symantec Threat Intelligence (2026-06-16)
+       - threat-intel/2026-06-16_symantec-dragonforce-backdoor-turn-msteams-turn-c2.md
+     Log sources:
+       - Sysmon EventID 1 (Process Creation)  -> Wazuh SID 61603
+       - Sysmon EventID 3 (Network Connection) -> Wazuh SID 61605
+     Coverage notes:
+       - DbgView64.exe is the confirmed injection target for Backdoor.Turn
+       - TURN relay ports 3478 (STUN/TURN) and 5349 (TURN/TLS) used by Teams
+       - Teams TURN hostnames: *.turn.skype.com, *.relay.teams.microsoft.com
+       - Anonymous visitor token acquisition appears in HTTP proxy logs as
+         requests to skype.com identity endpoints from non-Teams processes
+     Severity tiers:
+       10 - DbgView64.exe execution (informational, investigate)
+       11 - Non-Teams process connecting to TURN ports (suspicious)
+       13 - Non-Teams process connecting to Teams TURN hostname (high confidence)
+       14 - DbgView64.exe connecting to TURN relay (near-certain Backdoor.Turn)
+     ============================================================ -->
+
+<group name="c2,defense_evasion,dragonforce,">
+
+  <!-- ===========================================================
+       T1055 / T1036 - Process Injection / Masquerading
+       Rule IDs: 102600-102601
+       DbgView64.exe (Sysinternals DebugView 64-bit) is the confirmed
+       host process for Backdoor.Turn injection. Any execution of this
+       binary should be reviewed unless explicitly authorized.
+       =========================================================== -->
+
+  <!-- Base anchor: DbgView64.exe process creation -->
+  <rule id="102600" level="10">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\DbgView64\.exe$</field>
+    <description>DragonForce: DbgView64.exe (Sysinternals DebugView) process execution -- review for Backdoor.Turn injection (T1055/T1036)</description>
+    <mitre>
+      <id>T1055</id>
+      <id>T1036</id>
+    </mitre>
+    <group>dragonforce,dbgview,process_injection,</group>
+  </rule>
+
+  <!-- DbgView64.exe spawned by a scripting/injection-capable parent -->
+  <rule id="102601" level="13">
+    <if_sid>102600</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(wscript|mshta|regsvr32|rundll32|certutil|bitsadmin|msiexec|lsass|svchost|winlogon|dllhost|cmstp)\.exe$</field>
+    <description>DragonForce: DbgView64.exe spawned by suspicious parent process $(win.eventdata.parentImage) -- high-confidence process injection (T1055)</description>
+    <mitre>
+      <id>T1055</id>
+    </mitre>
+    <group>dragonforce,dbgview,process_injection,high_confidence,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1090.002 - External Proxy via Teams TURN Relay
+       Rule IDs: 102602-102605
+       Backdoor.Turn establishes a QUIC C2 session through Microsoft
+       Teams TURN relay servers. Legitimate TURN relay usage comes from
+       Teams, browsers (Edge/Chrome for Teams web), Lync, and Skype.
+       Any other process making TURN port connections is suspicious.
+       =========================================================== -->
+
+  <!-- Non-Teams process connecting to TURN relay port 3478 (STUN/TURN) -->
+  <rule id="102602" level="11">
+    <if_sid>61605</if_sid>
+    <field name="win.eventdata.destinationPort" type="pcre2">^3478$</field>
+    <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)\\(ms-teams|teams|msedge|msedgewebview2|chrome|firefox|iexplore|lync|skype|outlook)\.exe$</field>
+    <description>DragonForce: Non-Teams process $(win.eventdata.image) connecting to TURN relay port 3478 -- possible Teams-based C2 (T1090.002)</description>
+    <mitre>
+      <id>T1090.002</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>dragonforce,turn_relay,c2,</group>
+  </rule>
+
+  <!-- Non-Teams process connecting to TURN/TLS port 5349 -->
+  <rule id="102603" level="11">
+    <if_sid>61605</if_sid>
+    <field name="win.eventdata.destinationPort" type="pcre2">^5349$</field>
+    <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)\\(ms-teams|teams|msedge|msedgewebview2|chrome|firefox|iexplore|lync|skype|outlook)\.exe$</field>
+    <description>DragonForce: Non-Teams process $(win.eventdata.image) connecting to TURN/TLS relay port 5349 -- possible Teams-based C2 (T1090.002)</description>
+    <mitre>
+      <id>T1090.002</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>dragonforce,turn_relay,c2,</group>
+  </rule>
+
+  <!-- Non-Teams process connecting to Teams TURN relay hostname (high confidence) -->
+  <rule id="102604" level="13">
+    <if_sid>61605</if_sid>
+    <field name="win.eventdata.destinationHostname" type="pcre2">(?i)\.(turn\.skype\.com|relay\.teams\.microsoft\.com)$</field>
+    <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)\\(ms-teams|teams|msedge|msedgewebview2|chrome|firefox|iexplore|lync|skype|outlook)\.exe$</field>
+    <description>DragonForce: Non-Teams process $(win.eventdata.image) connecting to Teams TURN relay host $(win.eventdata.destinationHostname) -- high-confidence Backdoor.Turn C2 via Teams relay (T1090.002/T1102)</description>
+    <mitre>
+      <id>T1090.002</id>
+      <id>T1102</id>
+    </mitre>
+    <group>dragonforce,turn_relay,c2,high_confidence,</group>
+  </rule>
+
+  <!-- CRITICAL: DbgView64.exe making TURN relay connection - definitive Backdoor.Turn IOC -->
+  <rule id="102605" level="14">
+    <if_sid>61605</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\DbgView64\.exe$</field>
+    <field name="win.eventdata.destinationPort" type="pcre2">^(3478|5349)$</field>
+    <description>CRITICAL: DragonForce Backdoor.Turn confirmed IOC -- DbgView64.exe connecting to TURN relay port $(win.eventdata.destinationPort) on $(win.eventdata.destinationHostname). Active C2 via Microsoft Teams relay infrastructure. Isolate host immediately. (T1090.002/T1055)</description>
+    <mitre>
+      <id>T1090.002</id>
+      <id>T1055</id>
+      <id>T1102</id>
+    </mitre>
+    <group>dragonforce,turn_relay,c2,critical,isolate_host,</group>
+  </rule>
+
+</group>
