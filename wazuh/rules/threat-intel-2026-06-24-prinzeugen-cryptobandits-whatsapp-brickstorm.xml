@@ -45,7 +45,7 @@
      Detection: .prinzeugen extension, servertool.exe, process kill bursts
      ============================================================= -->
 
-<group name="impact,ransomware,prinz_eugen,">
+<group name="impact,ransomware,prinz_eugen,initial_access,cryptobandits,usb_worm,execution,whatsapp_vbscript_rmm,credential_access,quietvault,ai_malware,defense_evasion,greatxml,winre_bypass,persistence,brickstorm,network_appliance,">
 
   <!-- .prinzeugen extension via Wazuh FIM (requires FIM on user data dirs) -->
   <rule id="103496" level="15">
@@ -130,7 +130,7 @@
     <group>ransomware,prinz_eugen,impact,initial_access,</group>
   </rule>
 
-</group>
+
 
 <!-- =============================================================
      SECTION 2: CryptoBandits USB LNK Worm + Tor Crypto Clipper
@@ -140,7 +140,7 @@
                 PowerShell Defender exclusion for public path
      ============================================================= -->
 
-<group name="initial_access,cryptobandits,usb_worm,">
+
 
   <!-- ugate.exe — renamed Tor binary; high-confidence IOC -->
   <rule id="103503" level="14">
@@ -260,7 +260,7 @@
     <group>cryptobandits,tor_proxy,command_and_control,</group>
   </rule>
 
-</group>
+
 
 <!-- =============================================================
      SECTION 3: WhatsApp VBScript / ManageEngine RMM Campaign
@@ -271,7 +271,7 @@
      C2 server: 202.61.160.201 (ValleyRAT/Gh0st RAT infra)
      ============================================================= -->
 
-<group name="execution,whatsapp_vbscript_rmm,">
+
 
   <!-- VBScript execution from Downloads or AppData user-writable paths -->
   <rule id="103512" level="12">
@@ -374,7 +374,7 @@
     <group>whatsapp_vbscript,uac_bypass,high_fidelity,correlation,</group>
   </rule>
 
-</group>
+
 
 <!-- =============================================================
      SECTION 4: QUIETVAULT AI-Assisted Credential Stealer
@@ -384,7 +384,7 @@
      access credential stores at runtime; M-Trends 2026 technique
      ============================================================= -->
 
-<group name="credential_access,quietvault,ai_malware,">
+
 
   <!-- Base: AI CLI process execution anchor -->
   <rule id="103520" level="3">
@@ -473,7 +473,7 @@
     <group>quietvault,credential_access,high_fidelity,correlation,</group>
   </rule>
 
-</group>
+
 
 <!-- =============================================================
      SECTION 5: GreatXML WinRE / BitLocker Bypass PoC
@@ -484,7 +484,7 @@
      Detection: Autounattend.xml in system paths, reagentc.exe, bcdedit WinRE
      ============================================================= -->
 
-<group name="defense_evasion,greatxml,winre_bypass,">
+
 
   <!-- Autounattend.xml or unattend.xml created outside deployment context -->
   <rule id="103527" level="14">
@@ -558,7 +558,7 @@
     <group>greatxml,winre_bypass,high_fidelity,correlation,</group>
   </rule>
 
-</group>
+
 
 <!-- =============================================================
      SECTION 6: BRICKSTORM Network Appliance In-Memory Backdoor
@@ -569,7 +569,7 @@
      Shell command patterns and unexpected process execution on appliance
      ============================================================= -->
 
-<group name="persistence,brickstorm,network_appliance,">
+
 
   <!-- Base: OPNsense/network device syslog event anchor (source tag: opnsense/cisco/fortinet) -->
   <rule id="103533" level="0">
