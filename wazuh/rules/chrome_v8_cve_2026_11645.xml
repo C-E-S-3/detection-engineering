@@ -1,0 +1,167 @@
+<!-- ============================================================
+     Chrome V8 Zero-Day CVE-2026-11645 Detection Rules
+     MITRE ATT&CK Techniques:
+       T1203  - Exploitation for Client Execution
+       T1059.001 - Command and Scripting Interpreter: PowerShell
+       T1059.003 - Command and Scripting Interpreter: Windows Command Shell
+     Rule IDs: 101420-101429
+     Author: SecOps Engineer (ESKA-334)
+     Date: 2026-06-24
+     CVE: CVE-2026-11645
+
+     Vulnerability summary:
+       Heap corruption in V8 Turbofan JIT compiler allowing RCE in
+       the Chrome renderer process. Exploited in the wild as of
+       2026-06. Exploitation typically results in the renderer
+       spawning unexpected child processes after one or more
+       controlled application crashes (spray-and-pray JIT grooming).
+
+     Severity tiers:
+       Medium (9)  - Suspicious but may be benign
+       High (11-12)- Strong indicator, investigate promptly
+       Critical(13-14) - Near-certain attack, immediate response
+
+     Log source prerequisites:
+       - Windows Application Event Log forwarded via Wazuh agent
+         (channel: Application, Event ID 1000 — Application Error)
+         Base rule: Wazuh Windows EventLog decoder. The rules below
+         use if_sid 60010; validate against your deployment's Windows
+         Application channel base rule (may be 60000 or 60010
+         depending on Wazuh version and decoder config).
+       - Sysmon Event ID 1 (Process Create) with ParentProcess logging
+         (rules 101424-101425 require Sysmon + if_sid 61603)
+       - Sysmon Event ID 3 (Network Connection) for renderer egress
+         (rule 101426 requires Sysmon network logging enabled)
+
+     Windows Event ID 1000 fields (parsed by Wazuh Windows decoder):
+       win.system.eventID          = 1000
+       win.system.channel          = Application
+       win.eventdata.applicationName   (e.g., chrome.exe)
+       win.eventdata.faultModuleName   (e.g., v8.dll)
+       win.eventdata.exceptionCode     (e.g., 0xc0000005 = access violation)
+     ============================================================ -->
+
+<group name="chrome,v8,cve_2026_11645,initial_access,execution,">
+
+  <!-- ===========================================================
+       T1203 - Exploitation for Client Execution
+       CVE-2026-11645 V8 heap corruption crash detection
+       Rule IDs: 101420-101423
+       =========================================================== -->
+
+  <!-- Base anchor: chrome.exe crash with v8.dll as the fault module -->
+  <!-- Windows Application Error Event ID 1000 forwarded via Wazuh agent -->
+  <rule id="101420" level="11">
+    <if_sid>60010</if_sid>
+    <field name="win.system.eventID">^1000$</field>
+    <field name="win.system.channel">Application</field>
+    <field name="win.eventdata.applicationName" type="pcre2">(?i)\\?chrome\.exe$</field>
+    <field name="win.eventdata.faultModuleName" type="pcre2">(?i)v8(\.dll)?$</field>
+    <description>Chrome V8 engine crash on $(hostname): $(win.eventdata.applicationName) faulted in $(win.eventdata.faultModuleName) -- possible CVE-2026-11645 heap corruption exploit attempt (T1203)</description>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
+    <group>chrome_crash,v8_crash,exploit_client,</group>
+  </rule>
+
+  <!-- Critical: V8 crash with access violation exception (0xc0000005) -->
+  <!-- 0xc0000005 = STATUS_ACCESS_VIOLATION — heap corruption fingerprint -->
+  <rule id="101421" level="13">
+    <if_sid>101420</if_sid>
+    <field name="win.eventdata.exceptionCode" type="pcre2">(?i)0xc0000005</field>
+    <description>Chrome V8 access violation crash on $(hostname) (ExceptionCode: $(win.eventdata.exceptionCode)) -- heap corruption consistent with CVE-2026-11645 RCE exploit (T1203)</description>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
+    <group>chrome_crash,v8_crash,exploit_client,heap_corruption,</group>
+  </rule>
+
+  <!-- High: repeated Chrome V8 crashes in short window (JIT-spray grooming) -->
+  <!-- Attackers trigger multiple controlled crashes to groom heap layout -->
+  <rule id="101422" level="12" frequency="3" timeframe="120">
+    <if_matched_sid>101420</if_matched_sid>
+    <same_field>win.system.computer</same_field>
+    <description>Repeated Chrome V8 crashes on $(hostname): 3+ in 120 seconds -- JIT spray / heap grooming pattern consistent with CVE-2026-11645 exploitation attempt (T1203)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
+    <group>chrome_crash,v8_crash,exploit_client,heap_grooming,</group>
+  </rule>
+
+  <!-- Medium: single chrome.exe crash (any fault module) — lower-confidence anchor -->
+  <!-- Promotes to 101420/101421 when v8.dll is confirmed; standalone useful for baselining -->
+  <rule id="101423" level="9">
+    <if_sid>60010</if_sid>
+    <field name="win.system.eventID">^1000$</field>
+    <field name="win.system.channel">Application</field>
+    <field name="win.eventdata.applicationName" type="pcre2">(?i)\\?chrome\.exe$</field>
+    <field name="win.eventdata.faultModuleName" negate="yes" type="pcre2">(?i)v8(\.dll)?$</field>
+    <description>Chrome application crash on $(hostname) in module $(win.eventdata.faultModuleName) -- baseline crash event (not v8.dll; monitor for escalation to rule 101420)</description>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
+    <group>chrome_crash,exploit_client,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1059.001 / T1059.003 - Renderer Sandbox Escape
+       chrome.exe spawning unexpected child processes
+       Rule IDs: 101424-101426
+       Log source: Sysmon Event ID 1 (Process Create), if_sid 61603
+       =========================================================== -->
+
+  <!-- Critical: chrome.exe spawning high-risk shells — near-certain sandbox escape -->
+  <!-- Covers cmd.exe, powershell.exe, wscript.exe, cscript.exe, mshta.exe -->
+  <rule id="101424" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.system.eventID">^1$</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\chrome\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(cmd|powershell|powershell_ise|pwsh|wscript|cscript|mshta|bash)\.exe$</field>
+    <description>Chrome spawned shell process $(win.eventdata.image) on $(hostname) -- renderer sandbox escape, likely CVE-2026-11645 post-exploitation (T1059/T1203)</description>
+    <mitre>
+      <id>T1203</id>
+      <id>T1059.001</id>
+      <id>T1059.003</id>
+    </mitre>
+    <group>chrome_sandbox_escape,exploit_client,process_spawn,</group>
+  </rule>
+
+  <!-- Critical: chrome.exe spawning LOLBins (living-off-the-land binaries) -->
+  <!-- rundll32, regsvr32, certutil, bitsadmin commonly used post-sandbox-escape -->
+  <rule id="101425" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.system.eventID">^1$</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\chrome\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(rundll32|regsvr32|certutil|bitsadmin|wmic|msiexec|installutil|regasm|regsvcs|ieexec|cmstp|eudcedit|dnscmd|pcwrun|syncappvpublishingserver)\.exe$</field>
+    <description>Chrome spawned LOLBin $(win.eventdata.image) on $(hostname) -- sandbox escape via living-off-the-land binary, CVE-2026-11645 exploitation (T1218/T1203)</description>
+    <mitre>
+      <id>T1203</id>
+      <id>T1218</id>
+    </mitre>
+    <group>chrome_sandbox_escape,exploit_client,lolbin,process_spawn,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Network egress from Chrome renderer — C2 beaconing indicator
+       Rule IDs: 101426
+       Log source: Sysmon Event ID 3 (Network Connection), if_sid 61603
+       =========================================================== -->
+
+  <!-- High: chrome.exe making network connection to non-browser ports -->
+  <!-- Legitimate Chrome connects to 80/443/8080; connections to raw ports are suspicious -->
+  <rule id="101426" level="11">
+    <if_sid>61603</if_sid>
+    <field name="win.system.eventID">^3$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\chrome\.exe$</field>
+    <field name="win.eventdata.destinationPort" type="pcre2">^(?!(80|443|8080|8443|3128|1080)$)\d+$</field>
+    <field name="win.eventdata.initiated">true</field>
+    <description>Chrome process making outbound connection to non-browser port $(win.eventdata.destinationPort) on $(hostname) -- possible C2 callback after CVE-2026-11645 sandbox escape (T1071/T1203)</description>
+    <mitre>
+      <id>T1203</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>chrome_sandbox_escape,exploit_client,network_egress,c2_beacon,</group>
+  </rule>
+
+</group>

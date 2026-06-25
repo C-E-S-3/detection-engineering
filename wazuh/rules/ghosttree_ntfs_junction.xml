@@ -1,0 +1,149 @@
+<!-- ============================================================
+     GhostTree NTFS Junction EDR Bypass Detection Rules
+     MITRE ATT&amp;CK Techniques:
+       T1562.001 - Impair Defenses: Disable or Modify Tools
+                   (recursive junction stalls EDR file scanner)
+       T1222.001 - File System Permissions Weakness: Windows
+                   (junction creation requires only standard user rights)
+       T1070     - Indicator Removal (malware co-located with junction
+                   goes unscanned; payload evades detection)
+     Rule IDs: 102700-102706
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-06-17
+     References:
+       - Varonis Threat Labs (2026-06-16)
+       - threat-intel/2026-06-16_varonis-ghosttree-ntfs-junction-edr-bypass.md
+     Log sources:
+       - Sysmon EventID 1 (Process Creation) -> Wazuh SID 61603
+     Coverage notes:
+       - GhostTree requires only 2 OS commands (mklink /J or PowerShell
+         New-Item -ItemType Junction) and no admin privileges
+       - Validated against Windows Defender + multiple EDR products
+       - Microsoft has patched the recursive scanner vulnerability;
+         detection still needed for unpatched hosts and pre-patch exposure
+       - Highest risk: junctions in user-writable paths (Temp, AppData,
+         Public, ProgramData) co-located with payload staging
+     Severity tiers:
+       10 - NTFS junction creation (informational, context-dependent)
+       11 - Junction in user-writable/staging path (suspicious)
+       13 - Junction created by scripting engine parent (high confidence)
+       14 - Junction in temp path by scripting engine (near-certain evasion)
+     ============================================================ -->
+
+<group name="defense_evasion,ghosttree,ntfs_junction,">
+
+  <!-- ===========================================================
+       T1562.001 / T1222.001 - mklink /J via cmd.exe
+       Rule IDs: 102700-102702
+       The cmd.exe mklink /J command is the primary GhostTree vector.
+       Used to create a junction where the target points to an ancestor
+       directory, forming an infinite recursion that stalls EDR scanners.
+       =========================================================== -->
+
+  <!-- Base: mklink /J junction creation via cmd.exe -->
+  <rule id="102700" level="10">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\cmd\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)mklink\s+/J\s+</field>
+    <description>GhostTree: NTFS junction created via mklink /J by $(win.eventdata.user) on $(win.eventdata.computer) -- review for EDR scanner bypass (T1562.001/T1222.001)</description>
+    <mitre>
+      <id>T1562.001</id>
+      <id>T1222.001</id>
+    </mitre>
+    <group>ghosttree,ntfs_junction,mklink,</group>
+  </rule>
+
+  <!-- mklink /J in user-writable temp/staging paths (elevated risk) -->
+  <rule id="102701" level="13">
+    <if_sid>102700</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)mklink\s+/J\s+.*(\\temp\\|\\tmp\\|\\public\\|\\programdata\\|\\appdata\\|%temp%|%appdata%|%localappdata%)</field>
+    <description>GhostTree: NTFS recursive junction created in user-writable path -- EDR scanner bypass technique active (T1562.001). Command: $(win.eventdata.commandLine)</description>
+    <mitre>
+      <id>T1562.001</id>
+      <id>T1070</id>
+    </mitre>
+    <group>ghosttree,ntfs_junction,mklink,edr_evasion,high_confidence,</group>
+  </rule>
+
+  <!-- mklink /J by scripting/injection-capable parent (high confidence staging) -->
+  <rule id="102702" level="14">
+    <if_sid>102700</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(wscript|mshta|regsvr32|rundll32|cmstp|bitsadmin|certutil|powershell)\.exe$</field>
+    <description>GhostTree: NTFS junction created by scripting engine parent $(win.eventdata.parentImage) -- likely payload staging for EDR bypass (T1562.001/T1070)</description>
+    <mitre>
+      <id>T1562.001</id>
+      <id>T1070</id>
+    </mitre>
+    <group>ghosttree,ntfs_junction,mklink,edr_evasion,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1562.001 / T1222.001 - PowerShell New-Item Junction
+       Rule IDs: 102703-102705
+       PowerShell New-Item -ItemType Junction is the alternative
+       scriptable path for GhostTree. PowerShell obfuscation and
+       encoded commands (-EncodedCommand) can disguise the operation.
+       =========================================================== -->
+
+  <!-- Base: PowerShell New-Item junction/link creation -->
+  <rule id="102703" level="10">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\powershell(\.exe|_ise\.exe)?$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)New-Item\s+.*-ItemType\s+(Junction|SymbolicLink|HardLink)</field>
+    <description>GhostTree: NTFS junction/link created via PowerShell New-Item by $(win.eventdata.user) -- review for EDR scanner bypass (T1562.001/T1222.001)</description>
+    <mitre>
+      <id>T1562.001</id>
+      <id>T1222.001</id>
+    </mitre>
+    <group>ghosttree,ntfs_junction,powershell,</group>
+  </rule>
+
+  <!-- PowerShell junction in user-writable temp/staging path -->
+  <rule id="102704" level="13">
+    <if_sid>102703</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(\\temp\\|\\tmp\\|\\public\\|\\programdata\\|\\appdata\\|%temp%|%appdata%|%localappdata%)</field>
+    <description>GhostTree: PowerShell NTFS junction created in user-writable staging path -- EDR scanner bypass active (T1562.001). Command: $(win.eventdata.commandLine)</description>
+    <mitre>
+      <id>T1562.001</id>
+      <id>T1070</id>
+    </mitre>
+    <group>ghosttree,ntfs_junction,powershell,edr_evasion,high_confidence,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1562.001 - Encoded/Obfuscated Junction Creation
+       Rule ID: 102705-102706
+       Attackers may use -EncodedCommand or concatenated strings to
+       obscure junction creation from simple string-matching rules.
+       Monitor for PowerShell encoded commands that create junctions.
+       =========================================================== -->
+
+  <!-- PowerShell -EncodedCommand with Junction pattern (obfuscation attempt) -->
+  <rule id="102705" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\powershell(\.exe|_ise\.exe)?$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(-EncodedCommand|-enc)\s+</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(Junction|mklink|/J)</field>
+    <description>GhostTree: PowerShell encoded command containing junction keywords by $(win.eventdata.user) -- possible obfuscated GhostTree EDR bypass (T1562.001)</description>
+    <mitre>
+      <id>T1562.001</id>
+      <id>T1027</id>
+    </mitre>
+    <group>ghosttree,ntfs_junction,powershell,obfuscation,</group>
+  </rule>
+
+  <!-- Junction creation immediately following suspicious file drop (parent is dropper) -->
+  <rule id="102706" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)mklink\s+/J\s+</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(wscript|mshta|regsvr32|rundll32|cmstp)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(\\temp\\|\\tmp\\|\\public\\|\\programdata\\|\\appdata\\)</field>
+    <description>GhostTree CRITICAL: NTFS junction in temp path created by dropper process $(win.eventdata.parentImage) -- active EDR evasion payload staging (T1562.001/T1070)</description>
+    <mitre>
+      <id>T1562.001</id>
+      <id>T1070</id>
+    </mitre>
+    <group>ghosttree,ntfs_junction,edr_evasion,critical,</group>
+  </rule>
+
+</group>

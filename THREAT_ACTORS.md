@@ -181,6 +181,9 @@ These tools appear across multiple threat actor operations. Detections for these
 | **SystemBC** | DarkSide, Conti, Ryuk | Medium — proxy-based C2 tunneling |
 | **GMER / Process Hacker** | LockBit, various (BYOVD) | High — security tool termination |
 | **Impacket (wmiexec/smbexec)** | Conti, Medusa, various | High — lateral movement via SMB/WMI |
+| **BRICKSTORM** | UNC6201, UNC5807 | High — custom in-memory backdoor for network appliances; no disk artifacts, survives reboots via modified init scripts |
+| **QUIETVAULT** | Unnamed cluster (M-Trends 2026) | High — novel credential stealer using local AI CLI tools (Ollama, llm) to identify and extract credential files; adaptive LLM-guided enumeration |
+| **PROMPTFLUX / PROMPTSTEAL** | Unnamed cluster (M-Trends 2026) | Medium — malware families that query LLMs mid-execution to generate evasion logic; detection-resistant by design due to runtime AI-generated code paths |
 
 ---
 
@@ -194,7 +197,7 @@ These actors operate independently from the RaaS ecosystem but are tracked in th
 | [Gootloader (UNC2565)](https://attack.mitre.org/software/S1138/) | Malware Loader / Access Broker | [S1138](https://attack.mitre.org/software/S1138/) | SEO poisoning, JS execution, registry stuffing, fileless PowerShell | [13 detections](detections/) |
 | [GodLoader](threat_intel/) | Malware Loader | — | Godot engine abuse, defender exclusion, web service C2 | [2 detections](detections/) |
 | [Medusa Ransomware](https://attack.mitre.org/software/S1131/) | Ransomware Operator | [S1131](https://attack.mitre.org/software/S1131/) | SMBExec/WMIExec lateral movement, credential dumping | [2 detections](detections/) |
-| Qilin Ransomware Group | Ransomware Operator (RaaS) | — | Stolen credential initial access (Telegram/Breach Forums), EDR killer BYOVD (300+ drivers), geo-fencing against post-Soviet locale settings, 6-day avg dwell time; responsible for 16.4% of Japan ransomware incidents in 2025; targets manufacturing and healthcare | [2 detections](detections/) |
+| Qilin Ransomware Group (GOLD HARVEST / Agenda) | Ransomware Operator (RaaS) | [S1242](https://attack.mitre.org/software/S1242/) | Stolen credential initial access (Telegram/Breach Forums), EDR killer BYOVD (300+ drivers), geo-fencing against post-Soviet locale settings, 6-day avg dwell time; 500+ victims in 2026; exploited CVE-2026-50751 (Check Point VPN IKEv1 auth bypass) for initial access; uses DonPAPI, NetExec, XenoRAT, MeshCentral; Chrome credential theft; safe-mode reboot EDR bypass; Linux/ESXi variant with openssl enc for file encryption; targets manufacturing, healthcare, critical infrastructure | [8 detections](wazuh/rules/cve-2026-06-24-n8n-checkpoint-qilin-winkernel.xml) |
 | UAT-10608 | Threat Cluster | — | CVE-2025-55182 (React2Shell) exploitation, NEXUS Listener C2, automated credential harvesting | [1 detection](detections/) |
 | EvilTokens / Storm-237 | PhaaS / Cybercrime | — | OAuth device code phishing, Microsoft 365 token theft, QR code phishing lures | [1 detection](detections/) |
 | CrystalRAT (CrystalX RAT) | MaaS RAT | — | WebSocket C2, keylogging, clipboard hijacking (crypto theft), ChaCha20 encryption | [1 detection](detections/) |
@@ -204,6 +207,8 @@ These actors operate independently from the RaaS ecosystem but are tracked in th
 | Amaranth Dragon | Nation-State APT (China-nexus) | — | CVE-2026-3502 TrueConf exploitation, Havoc C2, UAC bypass via iscicpl.exe, targets SE Asian government/military | [1 detection](detections/) |
 | Handala (Hatef / Hamsa / Handala Hack Team) | Iranian MOIS-linked Hacktivist | — | Compromises Windows domain admin, creates Azure AD Global Administrator for persistence, deploys data-wiping malware at scale; 2026 Stryker attack wiped ~80,000 devices; targets Israeli organizations and affiliated companies; linked to Iran Ministry of Intelligence and Security | [1 detection](detections/) |
 | UNC1069 (North Korea) | Nation-State APT (DPRK) | — | Supply chain attack on Axios npm ecosystem delivering WAVESHAPER.V2 cross-platform Python RAT (Linux/macOS/Windows); uses trojanized npm packages (plain-crypto-js) and obfuscated JavaScript dropper (setup.js); C2 via sfrclak.com and 142.11.206.73 | [IOCs tracked](iocs/) |
+| UNC6201 | Nation-State APT (China-nexus) | — | Espionage group targeting edge and core network devices for extreme persistence; deploys BRICKSTORM custom in-memory backdoor on network appliances; leverages native packet-capture on devices for credential interception; identified in M-Trends 2026 | [1 detection](detections/persistence/brickstorm_network_appliance_implant.md) |
+| UNC5807 | Nation-State APT (China-nexus) | — | Espionage group co-attributed with UNC6201 in BRICKSTORM campaigns; targets enterprise core network infrastructure; identified in M-Trends 2026 alongside UNC6201 for edge device persistence operations | [1 detection](detections/persistence/brickstorm_network_appliance_implant.md) |
 
 ---
 
