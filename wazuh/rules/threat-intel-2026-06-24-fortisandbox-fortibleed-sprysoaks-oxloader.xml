@@ -67,7 +67,7 @@
        - Wazuh syslog: FortiSandbox system log unexpected process spawn
        - Correlation: probe pattern (rapid POSTs) from same source
      ============================================================== -->
-<group name="initial_access,exploit_pubfacing,fortisandbox,cve_2026_25089,">
+<group name="threat_intel_2026_06_24,initial_access,exploit_pubfacing,fortisandbox,credential_access,defense_evasion,persistence,execution,supply_chain,">
 
   <!-- Rule 103600 — Suricata: POST to FortiSandbox VNC start API with injection metacharacters
        CVE-2026-25089 targets the VNC start feature at /json/api/v1/advanced-threat/start-vnc
@@ -133,7 +133,7 @@
     <group>ids,suricata,fortisandbox,scan,cve_2026_25089,</group>
   </rule>
 
-</group>
+
 
 
 <!-- ==============================================================
@@ -154,7 +154,6 @@
        - FortiGate syslog: admin login from unusual source IP (new country)
        - Frequency: 10+ auth failures followed by single success from same IP
      ============================================================== -->
-<group name="credential_access,network_sniffing,fortibleed,fortigate,">
 
   <!-- Rule 103604 — FortiGate syslog: excessive admin authentication failures
        FortiBleed actors perform credential spraying against FortiGate admin
@@ -236,7 +235,7 @@
     <group>authentication,brute_force,fortigate,fortibleed,critical,</group>
   </rule>
 
-</group>
+
 
 
 <!-- ==============================================================
@@ -252,7 +251,6 @@
        - Linux: long-lived outbound TCP socket on unusual port from system process
        - Suricata: SprySOCKS custom C2 binary protocol patterns
      ============================================================== -->
-<group name="defense_evasion,persistence,sprysoaks,rootkit,china_apt,">
 
   <!-- Rule 103609 — Windows: unsigned kernel driver installation via Sysmon event 4 (SprySOCKS WIN_DRV)
        SprySOCKS WIN_DRV installs a kernel driver with no valid code-signing cert
@@ -324,7 +322,7 @@
     <group>rootkit,hidden_process,sprysoaks,</group>
   </rule>
 
-</group>
+
 
 
 <!-- ==============================================================
@@ -340,7 +338,6 @@
        - Windows: OXLOADER staging via multiple consecutive executable drops in TEMP
        - Suricata: OXLOADER C2 beaconing domain pattern
      ============================================================== -->
-<group name="execution,credential_access,oxloader,castlestealer,infostealer,">
 
   <!-- Rule 103613 — Windows: executable spawned from TEMP after browser download
        OXLOADER is delivered via browser download (triggered by malicious Google Ad).
@@ -426,7 +423,7 @@
     <group>ids,suricata,c2,infostealer,oxloader,castlestealer,</group>
   </rule>
 
-</group>
+
 
 
 <!-- ==============================================================
@@ -443,7 +440,6 @@
        - Windows: rundll32 loading DLL from AppData with known NarwhalRAT argument
        - Windows: Registry Run key set to rundll32 AppData DLL (persistence)
      ============================================================== -->
-<group name="initial_access,execution,persistence,narwhalrat,scarecruft,apt37,north_korea,">
 
   <!-- Rule 103618 — Windows: LNK shortcut execution from ZIP extraction directory
        NarwhalRAT delivery: victim opens ZIP archive containing LNK file disguised
@@ -521,7 +517,7 @@
     <group>windows,persistence,registry,narwhalrat,apt37,north_korea,</group>
   </rule>
 
-</group>
+
 
 
 <!-- ==============================================================
@@ -543,7 +539,6 @@
        - Suricata: ShapedPlugin C2 callback domain or PHP obfuscation pattern
        - PHP/Wazuh: WordPress plugin executing outbound HTTP from admin context
      ============================================================== -->
-<group name="credential_access,supply_chain,wordpress,gravity_smtp,shapedplugin,">
 
   <!-- Rule 103622 — Web log: unauthenticated access to Gravity SMTP settings API
        CVE-2026-4020 allows any unauthenticated HTTP GET to
