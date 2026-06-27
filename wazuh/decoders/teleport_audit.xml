@@ -40,7 +40,6 @@
 -->
 <decoder name="teleport-audit-json">
   <prematch>{"ei":</prematch>
-  <plugin_decoder>JSON_Decoder</plugin_decoder>
 </decoder>
 
 <!-- Teleport audit events decoded from JSON: re-map field aliases. -->
@@ -58,7 +57,6 @@
 <decoder name="teleport-syslog">
   <program_name>teleport</program_name>
   <prematch>{"ei":</prematch>
-  <plugin_decoder>JSON_Decoder</plugin_decoder>
 </decoder>
 
 <decoder name="teleport-syslog-fields">
