@@ -1,0 +1,316 @@
+<!-- ============================================================
+     Threat Intelligence Detection Rules — 2026-06-27
+     Sources:
+       - Operation Endgame Phase 2 (Europol/Microsoft, June 15-19 2026)
+         Joint law enforcement operation seized 326 servers + 142 domains,
+         recovered 27 million stolen credentials. Disrupted three major
+         infostealer ecosystems: Amadey, StealC, and SocGholish.
+         Despite disruption, surviving infrastructure continues beaconing;
+         new IOCs published by Microsoft June 24 2026.
+         Amadey v5.60-v5.87: victim fingerprint → plugin deployment → credential theft
+         StealC: RC4-encrypted credential exfil; targets browser passwords,
+                 crypto wallets, Telegram sessions, VPN credentials
+         IOCs: 5 Amadey C2 domains, 7 StealC C2 domains, 15 SHA-256 hashes
+
+       - TonRAT Node.js Hospitality Campaign (Microsoft, June 25 2026)
+         Multi-wave photo-zip social engineering against hospitality sector.
+         Delivery: ZIP → .png.lnk → obfuscated PowerShell (419KB, 7-phase obfusc.)
+                   → compile-after-delivery .NET DLL → Node.js v24.13.0 runtime
+         Implant (TonRAT): JavaScript implant executed by node.exe in ProgramData
+         C2: 8 Cloudflare-fronted domains (.cfd, .bond, .com TLDs)
+         DPRK-affiliated (Sapphire Sleet / Lazarus-adjacent tradecraft)
+
+     Rule IDs: 103672-103700
+     Author: SecOps Purple Team
+     Date: 2026-06-27
+
+     MITRE ATT&CK Coverage:
+       T1071.001  Application Layer Protocol: Web (Amadey/StealC/TonRAT C2 HTTP)
+       T1041      Exfiltration Over C2 Channel (StealC credential exfil)
+       T1555.003  Credentials from Web Browsers (Amadey/StealC)
+       T1566.001  Spearphishing Attachment (TonRAT photo-zip lure)
+       T1204.002  User Execution: Malicious File (TonRAT .lnk dropper)
+       T1059.001  PowerShell (TonRAT multi-stage PowerShell loader)
+       T1027.004  Compile After Delivery (TonRAT .NET csc.exe compilation)
+       T1105      Ingress Tool Transfer (node.exe runtime download)
+       T1036.005  Masquerading: Match Legitimate Name (node.exe in ProgramData)
+       T1027      Obfuscated Files or Information (TonRAT 7-phase PS obfuscation)
+     ============================================================ -->
+
+<!-- ==============================================================
+     SECTION 1: Amadey Infostealer C2 Detection
+     T1071.001 (Web Protocol C2) / T1555.003 (Credential Theft)
+     Amadey C2 protocol: HTTP POST to /<8-16char path>/index.php
+     Victim fingerprint POST body: machine info, installed AV, country
+     Plugin retrieval: HTTP GET from same endpoint after registration
+     Active IOC domains (Operation Endgame Phase 2, June 2026):
+       goodpanelforgoodjob.com, rebustan.top, svclsc.com,
+       microsoft-telemetry.at, spasopro.at
+     ============================================================== -->
+
+<group name="threat_intel,infostealer,amadey,operation_endgame,c2,">
+
+  <!-- Rule 103672 — Suricata: Amadey C2 domain HTTP traffic
+       Suricata EVE HTTP event or alert matching known Amadey C2 hostnames.
+       Level 14: active infostealer C2 beacon; immediate investigation needed. -->
+  <rule id="103672" level="14">
+    <if_sid>86601</if_sid>
+    <field name="alert.http.hostname" type="pcre2">(?i)^(goodpanelforgoodjob\.com|rebustan\.top|svclsc\.com|microsoft-telemetry\.at|spasopro\.at)$</field>
+    <description>Suricata: Amadey infostealer C2 HTTP beacon to known domain — Operation Endgame Phase 2 survivor infrastructure (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1555.003</id>
+    </mitre>
+    <group>ioc_c2,amadey,operation_endgame,infostealer,</group>
+  </rule>
+
+  <!-- Rule 103673 — Web log: HTTP POST matching Amadey C2 URL pattern
+       Amadey registers victim by POSTing to /<path>/index.php where <path>
+       is an 8-16 character alphanumeric string derived from the campaign ID.
+       Known paths: /hg8jjfSr5hy/, /gd7djkDveE2/, /ms/, /cvdfnaFJBmC0/, /Lsge63sd3/
+       False positives: legitimate index.php applications; filter by POST method + path depth. -->
+  <rule id="103673" level="11">
+    <if_group>web|accesslog</if_group>
+    <match>POST</match>
+    <url type="pcre2">^/[A-Za-z0-9]{5,16}/index\.php$</url>
+    <description>HTTP POST to short-path index.php — pattern consistent with Amadey infostealer C2 beacon (T1071.001); investigate for victim registration traffic</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>web,amadey,c2_pattern,infostealer,</group>
+  </rule>
+
+  <!-- Rule 103674 — Web log: Repeated Amadey C2 URL pattern POSTs (beacon rhythm)
+       Amadey beacons every 40-120 seconds. Rapid repeated POSTs to the same
+       short-path index.php endpoint are anomalous in legitimate web traffic.
+       Frequency: 5+ matching POSTs within 300 seconds = C2 beacon rhythm. -->
+  <rule id="103674" level="13" frequency="5" timeframe="300">
+    <if_matched_sid>103673</if_matched_sid>
+    <same_field>data.srcip</same_field>
+    <description>Amadey C2 beacon rhythm: 5+ HTTP POST to short-path index.php from same source in 5 min — consistent with 40-120s infostealer beacon interval (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>web,amadey,c2_beacon,infostealer,high_confidence,</group>
+  </rule>
+
+
+<!-- ==============================================================
+     SECTION 2: StealC Infostealer C2 Detection
+     T1071.001 (Web Protocol C2) / T1041 (Exfiltration Over C2)
+     StealC C2 protocol: HTTP POST to /<20-char hex>.php
+     Data encrypted with RC4 before transmission (key in config)
+     Active IOC domains (Operation Endgame Phase 2, June 2026):
+       polse.us, roger99699.xyz, bluescry.com,
+       secure.controlpanel.asia, neltron-geltron.shop,
+       cdntestconnect.com, bartsen284.online
+     ============================================================== -->
+
+  <!-- Rule 103675 — Suricata: StealC C2 domain HTTP traffic
+       Level 14: active infostealer exfil; RC4-encrypted credential data in POST. -->
+  <rule id="103675" level="14">
+    <if_sid>86601</if_sid>
+    <field name="alert.http.hostname" type="pcre2">(?i)^(polse\.us|roger99699\.xyz|bluescry\.com|secure\.controlpanel\.asia|neltron-geltron\.shop|cdntestconnect\.com|bartsen284\.online)$</field>
+    <description>Suricata: StealC infostealer C2 HTTP exfil to known domain — Operation Endgame Phase 2 survivor infrastructure (T1041)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1041</id>
+    </mitre>
+    <group>ioc_c2,stealc,operation_endgame,infostealer,</group>
+  </rule>
+
+  <!-- Rule 103676 — Web log: HTTP POST matching StealC C2 URL pattern
+       StealC exfil endpoint: POST to /<exactly 20 hex chars>.php
+       Known paths: /62ea47cac2534aa18f74.php, /425f1faf4b214434b8a3.php, etc.
+       The 20-char lowercase hex filename is virtually never used in legitimate web apps. -->
+  <rule id="103676" level="13">
+    <if_group>web|accesslog</if_group>
+    <match>POST</match>
+    <url type="pcre2">^/[0-9a-f]{20}\.php$</url>
+    <description>HTTP POST to 20-char hex .php path — highly specific pattern matching StealC infostealer C2 exfil endpoint; RC4-encrypted credential data (T1041)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1041</id>
+    </mitre>
+    <group>web,stealc,c2_pattern,infostealer,high_confidence,</group>
+  </rule>
+
+
+<!-- ==============================================================
+     SECTION 3: Operation Endgame C2 Domain DNS Detection
+     Covers all Amadey + StealC + SocGholish C2 domains
+     Matches Suricata DNS EVE events when internal hosts query
+     known infostealer C2 infrastructure
+     ============================================================== -->
+
+  <!-- Rule 103677 — Suricata DNS: Amadey C2 domain lookup
+       Level 13: DNS resolution of Amadey C2 domain from internal host;
+       indicates compromised host attempting to register with C2. -->
+  <rule id="103677" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.dns.rrname" type="pcre2">(?i)(goodpanelforgoodjob\.com|rebustan\.top|svclsc\.com|microsoft-telemetry\.at|spasopro\.at)</field>
+    <description>Suricata DNS: Internal host querying Amadey C2 domain — Operation Endgame Phase 2; compromised host C2 registration attempt (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>ioc_c2,amadey,operation_endgame,dns,infostealer,</group>
+  </rule>
+
+  <!-- Rule 103678 — Suricata DNS: StealC C2 domain lookup
+       Level 13: DNS resolution of StealC C2 domain; exfil attempt likely follows. -->
+  <rule id="103678" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.dns.rrname" type="pcre2">(?i)(polse\.us|roger99699\.xyz|bluescry\.com|secure\.controlpanel\.asia|neltron-geltron\.shop|cdntestconnect\.com|bartsen284\.online)</field>
+    <description>Suricata DNS: Internal host querying StealC C2 domain — Operation Endgame Phase 2; RC4-encrypted credential exfil attempt expected (T1041)</description>
+    <mitre>
+      <id>T1041</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>ioc_c2,stealc,operation_endgame,dns,infostealer,</group>
+  </rule>
+
+
+<!-- ==============================================================
+     SECTION 4: TonRAT Node.js Implant Detection
+     T1105 (Ingress Tool Transfer) / T1036.005 (Masquerading)
+     T1059.001 (PowerShell) / T1027.004 (Compile After Delivery)
+     TonRAT deploys node.exe v24.13.0 (~89.9 MB) to ProgramData\<path>
+     or AppData subdirectories — unusual for legitimate Node.js installs
+     which go to Program Files, nvm, or system paths.
+     ============================================================== -->
+
+  <!-- Rule 103679 — Suricata: TonRAT C2 domain HTTP traffic
+       Cloudflare-fronted C2 domains used by TonRAT Node.js implant.
+       Photo-ZIP delivery campaign targeting hospitality sector (June 2026). -->
+  <rule id="103679" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.http.hostname" type="pcre2">(?i)^(photo-[0-9]+\.cfd|zloapobikahy23\.bond|higoksbupwou\.com|aluminiostramuntana\.com)$</field>
+    <description>Suricata: TonRAT Node.js implant C2 beacon to Cloudflare-fronted domain — photo-zip hospitality campaign (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>ioc_c2,tonrat,nodejs_implant,dprk_adjacent,</group>
+  </rule>
+
+  <!-- Rule 103680 — Suricata DNS: TonRAT C2 domain lookup
+       Level 12: DNS lookup for TonRAT C2 domain from internal host. -->
+  <rule id="103680" level="12">
+    <if_sid>86601</if_sid>
+    <field name="alert.dns.rrname" type="pcre2">(?i)(photo-[0-9]+\.cfd|zloapobikahy23\.bond|higoksbupwou\.com|aluminiostramuntana\.com)</field>
+    <description>Suricata DNS: Internal host querying TonRAT C2 domain — Node.js implant C2 registration (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>ioc_c2,tonrat,nodejs_implant,dns,</group>
+  </rule>
+
+  <!-- Rule 103681 — Sysmon: node.exe process in ProgramData or AppData path
+       Legitimate Node.js installations go to Program Files\nodejs\,
+       %APPDATA%\nvm\, or similar managed paths. TonRAT drops node.exe to
+       a UUID-named ProgramData subdirectory to blend with system services.
+       Level 11: suspicious Node.js runtime placement; high-confidence IoC. -->
+  <rule id="103681" level="11">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(ProgramData|AppData\\(Local|Roaming)\\(?!nodejs|nvm|npm))[\\][^\\]+\\node\.exe$</field>
+    <description>TonRAT: node.exe executed from ProgramData/AppData subdirectory — legitimate Node.js does not deploy to these paths; DPRK-affiliated implant (T1036.005)</description>
+    <mitre>
+      <id>T1036.005</id>
+      <id>T1105</id>
+    </mitre>
+    <group>tonrat,nodejs_implant,masquerading,process_execution,</group>
+  </rule>
+
+  <!-- Rule 103682 — Sysmon: PowerShell executing heavily obfuscated script (TonRAT stage 2)
+       TonRAT uses 419 KB PowerShell with 7-phase obfuscation to compile and
+       deploy the Node.js runtime + JavaScript implant. The large script size
+       and compile-after-delivery (csc.exe spawned from PowerShell) are IoCs. -->
+  <rule id="103682" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(powershell|pwsh)\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\csc\.exe$</field>
+    <description>TonRAT delivery: csc.exe (C# compiler) spawned by PowerShell — compile-after-delivery DLL stage; consistent with TonRAT 7-phase obfuscated PowerShell loader (T1027.004)</description>
+    <mitre>
+      <id>T1027.004</id>
+      <id>T1059.001</id>
+    </mitre>
+    <group>tonrat,compile_after_delivery,powershell,suspicious_process,</group>
+  </rule>
+
+  <!-- Rule 103683 — Sysmon: .lnk file masquerading as image (TonRAT dropper)
+       TonRAT wave 2 uses .png.lnk files (LNK with double extension) inside
+       ZIP archives; filename pattern: IMG-XXXXXXXXX.png.lnk or PHOTO-XXXXXXXXX.png.lnk.
+       Level 12: double-extension LNK masquerading as image is a known dropper technique. -->
+  <rule id="103683" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(IMG|PHOTO)-[0-9]+\.png\.lnk$</field>
+    <description>TonRAT dropper: LNK file masquerading as PNG image (PHOTO/IMG-XXXXXXXXX.png.lnk) — photo-zip campaign dropper delivery (T1204.002 / T1566.001)</description>
+    <mitre>
+      <id>T1204.002</id>
+      <id>T1566.001</id>
+    </mitre>
+    <group>tonrat,lnk_dropper,masquerading,initial_access,</group>
+  </rule>
+
+
+<!-- ==============================================================
+     SECTION 5: Suricata Correlation — Multi-C2-Domain C2 Activity
+     Fires when multiple infostealer C2 domain alerts occur from
+     the same source within a short window, indicating compromised host
+     communicating with infostealer infrastructure.
+     ============================================================== -->
+
+  <!-- Rule 103690 — Correlation: Multiple Operation Endgame C2 domain events
+       Multiple distinct C2 domain hits from same source = active compromise.
+       Level 15 CRITICAL: host is actively exfiltrating credentials. -->
+  <rule id="103690" level="15" frequency="3" timeframe="300">
+    <if_matched_sid>103672,103673,103675,103677,103678</if_matched_sid>
+    <same_field>data.srcip</same_field>
+    <description>CRITICAL: Multiple Operation Endgame C2 indicators from same host in 5 min — active infostealer compromise; credential exfil likely in progress (T1041)</description>
+    <mitre>
+      <id>T1041</id>
+      <id>T1555.003</id>
+    </mitre>
+    <group>critical,infostealer,active_compromise,operation_endgame,correlation,</group>
+  </rule>
+
+
+<!-- ==============================================================
+     SECTION 6: Suricata IP-Based IOC Rules
+     Direct IP IOC matching via firewall/IDS logs for any Operation
+     Endgame infrastructure that resolves to known IP ranges.
+     Note: C2 domains may rotate IPs; domain-based rules (above)
+     are more durable. Use IP rules as additional coverage layer.
+     ============================================================== -->
+
+  <!-- Rule 103691 — Anchor: Suricata alerts for firewall correlation
+       Parent rule re-used from threat_intel_ioc_network.xml (103000).
+       No new anchor needed — existing firewall anchor SID 103000 applies. -->
+
+  <!-- Rule 103692 — Suricata: Infostealer signature alert (ET rule family)
+       Match Suricata ET rules that identify Amadey, StealC, or SocGholish
+       traffic patterns in the ruleset. ET rules frequently updated post-LEA. -->
+  <rule id="103692" level="13">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature" type="pcre2">(?i)(ET MALWARE|ETPRO MALWARE).*(Amadey|StealC|StealerC|SocGholish|GootLoader|Endgame)</field>
+    <description>Suricata ET MALWARE: Amadey/StealC/SocGholish infostealer C2 or delivery traffic detected — Operation Endgame survivor infrastructure (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1555.003</id>
+    </mitre>
+    <group>ids,suricata,infostealer,amadey,stealc,socgholish,operation_endgame,</group>
+  </rule>
+
+  <!-- Rule 103693 — Suricata: TonRAT signature alert (ET rule family)
+       ET MALWARE rules for TonRAT Node.js implant traffic may be published
+       post-Microsoft disclosure (June 25, 2026). Match on ET signature names. -->
+  <rule id="103693" level="12">
+    <if_sid>86601</if_sid>
+    <field name="alert.signature" type="pcre2">(?i)(ET MALWARE|ETPRO MALWARE).*(TonRAT|Ton\.RAT|nodejs.implant|hospitality.campaign)</field>
+    <description>Suricata ET MALWARE: TonRAT Node.js implant C2 traffic detected — photo-zip hospitality campaign (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>ids,suricata,tonrat,nodejs_implant,dprk_adjacent,</group>
+  </rule>
+
+</group>
