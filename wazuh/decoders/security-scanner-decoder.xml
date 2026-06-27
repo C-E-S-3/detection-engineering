@@ -1,0 +1,39 @@
+<!--
+  Security Scanner Log Decoder
+  Source: netexec/nmap scanner on hostinger-01 (off-prem VPS)
+  Format: JSONL — each line is a self-contained JSON object
+
+  Each log line starts with the discriminant key so the parent decoder can
+  anchor without inspecting every JSON log that passes through Wazuh.
+
+  Log fields:
+    source     - always "security-scanner" (decoder discriminant)
+    scanner    - tool name, e.g. "netexec", "nmap"
+    timestamp  - ISO 8601 scan timestamp
+    target     - IP or hostname being scanned
+    protocol   - transport/application protocol, e.g. "smb", "ldap", "kerberos"
+    check      - specific check performed, e.g. "smb_signing", "null_session"
+    result     - finding string, e.g. "disabled", "allowed", "3_accounts_found"
+    severity   - info | medium | high | critical
+    raw        - raw scanner output line (optional, may be absent)
+
+  After decoding, all fields are available as data.* for rule matching.
+-->
+
+<!-- ================================================================ -->
+<!-- Parent decoder: anchors on the JSONL discriminant field           -->
+<!-- Matches any log line beginning with the source key so the child   -->
+<!-- decoder is only invoked for scanner output.                       -->
+<!-- ================================================================ -->
+<decoder name="security-scanner">
+  <prematch>{"source":"security-scanner"</prematch>
+</decoder>
+
+<!-- ================================================================ -->
+<!-- Child decoder: hands off to the built-in JSON_Decoder plugin      -->
+<!-- which populates data.* fields from all top-level JSON keys.       -->
+<!-- ================================================================ -->
+<decoder name="security-scanner-json">
+  <parent>security-scanner</parent>
+  <plugin_decoder>JSON_Decoder</plugin_decoder>
+</decoder>
