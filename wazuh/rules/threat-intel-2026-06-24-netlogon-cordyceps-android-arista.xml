@@ -388,7 +388,6 @@
        those ACL hits as evidence of active CVE-2026-7473 exploitation attempts.
        Level 12: ACL blocking unexpected tunnel protocol — active probe detected. -->
   <rule id="103643" level="12">
-    <decoded_as>arista</decoded_as>
     <field name="arista.syslog.facility" type="pcre2">(?i)(SECURITY|ACL|ACLMGR|IPACL)</field>
     <field name="arista.syslog.message" type="pcre2">(?i)(tunnel.*denied|decap.*acl.*drop|unexpected.*tunnel.*protocol|vxlan.*denied|gre.*denied)</field>
     <description>Arista EOS ACL blocked unexpected tunnel protocol on $(arista.interface) from $(src_ip) — CVE-2026-7473 exploitation attempt blocked by ACL mitigation (T1572)</description>
@@ -420,7 +419,6 @@
        traffic types that bypass configured filters.
        Level 11: Arista logging unexpected forwarding event; verify tunnel config. -->
   <rule id="103645" level="11">
-    <decoded_as>arista</decoded_as>
     <field name="arista.syslog.message" type="pcre2">(?i)(unexpected.*forward|decap.*forward.*anomaly|tunnel.*forward.*unknown|inner.*payload.*forwarded|TCAM.*tunnel.*exception)</field>
     <description>Arista EOS forwarded unexpected inner tunnel payload on $(arista.interface) — possible CVE-2026-7473 bypass of network segmentation (T1572)</description>
     <mitre>

@@ -573,7 +573,6 @@
 
   <!-- Base: OPNsense/network device syslog event anchor (source tag: opnsense/cisco/fortinet) -->
   <rule id="103533" level="0">
-    <decoded_as>syslog</decoded_as>
     <field name="hostname" type="pcre2">(?i)(opnsense|pfsense|fortinet|cisco|asa|fortigate|ivanti)</field>
     <description>BRICKSTORM: Network device syslog event anchor for appliance implant detection</description>
     <group>brickstorm,network_appliance,</group>

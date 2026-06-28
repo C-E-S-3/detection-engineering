@@ -22,7 +22,6 @@
   <!-- ================================================================ -->
 
   <rule id="101500" level="0">
-    <decoded_as>syslog</decoded_as>
     <match type="pcre2">(?i)(no\s+space\s+left\s+on\s+device|ENOSPC)</match>
     <description>Linux: Disk space exhaustion event (syslog anchor)</description>
   </rule>
@@ -70,7 +69,6 @@
   <!-- ================================================================ -->
 
   <rule id="101503" level="8">
-    <decoded_as>syslog</decoded_as>
     <match type="pcre2">(?i)(filesystem|partition|volume|disk)[^:]{0,60}(?:9[0-9]|100)\s*%</match>
     <description>Linux: Filesystem usage >= 90% — approaching exhaustion</description>
     <group>disk_warning,impact,</group>

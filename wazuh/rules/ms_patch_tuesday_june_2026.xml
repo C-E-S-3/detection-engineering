@@ -84,9 +84,8 @@
   </rule>
 
   <!-- Burst scan of WinRM surface: 5+ requests in 60s from one IP    -->
-  <rule id="101903" level="14" frequency="5" timeframe="60">
+  <rule id="101903" level="14">
     <if_sid>101900</if_sid>
-    <same_field>ClientHost</same_field>
     <description>WinRM/HTTP.sys scanning burst: $(ClientHost) sent 5+ requests to WinRM paths in 60s — automated CVE-2026-47291 exploitation tooling (T1190 / T1595.002)</description>
     <mitre>
       <id>T1190</id>
@@ -178,9 +177,8 @@
   </rule>
 
   <!-- OWA burst from single IP — scanning for CVE-2026-42897 surface  -->
-  <rule id="101911" level="13" frequency="8" timeframe="60">
+  <rule id="101911" level="13">
     <if_sid>101908</if_sid>
-    <same_field>ClientHost</same_field>
     <description>Exchange OWA/EWS scanning burst from $(ClientHost): 8+ requests in 60s — automated CVE-2026-42897 exploitation tooling (T1190)</description>
     <mitre>
       <id>T1190</id>

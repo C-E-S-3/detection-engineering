@@ -126,7 +126,7 @@
   </rule>
 
   <!-- Multiple cert.create events in short window — possible bypass / token abuse -->
-  <rule id="103112" level="12" frequency="10" timeframe="60">
+  <rule id="103112" level="12">
     <if_sid>103100,103101</if_sid>
     <field name="event" type="pcre2">^cert\.create$</field>
     <description>Teleport: 10+ certificates created within 60 s — possible CVE-2025-49825 exploitation or token abuse (T1550)</description>

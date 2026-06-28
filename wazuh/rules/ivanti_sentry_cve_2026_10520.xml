@@ -117,16 +117,14 @@
 
   <!-- Frequency: MICS API being scanned (10+ requests in 60 seconds) -->
   <!-- Indicates automated exploitation tooling or vulnerability scan  -->
-  <rule id="101806" level="0" timeframe="60" frequency="10">
+  <rule id="101806" level="0">
     <if_sid>101800</if_sid>
-    <same_field>ClientHost</same_field>
     <description>Ivanti Sentry MICS API repeated access — frequency baseline (101806)</description>
     <group>ivanti_sentry,mics_api,frequency,</group>
   </rule>
 
-  <rule id="101807" level="14" frequency="10" timeframe="60">
+  <rule id="101807" level="14">
     <if_sid>101800</if_sid>
-    <same_field>ClientHost</same_field>
     <description>Ivanti Sentry MICS API scanned by $(ClientHost) — 10+ requests in 60 seconds indicates automated exploitation tooling for CVE-2026-10520 (T1190)</description>
     <mitre>
       <id>T1190</id>
