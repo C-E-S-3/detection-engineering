@@ -1,7 +1,7 @@
 <!--
   Security Scanner Log Decoder
   Source: netexec/nmap scanner on hostinger-01 (off-prem VPS)
-  Format: JSONL — each line is a self-contained JSON object
+  Format: JSONL -- each line is a self-contained JSON object
 
   Each log line starts with the discriminant key so the parent decoder can
   anchor without inspecting every JSON log that passes through Wazuh.

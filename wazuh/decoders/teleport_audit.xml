@@ -1,5 +1,5 @@
 <!-- ================================================================
-     Teleport Access Platform — Audit Log Decoder
+     Teleport Access Platform -- Audit Log Decoder
      Parses Teleport JSON audit events forwarded to Wazuh via
      localfile (log_format: json) or syslog multiline.
 
@@ -19,13 +19,13 @@
        </localfile>
 
      Field mapping:
-       teleport.event   → Teleport event type (user.login, auth, session.start…)
-       teleport.code    → Event code  (T1000I, T1006W, T3002I…)
-       teleport.user    → Subject user
-       teleport.success → Boolean success flag
-       teleport.error   → Error string on failure
-       teleport.remote  → Client IP (addr.remote field)
-       teleport.uid     → Event UUID
+       teleport.event   -> Teleport event type (user.login, auth, session.start...)
+       teleport.code    -> Event code  (T1000I, T1006W, T3002I...)
+       teleport.user    -> Subject user
+       teleport.success -> Boolean success flag
+       teleport.error   -> Error string on failure
+       teleport.remote  -> Client IP (addr.remote field)
+       teleport.uid     -> Event UUID
 
      Author: SecOps Engineer (Purple Team)
      Date: 2026-06-20
