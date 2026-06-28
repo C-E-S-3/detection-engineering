@@ -1,5 +1,5 @@
 <!-- ================================================================
-     Teleport Access Platform -- Audit Log Decoder
+     Teleport Access Platform  -  Audit Log Decoder
      Parses Teleport JSON audit events forwarded to Wazuh via
      localfile (log_format: json) or syslog multiline.
 
