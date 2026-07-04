@@ -5,31 +5,27 @@
 <!--   The security scanner on hostinger-01 emits JSONL findings for     -->
 <!--   each check performed against targets (netexec, nmap). These rules  -->
 <!--   classify findings by severity and specific AD misconfiguration     -->
-<!--   checks, routing each to the appropriate alert tier so the          -->
-<!--   analyst queue is proportional to finding criticality.             -->
+<!--   checks, routing each to the appropriate alert tier.               -->
+<!--                                                                      -->
+<!-- DECODER NOTE                                                         -->
+<!--   Wazuh's builtin JSON decoder (loaded first) decodes these events. -->
+<!--   The JSON decoder does not expose fields to <field> rule elements;  -->
+<!--   use <match> for single-key substring match on the raw JSON string  -->
+<!--   or <regex type="pcre2"> for multi-key patterns.                   -->
 <!--                                                                      -->
 <!-- ANCHORING                                                            -->
-<!--   The anchor (102000) keys off the security-scanner-json decoder     -->
-<!--   at level 0 (not indexed). All severity and finding rules chain    -->
-<!--   from 102000 via if_sid, so only fully-decoded scanner JSONL        -->
-<!--   events reach the child rules.                                     -->
+<!--   The anchor (102000) matches the discriminant "source" key at      -->
+<!--   level 0 (not indexed). All severity and finding rules chain from  -->
+<!--   102000 via if_sid.                                                -->
 <!--                                                                      -->
-<!-- VOLUME CONTROL                                                       -->
-<!--   102000 is level 0 (not indexed); it groups all scanner events.    -->
-<!--   Indexing is gated by child rules that scope on data.severity       -->
-<!--   and data.check fields. Informational findings land at level 3;    -->
-<!--   targeted AD misconfiguration checks reach level 10-12.            -->
-<!--                                                                      -->
-<!-- FIELDS (security-scanner-json decoder via JSON_Decoder plugin)      -->
-<!--   data.source     discriminant, always "security-scanner"           -->
-<!--   data.scanner    tool name, e.g. "netexec", "nmap"                 -->
-<!--   data.timestamp  ISO 8601 scan timestamp                           -->
-<!--   data.target     IP or hostname being scanned                      -->
-<!--   data.protocol   e.g. "smb", "ldap", "kerberos"                   -->
-<!--   data.check      specific check, e.g. "smb_signing", "null_session"-->
-<!--   data.result     finding string, e.g. "disabled", "3_accounts_found"-->
-<!--   data.severity   info | medium | high | critical                   -->
-<!--   data.raw        raw scanner output line (optional)                -->
+<!-- FIELDS (from raw JSONL, matched via match/regex)                    -->
+<!--   "source":"security-scanner"  discriminant                         -->
+<!--   "scanner":"netexec|nmap"     tool name                            -->
+<!--   "target":"<ip>"              scanned IP or hostname               -->
+<!--   "protocol":"smb|ldap|..."    transport/app protocol               -->
+<!--   "check":"<check_name>"       specific check performed             -->
+<!--   "result":"<result>"          finding value                        -->
+<!--   "severity":"info|medium|high|critical"                            -->
 
 <group name="security-scanner,ad-assessment,">
 
@@ -39,29 +35,26 @@
   <!-- this via if_sid.                                                  -->
   <!-- ================================================================ -->
   <rule id="102000" level="0">
-    <decoded_as>security-scanner-json</decoded_as>
+    <decoded_as>json</decoded_as>
+    <match>"source":"security-scanner"</match>
     <description>Security scanner: finding recorded</description>
     <group>security-scanner,</group>
   </rule>
 
 
   <!-- ================================================================ -->
-  <!-- SEVERITY TIERS - classify by data.severity, chain from 102000     -->
-  <!-- Informational findings are indexed at level 3 for baselining.    -->
-  <!-- Medium/high/critical escalate using MITRE T1046 (Network Service -->
-  <!-- Scanning) as the primary technique; check-specific rules below   -->
-  <!-- carry the precise sub-technique for each AD misconfiguration.    -->
+  <!-- SEVERITY TIERS - classify by severity field, chain from 102000    -->
   <!-- ================================================================ -->
   <rule id="102001" level="3">
     <if_sid>102000</if_sid>
-    <field name="data.severity">^info$</field>
-    <description>Security scanner: informational finding - $(data.check) on $(data.target)</description>
+    <match>"severity":"info"</match>
+    <description>Security scanner: informational finding</description>
   </rule>
 
   <rule id="102002" level="8">
     <if_sid>102000</if_sid>
-    <field name="data.severity">^medium$</field>
-    <description>Security scanner: medium severity - $(data.check) on $(data.target)</description>
+    <match>"severity":"medium"</match>
+    <description>Security scanner: medium severity finding</description>
     <mitre>
       <id>T1046</id>
     </mitre>
@@ -69,8 +62,8 @@
 
   <rule id="102003" level="10">
     <if_sid>102000</if_sid>
-    <field name="data.severity">^high$</field>
-    <description>Security scanner: HIGH - $(data.check) on $(data.target)</description>
+    <match>"severity":"high"</match>
+    <description>Security scanner: HIGH severity finding</description>
     <mitre>
       <id>T1046</id>
     </mitre>
@@ -78,8 +71,8 @@
 
   <rule id="102004" level="12">
     <if_sid>102000</if_sid>
-    <field name="data.severity">^critical$</field>
-    <description>Security scanner: CRITICAL - $(data.check) on $(data.target)</description>
+    <match>"severity":"critical"</match>
+    <description>Security scanner: CRITICAL severity finding</description>
     <mitre>
       <id>T1046</id>
     </mitre>
@@ -88,17 +81,14 @@
 
   <!-- ================================================================ -->
   <!-- AD FINDINGS - specific Active Directory misconfiguration checks   -->
-  <!-- All chain from 102000 and carry targeted MITRE sub-technique IDs  -->
-  <!-- for the attack vector each finding directly enables.             -->
+  <!-- All chain from 102000; use pcre2 regex for multi-field matching   -->
   <!-- ================================================================ -->
 
   <!-- SMB signing disabled - enables NTLM relay / MitM attacks         -->
-  <!-- T1557.001 (Adversary-in-the-Middle: LLMNR/NBT-NS Poisoning)     -->
-  <rule id="102010" level="12">
+  <rule id="102010" level="13">
     <if_sid>102000</if_sid>
-    <field name="data.check">^smb_signing$</field>
-    <field name="data.result">^disabled$</field>
-    <description>AD Security: SMB signing disabled on $(data.target) - relay attack vector</description>
+    <regex type="pcre2">"check":"smb_signing".*"result":"disabled"</regex>
+    <description>AD Security: SMB signing disabled on target - relay attack vector</description>
     <mitre>
       <id>T1557.001</id>
     </mitre>
@@ -106,13 +96,10 @@
   </rule>
 
   <!-- SMB null session - unauthenticated share/user enumeration        -->
-  <!-- T1078.002 (Valid Accounts: Domain Accounts) / T1135 (Network     -->
-  <!-- Share Discovery)                                                 -->
-  <rule id="102011" level="10">
+  <rule id="102011" level="11">
     <if_sid>102000</if_sid>
-    <field name="data.check">^null_session$</field>
-    <field name="data.result">^allowed$</field>
-    <description>AD Security: SMB null session allowed on $(data.target)</description>
+    <regex type="pcre2">"check":"null_session".*"result":"allowed"</regex>
+    <description>AD Security: SMB null session allowed on target</description>
     <mitre>
       <id>T1078.002</id>
       <id>T1135</id>
@@ -121,12 +108,10 @@
   </rule>
 
   <!-- Anonymous LDAP bind - unauthenticated directory enumeration      -->
-  <!-- T1087.002 (Account Discovery: Domain Account)                   -->
-  <rule id="102012" level="10">
+  <rule id="102012" level="11">
     <if_sid>102000</if_sid>
-    <field name="data.check">^anonymous_bind$</field>
-    <field name="data.result">^allowed$</field>
-    <description>AD Security: Anonymous LDAP bind allowed on $(data.target)</description>
+    <regex type="pcre2">"check":"anonymous_bind".*"result":"allowed"</regex>
+    <description>AD Security: Anonymous LDAP bind allowed on target</description>
     <mitre>
       <id>T1087.002</id>
     </mitre>
@@ -134,12 +119,10 @@
   </rule>
 
   <!-- Kerberoastable service accounts found - offline TGS cracking     -->
-  <!-- T1558.003 (Steal or Forge Kerberos Tickets: Kerberoasting)      -->
-  <rule id="102013" level="10">
+  <rule id="102013" level="11">
     <if_sid>102000</if_sid>
-    <field name="data.check">^kerberoastable_accounts$</field>
-    <field name="data.result" type="pcre2">_accounts_found$</field>
-    <description>AD Security: Kerberoastable accounts on $(data.target) - $(data.result)</description>
+    <regex type="pcre2">"check":"kerberoastable_accounts".*"result":"[^"]*_accounts_found</regex>
+    <description>AD Security: Kerberoastable accounts found on target</description>
     <mitre>
       <id>T1558.003</id>
     </mitre>
@@ -147,12 +130,10 @@
   </rule>
 
   <!-- ASREPRoastable accounts - pre-auth not required, offline crack   -->
-  <!-- T1558.004 (Steal or Forge Kerberos Tickets: AS-REP Roasting)    -->
-  <rule id="102014" level="10">
+  <rule id="102014" level="11">
     <if_sid>102000</if_sid>
-    <field name="data.check">^asreproastable_accounts$</field>
-    <field name="data.result" type="pcre2">_accounts_found$</field>
-    <description>AD Security: ASREPRoastable accounts on $(data.target) - $(data.result)</description>
+    <regex type="pcre2">"check":"asreproastable_accounts".*"result":"[^"]*_accounts_found</regex>
+    <description>AD Security: ASREPRoastable accounts found on target</description>
     <mitre>
       <id>T1558.004</id>
     </mitre>
@@ -160,13 +141,10 @@
   </rule>
 
   <!-- ADCS misconfiguration - vulnerable cert templates (ESC1/4/6)     -->
-  <!-- T1649 (Steal or Forge Authentication Certificates)               -->
-  <!-- T1550.001 (Use Alternate Authentication Material: Pass the Hash) -->
-  <rule id="102015" level="12">
+  <rule id="102015" level="13">
     <if_sid>102000</if_sid>
-    <field name="data.check">^adcs_misconfiguration$</field>
-    <field name="data.result" type="pcre2">_vulnerable_templates$</field>
-    <description>AD Security: CRITICAL - Vulnerable ADCS certificate templates on $(data.target)</description>
+    <regex type="pcre2">"check":"adcs_misconfiguration".*"result":"[^"]*_vulnerable_templates</regex>
+    <description>AD Security: CRITICAL - Vulnerable ADCS certificate templates on target</description>
     <mitre>
       <id>T1649</id>
       <id>T1550.001</id>
@@ -177,14 +155,11 @@
 
   <!-- ================================================================ -->
   <!-- EXTERNAL EXPOSURE - high-risk ports/services visible externally   -->
-  <!-- Chains from 102000; fires when an external scan reports a high-  -->
-  <!-- severity open port. T1133 (External Remote Services).            -->
   <!-- ================================================================ -->
-  <rule id="102020" level="10">
+  <rule id="102020" level="11">
     <if_sid>102000</if_sid>
-    <field name="data.check">^external_port_open$</field>
-    <field name="data.severity">^high$</field>
-    <description>External scan: High-risk port exposed on $(data.target) - $(data.result)</description>
+    <regex type="pcre2">"check":"external_port_open".*"severity":"high"</regex>
+    <description>External scan: High-risk port exposed on target</description>
     <mitre>
       <id>T1133</id>
     </mitre>
