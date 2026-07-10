@@ -1,0 +1,210 @@
+<!-- ============================================================
+     Microsoft SharePoint Server Deserialization RCE
+     CVE-2026-45659 (CWE-502: Deserialization of Untrusted Data)
+     Affected: SharePoint Server Subscription Edition, 2019,
+               Enterprise Server 2016
+     MITRE ATT&amp;CK:
+       T1190     - Exploit Public-Facing Application (TA0001 Initial Access)
+       T1505.003 - Server Software Component: Web Shell (TA0003 Persistence)
+       T1059.001 - Command and Scripting Interpreter: PowerShell (TA0002 Execution)
+       T1059.003 - Command and Scripting Interpreter: Windows Command Shell
+       T1105     - Ingress Tool Transfer
+       T1218     - System Binary Proxy Execution (LOLBin abuse)
+     CISA KEV: Added 2026-07-01, Federal Deadline 2026-07-22
+     Rule IDs: 103700-103708
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-10
+
+     Vulnerability Summary:
+       CVE-2026-45659: A low-privileged authenticated user with Site Member
+       access can send a crafted HTTP POST to the SharePoint REST/SOAP API
+       that triggers unsafe deserialization of attacker-controlled .NET
+       objects, achieving remote code execution in the IIS worker process
+       (w3wp.exe) context. No admin privileges required. CVSS critical.
+
+     Log source prerequisites:
+       - Sysmon installed on Windows hosts running IIS/SharePoint with
+         EventID 1 (Process Creation) and EventID 11 (File Created) enabled.
+         Standard Wazuh Sysmon integration produces SID 61603 for EventID 1.
+       - Traefik access logs in JSON format forwarded to Wazuh (for the
+         HTTP/reverse-proxy detection layer). JSON field names follow
+         Traefik defaults: RequestMethod, RequestPath, RequestHost,
+         DownstreamStatus, ClientHost.
+
+     Detection layers:
+       1. Process execution: w3wp.exe spawning unexpected child processes
+          (Sysmon EventID 1 via Wazuh SID 61603)
+       2. File creation: w3wp.exe writing ASPX/ASMX/ASHX webshell files
+          to the file system (Sysmon EventID 11)
+       3. HTTP: Anomalous POST requests to SharePoint REST and legacy SOAP
+          endpoints via Traefik reverse proxy (JSON access logs)
+
+     Severity tiers:
+        9 - POST to SharePoint REST/SOAP API endpoint (info anchor)
+       11 - POST to SharePoint _vti_bin endpoint returning HTTP 500
+            (deserialization exception indicating active exploit attempt)
+       12 - w3wp.exe spawning execution LOLBins or cmd.exe/discovery tools;
+            POST to SharePoint API returning 2xx
+       13 - w3wp.exe spawning download-and-execute LOLBins
+       14 - w3wp.exe spawning PowerShell, pwsh, or C# compiler
+            (near-certain deserialization RCE)
+       15 - w3wp.exe writing ASPX/ASMX/ASHX file (webshell drop, critical)
+     ============================================================ -->
+
+<group name="initial_access,exploit_pubfacing,sharepoint,cve_2026_45659,">
+
+  <!-- ===========================================================
+       Layer 1: Process execution (Sysmon EventID 1 -> Wazuh SID 61603)
+       Rule IDs: 103700-103704
+
+       Under normal SharePoint operation w3wp.exe spawns .NET worker
+       threads internally and should not directly exec command interpreters
+       or LOLBin utilities. Any unexpected child process is a strong
+       indicator that the SharePoint AppPool has been exploited.
+       =========================================================== -->
+
+  <!-- Base anchor: w3wp.exe spawning any child process (silent, level 0) -->
+  <rule id="103700" level="0">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\w3wp\.exe$</field>
+    <description>SharePoint CVE-2026-45659: w3wp.exe spawned child process $(win.eventdata.image) on $(win.eventdata.computer) (base anchor)</description>
+  </rule>
+
+  <!-- w3wp.exe spawning PowerShell, pwsh, or C# / VB compiler.
+       .NET deserialization gadgets frequently invoke PowerShell as the
+       first post-exploit action (download cradle) or compile a staged
+       C# payload via csc.exe. Near-certain indicator of RCE. -->
+  <rule id="103701" level="14">
+    <if_sid>103700</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(powershell|pwsh|csc|vbc|jsc)\.exe$</field>
+    <description>SharePoint CVE-2026-45659: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) -- near-certain deserialization RCE; PowerShell download cradle or .NET compilation post-exploit (T1190/T1059.001)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.001</id>
+    </mitre>
+    <group>sharepoint,cve_2026_45659,rce,powershell,high_confidence,</group>
+  </rule>
+
+  <!-- w3wp.exe spawning download-and-execute LOLBins.
+       certutil, bitsadmin, mshta, and scripting hosts are commonly used
+       to stage and execute secondary payloads after initial RCE via
+       .NET deserialization. -->
+  <rule id="103702" level="13">
+    <if_sid>103700</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(certutil|bitsadmin|mshta|wscript|cscript|curl|wget)\.exe$</field>
+    <description>SharePoint CVE-2026-45659: w3wp.exe spawned download LOLBin $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) -- staged payload delivery post-deserialization exploit (T1190/T1105)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1105</id>
+    </mitre>
+    <group>sharepoint,cve_2026_45659,rce,lolbin,</group>
+  </rule>
+
+  <!-- w3wp.exe spawning execution LOLBins (proxy execution / payload loading).
+       rundll32, regsvr32, msiexec, and wmic are frequently abused to load
+       attacker DLLs or run malicious MSI installers from memory after RCE. -->
+  <rule id="103703" level="12">
+    <if_sid>103700</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(rundll32|regsvr32|msiexec|wmic|installutil|regasm|regsvcs)\.exe$</field>
+    <description>SharePoint CVE-2026-45659: w3wp.exe spawned execution LOLBin $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) -- post-exploit proxy execution or payload loading (T1190/T1218)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1218</id>
+    </mitre>
+    <group>sharepoint,cve_2026_45659,rce,lolbin,</group>
+  </rule>
+
+  <!-- w3wp.exe spawning cmd.exe or host-discovery utilities.
+       whoami, ipconfig, nltest, net, hostname, and systeminfo are the
+       standard first-stage reconnaissance commands run after achieving
+       code execution on a SharePoint server. -->
+  <rule id="103704" level="12">
+    <if_sid>103700</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(cmd|whoami|ipconfig|nltest|net|net1|hostname|systeminfo|tasklist|nslookup|ping|arp)\.exe$</field>
+    <description>SharePoint CVE-2026-45659: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) -- post-exploit host enumeration or command shell; investigate for deserialization RCE (T1190/T1059.003)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.003</id>
+    </mitre>
+    <group>sharepoint,cve_2026_45659,rce,enumeration,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Layer 2: File creation (Sysmon EventID 11)
+       Rule ID: 103705
+
+       Under normal operation w3wp.exe does not create new ASPX, ASMX,
+       or ASHX files. Any such file creation by the IIS worker process
+       is a near-certain webshell drop, indicating persistent backdoor
+       access was established after the deserialization exploit landed.
+       =========================================================== -->
+
+  <!-- w3wp.exe writing ASPX/ASMX/ASHX/SVC file - webshell deployment.
+       Sysmon EventID 11 (File Created) with w3wp.exe as the creating
+       process and a web-script extension is a critical indicator. -->
+  <rule id="103705" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="win.eventdata.eventID" type="pcre2">^11$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\w3wp\.exe$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.(aspx|asmx|ashx|svc)$</field>
+    <description>SharePoint CVE-2026-45659 CRITICAL: w3wp.exe created web script file $(win.eventdata.targetFilename) on $(win.eventdata.computer) -- WEBSHELL DROP confirmed; persistent backdoor access established; initiate immediate incident response (T1505.003)</description>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_45659,webshell,persistence,critical,high_confidence,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Layer 3: HTTP / Traefik reverse proxy (JSON access logs)
+       Rule IDs: 103706-103708
+
+       CVE-2026-45659 is triggered by a crafted POST request to
+       SharePoint REST API (/_api/) or legacy SOAP endpoints
+       (_vti_bin/). Monitoring the reverse proxy layer catches the
+       exploit delivery before any process events fire on the host.
+       =========================================================== -->
+
+  <!-- POST to SharePoint REST API or legacy SOAP endpoint (info anchor). -->
+  <rule id="103706" level="9">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)(?:/_api/|/_vti_bin/(?:client\.svc|webs\.asmx|lists\.asmx|sitedata\.asmx|usergroup\.asmx|authentication\.asmx)|/sites/[^/]+/_vti_bin/|/sites/[^/]+/lists/)</field>
+    <description>SharePoint CVE-2026-45659: POST to SharePoint REST/SOAP endpoint from $(ClientHost) at $(RequestHost)$(RequestPath) -- potential deserialization exploit delivery (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_45659,initial_access,exploit_pubfacing,</group>
+  </rule>
+
+  <!-- POST to SharePoint API returned 2xx - server processed the request.
+       A 2xx response means SharePoint executed the deserialized payload.
+       Correlate with process-execution rules (103701-103704) on the
+       same host to confirm RCE. -->
+  <rule id="103707" level="12">
+    <if_sid>103706</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>SharePoint CVE-2026-45659: POST to SharePoint API at $(RequestHost)$(RequestPath) returned 2xx to $(ClientHost) -- deserialization payload acknowledged; correlate with w3wp.exe child-process events on the target host (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_45659,initial_access,exploit_pubfacing,rce_success,</group>
+  </rule>
+
+  <!-- POST to SharePoint _vti_bin endpoint returning HTTP 500.
+       .NET deserialization exceptions surface as 500 errors before an
+       attacker refines the gadget chain. A 500 on _vti_bin is a strong
+       indicator of active exploit probe or misconfigured gadget delivery. -->
+  <rule id="103708" level="11">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)/_vti_bin/</field>
+    <field name="DownstreamStatus" type="pcre2">^500$</field>
+    <description>SharePoint CVE-2026-45659: POST to _vti_bin at $(RequestHost)$(RequestPath) from $(ClientHost) returned HTTP 500 -- deserialization exception likely; active exploit attempt in progress (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_45659,initial_access,exploit_pubfacing,</group>
+  </rule>
+
+</group>
