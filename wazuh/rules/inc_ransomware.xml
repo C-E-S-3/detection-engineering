@@ -3,7 +3,7 @@
      INC Ransom (GOLD IONIC / G1032) — active RaaS since July 2023, 830+ victims.
      Major surge in 2026 following LockBit disruption and BlackCat shutdown.
      Targets Linux and Windows; homelab rules focus on Linux/Docker environment.
-     MITRE ATT&CK: T1486, T1490, T1059, T1078, T1003, T1566, T1021, T1074
+     MITRE ATT&amp;CK: T1486, T1490, T1059, T1078, T1003, T1566, T1021, T1074
 -->
 <group name="inc_ransomware,ransomware,">
 

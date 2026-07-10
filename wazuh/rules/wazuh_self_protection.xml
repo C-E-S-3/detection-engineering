@@ -6,7 +6,7 @@
      - Wazuh API brute force and unauthorized access
      - Wazuh cluster anomalies indicating compromise
      - Post-exploitation: config tampering, agent manipulation
-     MITRE ATT&CK: T1190, T1110, T1562.001, T1059, T1070.002
+     MITRE ATT&amp;CK: T1190, T1110, T1562.001, T1059, T1070.002
 -->
 <group name="wazuh_self_protection,">
 
