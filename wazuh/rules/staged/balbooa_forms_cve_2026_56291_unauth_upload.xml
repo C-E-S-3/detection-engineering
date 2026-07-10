@@ -1,7 +1,7 @@
 <!-- ============================================================
      Balbooa Forms for Joomla — Unrestricted File Upload RCE
      CVE-2026-56291 — CVSS 9.8 CRITICAL
-     MITRE ATT&CK:
+     MITRE ATT&amp;CK:
        T1190     — Exploit Public-Facing Application
        T1505.003 — Server Software Component: Web Shell
        T1059.004 — Command and Scripting Interpreter: Unix Shell
@@ -18,7 +18,7 @@
        Balbooa Forms component for Joomla (CVSS 9.8). Unauthenticated
        attackers POST multipart form data containing a PHP/PHTML file to
        the component's upload handler:
-         POST /index.php?option=com_balbooa&task=form.upload
+         POST /index.php?option=com_balbooa&amp;task=form.upload
        The upload handler does not validate file extensions or MIME types
        against an allowlist, permitting deployment of arbitrary PHP webshells.
        Uploaded files land under /media/com_balbooa/ or /images/com_balbooa/

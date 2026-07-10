@@ -1,7 +1,7 @@
 <!-- ============================================================
      iCagenda for Joomla — Unrestricted File Upload RCE
      CVE-2026-48939 — CVSS 9.8 CRITICAL
-     MITRE ATT&CK:
+     MITRE ATT&amp;CK:
        T1190     — Exploit Public-Facing Application
        T1505.003 — Server Software Component: Web Shell
        T1059.004 — Command and Scripting Interpreter: Unix Shell
@@ -18,7 +18,7 @@
        iCagenda component for Joomla (CVSS 9.8). iCagenda is a popular
        event management/calendar component. Unauthenticated attackers POST
        multipart form data to the component's upload endpoint:
-         POST /index.php?option=com_icagenda&task=event.upload
+         POST /index.php?option=com_icagenda&amp;task=event.upload
        The upload handler does not enforce extension or MIME-type restrictions,
        allowing PHP/PHTML webshell deployment. Uploaded files land under
        /media/com_icagenda/ or /images/com_icagenda/ and are directly
