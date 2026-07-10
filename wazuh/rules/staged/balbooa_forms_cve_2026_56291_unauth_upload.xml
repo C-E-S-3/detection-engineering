@@ -1,0 +1,141 @@
+<!-- ============================================================
+     Balbooa Forms for Joomla — Unrestricted File Upload RCE
+     CVE-2026-56291 — CVSS 9.8 CRITICAL
+     MITRE ATT&CK:
+       T1190     — Exploit Public-Facing Application
+       T1505.003 — Server Software Component: Web Shell
+       T1059.004 — Command and Scripting Interpreter: Unix Shell
+     Rule IDs: 103751–103756
+     CISA KEV: Added 2026-07-10, Federal Deadline 2026-07-13
+     Author: SecOps Engineer (Purple Team) — ESKA-419
+     Date: 2026-07-10
+     References:
+       - https://nvd.nist.gov/vuln/detail/CVE-2026-56291
+       - https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+
+     Vulnerability summary:
+       CVE-2026-56291 is an unrestricted file upload vulnerability in the
+       Balbooa Forms component for Joomla (CVSS 9.8). Unauthenticated
+       attackers POST multipart form data containing a PHP/PHTML file to
+       the component's upload handler:
+         POST /index.php?option=com_balbooa&task=form.upload
+       The upload handler does not validate file extensions or MIME types
+       against an allowlist, permitting deployment of arbitrary PHP webshells.
+       Uploaded files land under /media/com_balbooa/ or /images/com_balbooa/
+       and are directly web-accessible.
+
+       Follows the same exploitation template as CVE-2026-48907 (Joomla JCE,
+       rules 102400-102412) and CVE-2026-48908 (JoomShaper, rules 103733-103738).
+
+     Log source prerequisites:
+       - Traefik access log in JSON format forwarded to Wazuh
+       - Built-in Wazuh JSON decoder (decoded_as=json)
+       - JSON field names follow Traefik defaults:
+           RequestPath, RequestMethod, RequestHost, DownstreamStatus,
+           ClientHost
+
+     Severity rationale:
+       0  — Base anchor (no alert; used for chaining)
+       13 — POST to Balbooa Forms upload endpoint (high-confidence exploit attempt)
+       15 — Upload returned 2xx (webshell uploaded successfully — incident response required)
+       15 — PHP file accessed in Balbooa media path (webshell execution)
+       13 — 3+ upload probes from same IP in 60s (automated exploit tool)
+       15 — Webshell command parameter in Balbooa media path (active execution)
+     ============================================================ -->
+
+<group name="initial_access,exploit_pubfacing,joomla,balbooa,webshell,cve_2026_56291,">
+
+  <!-- ===========================================================
+       T1190 — Exploit Public-Facing Application
+       Rules 103751–103756: Balbooa Forms upload RCE detection
+       Log source: Traefik access log (JSON decoder)
+       =========================================================== -->
+
+  <!-- Base anchor: any POST to the Balbooa Forms component.
+       com_balbooa is the Joomla component identifier for Balbooa Forms.
+       All exploitation traffic starts with this component name in the
+       query string. Level 0: no alert — used for chaining only. -->
+  <rule id="103751" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">option=com_balbooa</field>
+    <description>Balbooa Forms: POST to com_balbooa component from $(ClientHost) (base anchor) (CVE-2026-56291)</description>
+    <group>joomla,balbooa,initial_access,cve_2026_56291,</group>
+  </rule>
+
+  <!-- POST to the Balbooa Forms file upload task.
+       The upload task (form.upload or form.file) is the endpoint vulnerable
+       to CVE-2026-56291. No authentication or token is required.
+       Level 13: direct exploitation attempt targeting a CISA KEV endpoint. -->
+  <rule id="103752" level="13">
+    <if_sid>103751</if_sid>
+    <field name="RequestPath" type="pcre2">task=form\.(upload|file|submit|save)</field>
+    <description>Balbooa Forms CVE-2026-56291: unauthenticated POST to form upload task from $(ClientHost) to $(RequestHost)$(RequestPath) — unrestricted file upload exploitation attempt; PHP webshell likely (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,balbooa,initial_access,exploit_pubfacing,file_upload,cve_2026_56291,cisa_kev,</group>
+  </rule>
+
+  <!-- Upload to Balbooa Forms endpoint returned 2xx.
+       A successful HTTP 200/201 response to the upload endpoint indicates
+       the PHP/PHTML webshell was accepted and written to the server filesystem.
+       Level 15: webshell deployment confirmed — incident response required. -->
+  <rule id="103753" level="15">
+    <if_sid>103752</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>Balbooa Forms CVE-2026-56291: upload endpoint returned $(DownstreamStatus) to $(ClientHost) — PHP webshell upload CONFIRMED at $(RequestHost); initiate incident response (T1190/T1505.003)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1505</id>
+    </mitre>
+    <group>joomla,balbooa,initial_access,exploit_pubfacing,file_upload,webshell,upload_success,cve_2026_56291,cisa_kev,critical,</group>
+  </rule>
+
+  <!-- PHP file accessed under the Balbooa Forms media directory.
+       Uploaded webshells land under /media/com_balbooa/ or /images/com_balbooa/
+       and are directly web-accessible. A request to a .php/.phtml file in these
+       paths indicates active webshell execution.
+       Level 15: active webshell execution — T1505.003. -->
+  <rule id="103754" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)/(?:media|images)/com_balbooa/.*\.ph(?:p[3-8]?|tml)(?:\?|$)</field>
+    <description>Balbooa Forms CVE-2026-56291: PHP file accessed in Balbooa media path from $(ClientHost) to $(RequestHost)$(RequestPath) — active webshell execution post-upload; initiate incident response (T1505.003)</description>
+    <mitre>
+      <id>T1505</id>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,balbooa,webshell,post_exploitation,cve_2026_56291,cisa_kev,critical,</group>
+  </rule>
+
+  <!-- 3+ upload attempts from the same IP within 60 seconds.
+       Automated exploitation tools send repeated upload requests to confirm
+       file write success and identify the dropped webshell path.
+       Level 13: automated exploit tool scanning for CVE-2026-56291. -->
+  <rule id="103755" level="13" frequency="3" timeframe="60">
+    <if_matched_sid>103752</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>Balbooa Forms CVE-2026-56291: 3+ upload probes from $(ClientHost) in 60s — automated CVE-2026-56291 exploit tool; $(RequestHost) actively targeted (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,balbooa,initial_access,exploit_pubfacing,scanner,cve_2026_56291,cisa_kev,</group>
+  </rule>
+
+  <!-- Webshell command execution parameter in Balbooa media path.
+       Post-upload webshell execution passes shell commands via common GET/POST
+       parameter names. Active command execution via an uploaded webshell.
+       Level 15: T1059.004 — active command execution. -->
+  <rule id="103756" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)/(?:media|images)/com_balbooa/.*\.ph(?:p[3-8]?|tml).*(?:cmd=|command=|exec=|shell=|c=|pass=|passwd=|run=|system=)</field>
+    <description>Balbooa Forms CVE-2026-56291: webshell command parameter in Balbooa media path $(RequestPath) from $(ClientHost) — active PHP webshell command execution (T1059.004/T1505.003); initiate incident response</description>
+    <mitre>
+      <id>T1059</id>
+      <id>T1505</id>
+    </mitre>
+    <group>joomla,balbooa,webshell,execution,post_exploitation,cve_2026_56291,cisa_kev,critical,</group>
+  </rule>
+
+</group>
