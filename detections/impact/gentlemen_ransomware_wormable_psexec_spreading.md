@@ -2,7 +2,9 @@
 
 ## Description
 
-Detects the Storm-2697 "Gentlemen" ransomware group's signature behaviors: creation of campaign-specific scheduled tasks used for persistence and worm-stage lateral movement, appearance of encrypted files bearing the `.umc16h` extension, the `README-GENTLEMEN.txt` ransom note, and the `gentlemen.bmp` wallpaper artifact. Also detects the mass PsExec lateral movement pattern used when the `--spread` flag is active, where the encryptor copies itself to `C$\Temp\` on 5+ remote hosts in parallel.
+Detects the Storm-2697 "Gentlemen" ransomware group's signature behaviors: creation of campaign-specific scheduled tasks used for persistence and worm-stage lateral movement, appearance of encrypted files bearing the `.umc16h` extension, the `README-GENTLEMEN.txt` ransom note (Go-variant), the `!-READ-ME---GEN-TLE-MEN-!.txt` ransom note (C-based PE64 variant — XOR-decoded at runtime), and the `gentlemen.bmp` wallpaper artifact. Also detects the mass PsExec lateral movement pattern used when the `--spread` flag is active, where the encryptor copies itself to `C$\Temp\` on 5+ remote hosts in parallel.
+
+A C-based PE64 variant was identified by Unit 42 in March–April 2026 samples (distinct from the Go/Garble-obfuscated encryptor); it uses the `!-READ-ME---GEN-TLE-MEN-!.txt` ransom note filename instead of `README-GENTLEMEN.txt`.
 
 False positive sources: Near-zero for the scheduled task name and file artifact searches (names and extension are highly specific to this malware family). The PsExec admin share detection may fire on legitimate large-scale software distribution tooling; correlation with the ransomware artifact searches increases confidence.
 
@@ -54,6 +56,7 @@ by Processes.dest Processes.user Processes.parent_process_name
 from datamodel=Endpoint.Filesystem
 where (Filesystem.file_name="*.umc16h"
     OR Filesystem.file_name="README-GENTLEMEN.txt"
+    OR Filesystem.file_name="!-READ-ME---GEN-TLE-MEN-!.txt"
     OR Filesystem.file_name="gentlemen.bmp")
 by Filesystem.dest Filesystem.user Filesystem.file_name Filesystem.file_path
 | `drop_dm_object_name(Filesystem)`
@@ -86,7 +89,8 @@ by Processes.src Processes.user Processes.process_name Processes.process
 | Condition | Score | Rationale |
 |-----------|-------|-----------|
 | `.umc16h` file extension detected | 99 | Extension is unique to Gentlemen ransomware; indicates active encryption in progress |
-| `README-GENTLEMEN.txt` or `gentlemen.bmp` detected | 99 | Campaign-specific artifacts; near-certain true positive |
+| `README-GENTLEMEN.txt` or `gentlemen.bmp` detected | 99 | Go-variant campaign artifacts; near-certain true positive |
+| `!-READ-ME---GEN-TLE-MEN-!.txt` detected | 99 | C-based PE64 variant ransom note (XOR-decoded at runtime); distinct from Go-variant note; near-certain true positive |
 | `gentlemen_system` or `UpdateGU2`/`DefSvc` scheduled task created | 99 | Task names unique to this malware; persistence stage of attack |
 | PsExec admin share copy to 5–9 remote targets | 75 | Mass lateral movement; may be legitimate software deployment |
 | PsExec admin share copy to 10–19 remote targets | 85 | Consistent with worm spreading; very unlikely to be legitimate |
@@ -102,6 +106,7 @@ by Processes.src Processes.user Processes.process_name Processes.process
 ## References
 
 - [Microsoft Security Blog — The Gentlemen ransomware: Dissecting a self-propagating Go encryptor (May 28, 2026)](https://www.microsoft.com/en-us/security/blog/2026/05/28/the-gentlemen-ransomware-dissecting-a-self-propagating-go-encryptor/)
+- [Unit 42 — The Gentlemen C-Based Ransomware samples (July 8, 2026)](https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel/blob/main/2026-07-08-The-Gentlemen-C-Based-Ransomware-samples.txt)
 - [The Hacker News — The Gentlemen Ransomware Claims 478 Victims, Can Spread Like a Worm (June 11, 2026)](https://thehackernews.com/2026/06/the-gentlemen-ransomware-claims-478.html)
 - [Check Point DFIR Report — The Gentlemen & SystemBC (May 2026)](https://research.checkpoint.com/2026/dfir-report-the-gentlemen/)
 - [CVE-2024-55591 — Fortinet FortiOS Authentication Bypass (initial access vector)](https://www.cve.org/CVERecord?id=CVE-2024-55591)
