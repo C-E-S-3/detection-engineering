@@ -74,62 +74,11 @@
     <group>ids,suricata,portsweep,scanning,</group>
   </rule>
 
-  <!-- ================================================================ -->
-  <!-- FIREWALL LOG BASED SCAN DETECTION - T1046, T1595.001             -->
-  <!-- Derived from OPNsense/pf firewall BLOCK logs                     -->
-  <!-- ================================================================ -->
-
-  <!-- Rapid blocked connections from single IP - likely port scan.            -->
-  <!-- pf/OPNsense decoder emits data.dstport (Suricata's data.dest_port is a    -->
-  <!-- different decoder's field); the old name left this correlation inert.     -->
-  <rule id="100736" level="8" frequency="30" timeframe="60">
-    <if_matched_group>firewall</if_matched_group>
-    <same_field>data.srcip</same_field>
-    <different_field>data.dstport</different_field>
-    <description>Firewall: Rapid port scan detected - single IP hitting 30+ blocked ports in 60s (T1046)</description>
-    <mitre>
-      <id>T1046</id>
-    </mitre>
-    <group>firewall,portscan,scanning,</group>
-  </rule>
-
-  <!-- Single source scanning multiple internal hosts.                          -->
-  <!-- pf/OPNsense decoder emits data.dstip (not Suricata's data.dest_ip).       -->
-  <rule id="100737" level="9" frequency="10" timeframe="60">
-    <if_matched_group>firewall</if_matched_group>
-    <same_field>data.srcip</same_field>
-    <different_field>data.dstip</different_field>
-    <description>Firewall: Host sweep - single source scanning 10+ internal hosts in 60s (T1595.001)</description>
-    <mitre>
-      <id>T1595.001</id>
-    </mitre>
-    <group>firewall,hostweep,scanning,</group>
-  </rule>
-
-  <!-- ================================================================ -->
-  <!-- CORRELATION RULES - ESCALATE ON COMBINED SIGNALS                 -->
-  <!-- ================================================================ -->
-
-  <!-- IDS scan signature followed by firewall hits from same source -->
-  <rule id="100740" level="13" timeframe="120">
-    <if_matched_sid>100731</if_matched_sid>
-    <if_sid>100736</if_sid>
-    <description>ALERT: nmap IDS signature + firewall port scan from same source in 2 min - confirmed active scan T1046</description>
-    <mitre>
-      <id>T1046</id>
-    </mitre>
-    <group>ids,firewall,nmap,confirmed_scan,high_fidelity,</group>
-  </rule>
-
-  <!-- NSE scripting + mass connection - aggressive vulnerability scan -->
-  <rule id="100741" level="14" timeframe="180">
-    <if_matched_sid>100733</if_matched_sid>
-    <if_sid>100735</if_sid>
-    <description>ALERT: nmap NSE scripting + port sweep in 3 min - aggressive reconnaissance campaign T1046</description>
-    <mitre>
-      <id>T1046</id>
-    </mitre>
-    <group>ids,nmap,nse,portsweep,critical,</group>
-  </rule>
+  <!-- NOTE: the firewall-log port/host-sweep rules (100736, 100737) live in     -->
+  <!-- threat_intel_ioc_network.xml, co-located with their anchor rule 103000.    -->
+  <!-- Wazuh loads etc/rules/*.xml alphabetically, so a rule here (network_...)   -->
+  <!-- referencing 103000 via if_matched_sid would be dropped ("not found")       -->
+  <!-- because threat_intel_... loads later. Keeping them beside the anchor       -->
+  <!-- guarantees load order.                                                     -->
 
 </group>

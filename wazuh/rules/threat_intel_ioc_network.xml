@@ -11,9 +11,43 @@
   <!-- FIREWALL ANCHOR - binds all firewall-log child rules             -->
   <!-- ================================================================ -->
 
-  <rule id="103000" level="0">
+  <rule id="103000" level="2">
     <if_group>firewall</if_group>
     <description>Threat Intel IOC: firewall event anchor</description>
+  </rule>
+
+  <!-- ================================================================ -->
+  <!-- FIREWALL-LOG PORT / HOST SWEEP DETECTION - T1046, T1595.001      -->
+  <!-- Co-located with anchor 103000 (level 2, correlation-eligible):    -->
+  <!-- these if_matched_sid rules must load AFTER 103000, and Wazuh      -->
+  <!-- loads etc/rules/*.xml alphabetically, so keeping them in this     -->
+  <!-- file guarantees the anchor is defined first. Uses the LEGACY      -->
+  <!-- composite tags (same_srcip / different_dstport) - this Wazuh      -->
+  <!-- build does not accumulate the generic <same_field>/<different_    -->
+  <!-- field> forms. Fires on BLOCKED sweeps only (passed firewall       -->
+  <!-- traffic matches no rule and is not logged).                       -->
+  <!-- ================================================================ -->
+
+  <rule id="100736" level="8" frequency="15" timeframe="120">
+    <if_matched_sid>103000</if_matched_sid>
+    <same_srcip />
+    <different_dstport />
+    <description>Firewall: Port sweep detected - single source blocked hitting 15+ distinct destination ports in 120s (T1046)</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>firewall,portscan,scanning,</group>
+  </rule>
+
+  <rule id="100737" level="9" frequency="8" timeframe="120">
+    <if_matched_sid>103000</if_matched_sid>
+    <same_srcip />
+    <different_dstip />
+    <description>Firewall: Host sweep - single source blocked scanning 8+ distinct hosts in 120s (T1595.001)</description>
+    <mitre>
+      <id>T1595.001</id>
+    </mitre>
+    <group>firewall,hostweep,scanning,</group>
   </rule>
 
 
