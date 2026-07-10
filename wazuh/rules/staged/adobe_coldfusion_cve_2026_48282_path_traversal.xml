@@ -5,7 +5,7 @@
        T1190       — Exploit Public-Facing Application
        T1505.003   — Server Software Component: Web Shell
        T1059.004   — Command and Scripting Interpreter: Unix Shell
-     Rule IDs: 103703–103708
+     Rule IDs: 103727–103732
      CISA KEV: Added 2026-07-07, Federal Deadline 2026-07-10
      Author: SecOps Engineer (Purple Team) — ESKA-411
      Date: 2026-07-10
@@ -49,7 +49,7 @@
 
   <!-- ===========================================================
        T1190 — Exploit Public-Facing Application
-       Rules 103703–103708: ColdFusion path traversal detection
+       Rules 103727–103732: ColdFusion path traversal detection
        Log source: Traefik access log (JSON decoder)
        =========================================================== -->
 
@@ -57,7 +57,7 @@
        /CFIDE/ and /cf_scripts/ are the primary ColdFusion management
        and resource paths that are targeted in CVE-2026-48282 exploitation.
        Level 0: no alert by itself — used for chaining only. -->
-  <rule id="103703" level="0">
+  <rule id="103727" level="0">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)(?:/CFIDE/|/cf_scripts/|/CFML/|/cfide/|\.cfm\b|\.cfc\b)</field>
     <description>Adobe ColdFusion: request to ColdFusion path $(RequestPath) from $(ClientHost) (base anchor) (CVE-2026-48282)</description>
@@ -68,8 +68,8 @@
        Legitimate access to /CFIDE/administrator/ is expected only from
        administrative source IPs; any external access is suspicious.
        Level 10: reconnaissance / pre-exploitation probing. -->
-  <rule id="103704" level="10">
-    <if_sid>103703</if_sid>
+  <rule id="103728" level="10">
+    <if_sid>103727</if_sid>
     <field name="RequestPath" type="pcre2">(?i)/CFIDE/(?:administrator|adminapi|componentutils|debug|wizards)/</field>
     <description>Adobe ColdFusion CVE-2026-48282: admin/management path accessed from $(ClientHost) to $(RequestHost)$(RequestPath) — ColdFusion administrator area probe, pre-exploitation reconnaissance (T1190)</description>
     <mitre>
@@ -83,8 +83,8 @@
        and triple encoding) that are used to escape the ColdFusion web root
        and access arbitrary files on the server.
        Level 13: high-confidence CVE-2026-48282 exploitation attempt. -->
-  <rule id="103705" level="13">
-    <if_sid>103703</if_sid>
+  <rule id="103729" level="13">
+    <if_sid>103727</if_sid>
     <field name="RequestPath" type="pcre2">(?i)(?:\.\.[\\/]|%2e%2e[\\/]|%252e%252e[\\/]|%2e%2e%2f|%252e%252e%252f|\.\.%2f|\.\.%5c|%2e\.[\\/])</field>
     <description>Adobe ColdFusion CVE-2026-48282: path traversal sequences in ColdFusion request from $(ClientHost) to $(RequestHost)$(RequestPath) — APSB26-68 exploitation attempt; arbitrary file read/write via directory traversal (T1190)</description>
     <mitre>
@@ -97,8 +97,8 @@
        A successful traversal response confirms arbitrary file access has
        been achieved; 201 may indicate a file write (webshell deployment).
        Level 15: confirmed exploitation. -->
-  <rule id="103706" level="15">
-    <if_sid>103705</if_sid>
+  <rule id="103730" level="15">
+    <if_sid>103729</if_sid>
     <field name="DownstreamStatus" type="pcre2">^(200|201|206)$</field>
     <description>Adobe ColdFusion CVE-2026-48282: path traversal SUCCEEDED — server returned $(DownstreamStatus) to $(ClientHost) for $(RequestHost)$(RequestPath) — arbitrary file read/write confirmed; initiate incident response (T1190)</description>
     <mitre>
@@ -111,8 +111,8 @@
        Automated CVE-2026-48282 scanners or PoC tools send rapid bursts
        of traversal attempts across different ColdFusion path prefixes.
        Level 13: automated exploitation tool in use. -->
-  <rule id="103707" level="13" frequency="5" timeframe="60">
-    <if_matched_sid>103705</if_matched_sid>
+  <rule id="103731" level="13" frequency="5" timeframe="60">
+    <if_matched_sid>103729</if_matched_sid>
     <same_field>ClientHost</same_field>
     <description>Adobe ColdFusion CVE-2026-48282: 5+ path traversal probes from $(ClientHost) in 60s — automated CVE-2026-48282 scanner or PoC tool; $(RequestHost) actively targeted (T1190)</description>
     <options>no_full_log</options>
@@ -127,7 +127,7 @@
        unrestricted file uploads; a webshell is typically dropped to the
        ColdFusion web root then executed via a separate HTTP request.
        Level 15: webshell execution — post-exploitation active access. -->
-  <rule id="103708" level="15">
+  <rule id="103732" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)(?:/CFIDE/|/cfide/|/cf_scripts/|/cfml/).*\.(?:php|jsp|jspx|asp|aspx|cfm\.php)</field>
     <description>Adobe ColdFusion CVE-2026-48282: PHP/JSP file accessed under ColdFusion path from $(ClientHost) to $(RequestHost)$(RequestPath) — possible post-upload webshell execution (T1505.003); initiate incident response (T1190)</description>

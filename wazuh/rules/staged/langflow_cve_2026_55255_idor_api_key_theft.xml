@@ -5,7 +5,7 @@
        T1190       — Exploit Public-Facing Application
        T1528       — Steal Application Access Token (LLM API key exfil)
        T1087.001   — Account Discovery: Local Account (flow UUID enumeration)
-     Rule IDs: 103715–103720
+     Rule IDs: 103739–103744
      CISA KEV: Added 2026-07-07, Federal Deadline 2026-07-10
      Author: SecOps Engineer (Purple Team) — ESKA-411
      Date: 2026-07-10
@@ -59,7 +59,7 @@
 
   <!-- ===========================================================
        T1190 + T1087.001 — Flow UUID Enumeration (IDOR Recon)
-       Rules 103715–103717: GET /api/v1/flows/ enumeration detection
+       Rules 103739–103741: GET /api/v1/flows/ enumeration detection
        Log source: Traefik access log (JSON decoder)
        =========================================================== -->
 
@@ -67,7 +67,7 @@
        Legitimate Langflow users do access /api/v1/flows/ but legitimate
        multi-tenant enumeration (bulk GETs across many different flow IDs)
        is not expected in normal use. Level 0: no alert — used for chaining. -->
-  <rule id="103715" level="0">
+  <rule id="103739" level="0">
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">GET</field>
     <field name="RequestPath" type="pcre2">(?i)/api/v1/flows/</field>
@@ -80,8 +80,8 @@
        Five or more flows API hits in 60 seconds from one source is unusual
        for typical interactive use; could indicate enumeration starting.
        Level 10: suspicious, low false-positive for legitimate admin activity. -->
-  <rule id="103716" level="10" frequency="5" timeframe="60">
-    <if_matched_sid>103715</if_matched_sid>
+  <rule id="103740" level="10" frequency="5" timeframe="60">
+    <if_matched_sid>103739</if_matched_sid>
     <same_field>ClientHost</same_field>
     <description>Langflow CVE-2026-55255: 5+ GET requests to /api/v1/flows/ from $(ClientHost) in 60s — possible cross-tenant flow UUID enumeration; IDOR reconnaissance (T1190/T1087.001)</description>
     <options>no_full_log</options>
@@ -96,8 +96,8 @@
        At this volume from a single IP the traffic is consistent with automated
        UUID enumeration as seen in the 2026-06-22 exploitation campaign (IOC:
        45.207.216.55). High-confidence IDOR attack. Level 13. -->
-  <rule id="103717" level="13" frequency="15" timeframe="120">
-    <if_matched_sid>103715</if_matched_sid>
+  <rule id="103741" level="13" frequency="15" timeframe="120">
+    <if_matched_sid>103739</if_matched_sid>
     <same_field>ClientHost</same_field>
     <description>Langflow CVE-2026-55255: 15+ GET requests to /api/v1/flows/ from $(ClientHost) in 120s — high-confidence cross-tenant flow UUID enumeration; IDOR campaign targeting $(RequestHost) (T1190/T1087.001)</description>
     <options>no_full_log</options>
@@ -111,7 +111,7 @@
 
   <!-- ===========================================================
        T1190 + T1528 — Cross-Tenant API Key Exfiltration
-       Rules 103718–103720: POST /api/v1/responses exploitation
+       Rules 103742–103744: POST /api/v1/responses exploitation
        Log source: Traefik access log (JSON decoder)
        =========================================================== -->
 
@@ -119,7 +119,7 @@
        Legitimate use sends POST /api/v1/responses with the user's own flow
        IDs. Attackers use cross-tenant flow IDs obtained via enumeration.
        Level 0: no alert alone — context comes from pairing with enumeration. -->
-  <rule id="103718" level="0">
+  <rule id="103742" level="0">
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">POST</field>
     <field name="RequestPath" type="pcre2">(?i)/api/v1/responses</field>
@@ -132,8 +132,8 @@
        returns embedded LLM API keys (OpenAI, Anthropic, Mistral) and AWS
        credentials. A 200 response after IDOR enumeration is the exfiltration
        event. Level 11: suspicious in isolation, high-value with correlation. -->
-  <rule id="103719" level="11">
-    <if_sid>103718</if_sid>
+  <rule id="103743" level="11">
+    <if_sid>103742</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
     <description>Langflow CVE-2026-55255: POST to /api/v1/responses returned $(DownstreamStatus) from $(ClientHost) to $(RequestHost) — cross-tenant flow execution completed; LLM API key/credential exfiltration possible (T1528)</description>
     <mitre>
@@ -145,13 +145,13 @@
 
   <!-- Exploitation chain: flow enumeration followed by responses POST within 5 min.
        The documented CVE-2026-55255 attack flow is:
-         1. GET /api/v1/flows/ (repeated — rule 103716/103717 fires)
-         2. POST /api/v1/responses with cross-tenant flow IDs (rule 103718/103719)
+         1. GET /api/v1/flows/ (repeated — rule 103740/103741 fires)
+         2. POST /api/v1/responses with cross-tenant flow IDs (rule 103742/103743)
        Correlation of both events from the same source within 5 minutes is
        high-confidence IDOR credential theft. Level 14: near-certain active attack. -->
-  <rule id="103720" level="14" timeframe="300">
-    <if_matched_sid>103716</if_matched_sid>
-    <if_sid>103718</if_sid>
+  <rule id="103744" level="14" timeframe="300">
+    <if_matched_sid>103740</if_matched_sid>
+    <if_sid>103742</if_sid>
     <same_field>ClientHost</same_field>
     <description>Langflow CVE-2026-55255 EXPLOITATION CHAIN: $(ClientHost) enumerated /api/v1/flows/ then POST to /api/v1/responses within 5 min — high-confidence cross-tenant IDOR attack; LLM API keys and credentials likely exfiltrated (T1190/T1528); initiate incident response</description>
     <mitre>
