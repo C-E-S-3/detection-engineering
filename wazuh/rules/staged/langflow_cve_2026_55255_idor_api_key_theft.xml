@@ -1,0 +1,164 @@
+<!-- ============================================================
+     Langflow Cross-Tenant IDOR API Key Theft
+     CVE-2026-55255 — CVSS 9.9 CRITICAL
+     MITRE ATT&CK:
+       T1190       — Exploit Public-Facing Application
+       T1528       — Steal Application Access Token (LLM API key exfil)
+       T1087.001   — Account Discovery: Local Account (flow UUID enumeration)
+     Rule IDs: 103739–103744
+     CISA KEV: Added 2026-07-07, Federal Deadline 2026-07-10
+     Author: SecOps Engineer (Purple Team) — ESKA-411
+     Date: 2026-07-10
+     References:
+       - https://nvd.nist.gov/vuln/detail/CVE-2026-55255
+       - https://www.sysdig.com/blog/understanding-langflow-cve-2026-55255-and-why-higher-cvss-vulnerabilities-arent-always-the-most-exploited
+       - https://attack.mitre.org/techniques/T1528/
+
+     Vulnerability summary:
+       CVE-2026-55255 is an Insecure Direct Object Reference (IDOR) in
+       Langflow versions prior to 1.9.2 (CVSS 9.9). Unlike CVE-2026-5027
+       (path traversal, rules 101700-101712), this vulnerability exploits
+       the authenticated but improperly access-controlled /api/v1/responses
+       endpoint.
+
+       Attack flow:
+         1. Authenticated attacker (any valid Langflow account) sends
+            repeated GET requests to /api/v1/flows/ to enumerate flow UUIDs
+            belonging to other tenants.
+         2. Attacker POSTs to /api/v1/responses with a cross-tenant flow ID
+            and a crafted input (e.g. the string "leak api keys").
+         3. Langflow executes the victim tenant's flow with the attacker's
+            input and returns the response — exposing embedded LLM API keys
+            (OpenAI, Anthropic, Mistral) and AWS credentials from the flow.
+
+       Active exploitation: IOC source IP 45.207.216.55 observed 2026-06-22
+       to 2026-06-25. Fixed in Langflow 1.9.2.
+
+       Note: These rules complement the existing CVE-2026-5027 detection
+       (rules 101700-101712). Do not merge — this is a distinct vulnerability
+       with a different attack path (IDOR via authenticated API vs. path
+       traversal in file upload).
+
+     Log source prerequisites:
+       - Traefik access log in JSON format forwarded to Wazuh
+       - Built-in Wazuh JSON decoder (decoded_as=json)
+       - JSON field names follow Traefik defaults:
+           RequestPath, RequestMethod, RequestHost, DownstreamStatus,
+           ClientHost
+
+     Severity rationale:
+       0  — Base anchor for GET /api/v1/flows/ (no alert)
+       10 — Moderate flow enumeration from single IP (possible IDOR recon)
+       13 — High-volume flow enumeration (>10 distinct flow paths, likely IDOR attack)
+       0  — Base anchor for POST /api/v1/responses (no alert)
+       11 — POST to /api/v1/responses (possible cross-tenant flow execution)
+       14 — Flow enumeration followed by responses POST (exploitation chain)
+     ============================================================ -->
+
+<group name="initial_access,credential_access,langflow,idor,cve_2026_55255,">
+
+  <!-- ===========================================================
+       T1190 + T1087.001 — Flow UUID Enumeration (IDOR Recon)
+       Rules 103739–103741: GET /api/v1/flows/ enumeration detection
+       Log source: Traefik access log (JSON decoder)
+       =========================================================== -->
+
+  <!-- Base anchor: GET to the Langflow flows API listing/fetching endpoint.
+       Legitimate Langflow users do access /api/v1/flows/ but legitimate
+       multi-tenant enumeration (bulk GETs across many different flow IDs)
+       is not expected in normal use. Level 0: no alert — used for chaining. -->
+  <rule id="103739" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">GET</field>
+    <field name="RequestPath" type="pcre2">(?i)/api/v1/flows/</field>
+    <description>Langflow: GET to /api/v1/flows/ from $(ClientHost) (base anchor) (CVE-2026-55255)</description>
+    <group>langflow,api_access,idor,cve_2026_55255,</group>
+  </rule>
+
+  <!-- Moderate flow enumeration — 5+ GET requests to /api/v1/flows/ within 60s.
+       The CVE-2026-55255 attack requires enumerating flow UUIDs across tenants.
+       Five or more flows API hits in 60 seconds from one source is unusual
+       for typical interactive use; could indicate enumeration starting.
+       Level 10: suspicious, low false-positive for legitimate admin activity. -->
+  <rule id="103740" level="10" frequency="5" timeframe="60">
+    <if_matched_sid>103739</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>Langflow CVE-2026-55255: 5+ GET requests to /api/v1/flows/ from $(ClientHost) in 60s — possible cross-tenant flow UUID enumeration; IDOR reconnaissance (T1190/T1087.001)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+      <id>T1087</id>
+    </mitre>
+    <group>langflow,api_access,idor,enumeration,cve_2026_55255,cisa_kev,</group>
+  </rule>
+
+  <!-- High-volume flow enumeration — 15+ GET requests to /api/v1/flows/ in 120s.
+       At this volume from a single IP the traffic is consistent with automated
+       UUID enumeration as seen in the 2026-06-22 exploitation campaign (IOC:
+       45.207.216.55). High-confidence IDOR attack. Level 13. -->
+  <rule id="103741" level="13" frequency="15" timeframe="120">
+    <if_matched_sid>103739</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>Langflow CVE-2026-55255: 15+ GET requests to /api/v1/flows/ from $(ClientHost) in 120s — high-confidence cross-tenant flow UUID enumeration; IDOR campaign targeting $(RequestHost) (T1190/T1087.001)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+      <id>T1087</id>
+    </mitre>
+    <group>langflow,api_access,idor,enumeration,scanner,cve_2026_55255,cisa_kev,</group>
+  </rule>
+
+
+  <!-- ===========================================================
+       T1190 + T1528 — Cross-Tenant API Key Exfiltration
+       Rules 103742–103744: POST /api/v1/responses exploitation
+       Log source: Traefik access log (JSON decoder)
+       =========================================================== -->
+
+  <!-- Base anchor: POST to the Langflow responses endpoint.
+       Legitimate use sends POST /api/v1/responses with the user's own flow
+       IDs. Attackers use cross-tenant flow IDs obtained via enumeration.
+       Level 0: no alert alone — context comes from pairing with enumeration. -->
+  <rule id="103742" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)/api/v1/responses</field>
+    <description>Langflow: POST to /api/v1/responses from $(ClientHost) (base anchor) (CVE-2026-55255)</description>
+    <group>langflow,api_access,idor,cve_2026_55255,</group>
+  </rule>
+
+  <!-- POST to /api/v1/responses that returned 2xx.
+       Successful execution of a cross-tenant flow via the responses endpoint
+       returns embedded LLM API keys (OpenAI, Anthropic, Mistral) and AWS
+       credentials. A 200 response after IDOR enumeration is the exfiltration
+       event. Level 11: suspicious in isolation, high-value with correlation. -->
+  <rule id="103743" level="11">
+    <if_sid>103742</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>Langflow CVE-2026-55255: POST to /api/v1/responses returned $(DownstreamStatus) from $(ClientHost) to $(RequestHost) — cross-tenant flow execution completed; LLM API key/credential exfiltration possible (T1528)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1528</id>
+    </mitre>
+    <group>langflow,api_access,idor,credential_access,token_theft,cve_2026_55255,cisa_kev,</group>
+  </rule>
+
+  <!-- Exploitation chain: flow enumeration followed by responses POST within 5 min.
+       The documented CVE-2026-55255 attack flow is:
+         1. GET /api/v1/flows/ (repeated — rule 103740/103741 fires)
+         2. POST /api/v1/responses with cross-tenant flow IDs (rule 103742/103743)
+       Correlation of both events from the same source within 5 minutes is
+       high-confidence IDOR credential theft. Level 14: near-certain active attack. -->
+  <rule id="103744" level="14" timeframe="300">
+    <if_matched_sid>103740</if_matched_sid>
+    <if_sid>103742</if_sid>
+    <same_field>ClientHost</same_field>
+    <description>Langflow CVE-2026-55255 EXPLOITATION CHAIN: $(ClientHost) enumerated /api/v1/flows/ then POST to /api/v1/responses within 5 min — high-confidence cross-tenant IDOR attack; LLM API keys and credentials likely exfiltrated (T1190/T1528); initiate incident response</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1528</id>
+    </mitre>
+    <group>langflow,idor,credential_access,token_theft,exploitation_chain,cve_2026_55255,cisa_kev,critical,</group>
+  </rule>
+
+</group>

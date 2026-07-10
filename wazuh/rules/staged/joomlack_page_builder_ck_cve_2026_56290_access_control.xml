@@ -1,0 +1,148 @@
+<!-- ============================================================
+     Joomlack Page Builder CK Improper Access Control
+     CVE-2026-56290 — CVSS 9.8 CRITICAL
+     MITRE ATT&CK:
+       T1190       — Exploit Public-Facing Application
+       T1505.003   — Server Software Component: Web Shell
+       T1136.001   — Create Account: Local Account (rogue Joomla admin)
+       T1070.006   — Indicator Removal: Timestomp (webshell evasion)
+     Rule IDs: 103745–103750
+     CISA KEV: Added 2026-07-07, Federal Deadline 2026-07-10
+     Author: SecOps Engineer (Purple Team) — ESKA-411
+     Date: 2026-07-10
+     References:
+       - https://nvd.nist.gov/vuln/detail/CVE-2026-56290
+       - https://www.cisa.gov/news-events/alerts/2026/07/07/cisa-adds-three-known-exploited-vulnerabilities-catalog
+
+     Vulnerability summary:
+       CVE-2026-56290 is an improper access control vulnerability in the
+       Joomlack Page Builder CK (com_ckpagebuilder) Joomla extension (CVSS 9.8).
+       The CSRF token required for upload actions is readable from the page HTML
+       by any unauthenticated visitor, effectively making the file upload endpoint
+       publicly accessible.
+
+       Attack flow:
+         1. Unauthenticated attacker fetches the Joomla page to extract the CSRF token
+         2. POST to the CK Page Builder upload endpoint with the extracted token
+         3. PHP webshell is written to CK extension media directories:
+              /media/com_ckpagebuilder/<path>/*.php
+         4. Attacker executes the webshell via a subsequent GET/POST request
+
+       Exploitation pattern mirrors CVE-2026-48908 (JoomShaper SP Page Builder,
+       rules 103733-103738) and CVE-2026-48907 (Joomla JCE, rules 102400-102412).
+       The Joomla plugin ecosystem is under systematic exploitation pressure in 2026.
+       Webshell timestamps are modified (timestomped) to evade detection.
+
+     Log source prerequisites:
+       - Traefik access log in JSON format forwarded to Wazuh
+       - Built-in Wazuh JSON decoder (decoded_as=json)
+       - JSON field names follow Traefik defaults:
+           RequestPath, RequestMethod, RequestHost, DownstreamStatus,
+           ClientHost
+
+     Severity rationale:
+       0  — Base anchor (no alert)
+       13 — POST to CK Page Builder upload endpoint (exploitation attempt)
+       15 — Upload returned 2xx (webshell uploaded)
+       15 — PHP file accessed in CK Page Builder media path (webshell execution)
+       13 — 3+ upload probes from same IP in 60s (automated exploit tool)
+       14 — Both CVE-2026-48908 and CVE-2026-56290 endpoints probed (campaign)
+     ============================================================ -->
+
+<group name="initial_access,exploit_pubfacing,joomla,ckpagebuilder,webshell,cve_2026_56290,">
+
+  <!-- ===========================================================
+       T1190 — Exploit Public-Facing Application
+       Rules 103745–103750: CK Page Builder access control bypass
+       Log source: Traefik access log (JSON decoder)
+       =========================================================== -->
+
+  <!-- Base anchor: any POST to the CK Page Builder component.
+       com_ckpagebuilder is the Joomla component identifier for Joomlack
+       Page Builder CK. All exploitation traffic includes this component
+       identifier. Level 0: no alert — used for chaining. -->
+  <rule id="103745" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">option=com_ckpagebuilder</field>
+    <description>Joomlack Page Builder CK: POST to com_ckpagebuilder component from $(ClientHost) (base anchor) (CVE-2026-56290)</description>
+    <group>joomla,ckpagebuilder,initial_access,cve_2026_56290,</group>
+  </rule>
+
+  <!-- POST to CK Page Builder upload endpoint.
+       CVE-2026-56290 exploitation targets the file upload functionality
+       in the CK Page Builder component. The CSRF token is readable by
+       any visitor, making this effectively unauthenticated.
+       Level 13: high-confidence CISA KEV exploitation attempt. -->
+  <rule id="103746" level="13">
+    <if_sid>103745</if_sid>
+    <field name="RequestPath" type="pcre2">(?i)(?:task=.*upload|view=.*upload|upload.*=.*ck|format=json.*ck)</field>
+    <description>Joomlack Page Builder CK CVE-2026-56290: POST to CK Page Builder upload endpoint from $(ClientHost) to $(RequestHost)$(RequestPath) — improper access control bypass; CSRF token readable by any visitor enables unauthenticated PHP upload (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,ckpagebuilder,initial_access,exploit_pubfacing,file_upload,cve_2026_56290,cisa_kev,</group>
+  </rule>
+
+  <!-- Upload to CK Page Builder returned 2xx.
+       A successful upload response confirms the PHP webshell was accepted
+       and written to the server filesystem. Level 15: webshell confirmed. -->
+  <rule id="103747" level="15">
+    <if_sid>103746</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>Joomlack Page Builder CK CVE-2026-56290: CK upload endpoint returned $(DownstreamStatus) to $(ClientHost) — PHP webshell upload CONFIRMED at $(RequestHost); initiate incident response (T1190/T1505.003)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1505</id>
+    </mitre>
+    <group>joomla,ckpagebuilder,initial_access,exploit_pubfacing,file_upload,webshell,upload_success,cve_2026_56290,cisa_kev,critical,</group>
+  </rule>
+
+  <!-- PHP file accessed under the CK Page Builder media directory.
+       Post-upload webshell execution — attacker accesses the .php file
+       dropped to /media/com_ckpagebuilder/ to achieve RCE.
+       Level 15: active webshell execution — T1505.003. -->
+  <rule id="103748" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)/media/com_ckpagebuilder/.*\.php(?:\?|$)</field>
+    <description>Joomlack Page Builder CK CVE-2026-56290: PHP file accessed in CK Page Builder media path from $(ClientHost) to $(RequestHost)$(RequestPath) — active webshell execution; initiate incident response (T1505.003)</description>
+    <mitre>
+      <id>T1505</id>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,ckpagebuilder,webshell,post_exploitation,cve_2026_56290,cisa_kev,critical,</group>
+  </rule>
+
+  <!-- 3+ upload attempts from same IP within 60 seconds.
+       Automated tools targeting CVE-2026-56290 send repeated requests to
+       confirm file write success and identify the dropped webshell path.
+       Level 13: automated exploit tool. -->
+  <rule id="103749" level="13" frequency="3" timeframe="60">
+    <if_matched_sid>103746</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>Joomlack Page Builder CK CVE-2026-56290: 3+ upload probes from $(ClientHost) in 60s — automated CVE-2026-56290 exploit tool; $(RequestHost) actively targeted (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,ckpagebuilder,initial_access,exploit_pubfacing,scanner,cve_2026_56290,cisa_kev,</group>
+  </rule>
+
+  <!-- Combined Joomla 2026 campaign: same IP targets both SP Page Builder (CVE-2026-48908)
+       and CK Page Builder (CVE-2026-56290) within 5 minutes.
+       Both vulnerabilities share the same exploitation template and active exploitation
+       campaigns are expected to target all known-vulnerable Joomla plugin endpoints
+       simultaneously. This correlation provides very high campaign confidence.
+       Level 14: coordinated multi-CVE Joomla exploitation campaign. -->
+  <rule id="103750" level="14" timeframe="300">
+    <if_matched_sid>103734</if_matched_sid>
+    <if_sid>103746</if_sid>
+    <same_field>ClientHost</same_field>
+    <description>Joomla 2026 Plugin RCE Campaign: $(ClientHost) probed both SP Page Builder (CVE-2026-48908, rule 103734) and CK Page Builder (CVE-2026-56290) upload endpoints within 5 min — coordinated multi-CVE Joomla exploitation campaign; $(RequestHost) targeted (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,sppagebuilder,ckpagebuilder,exploitation_chain,multi_cve_campaign,cve_2026_48908,cve_2026_56290,cisa_kev,critical,</group>
+  </rule>
+
+</group>
