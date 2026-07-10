@@ -32,6 +32,8 @@ Approximately 14,000 SimpleHelp servers are publicly exposed (Shodan), with ~7.2
 
 ## Wazuh Rules
 
+**OIDC endpoint monitoring** (`simplehelp_cve_2026_48558_oidc_auth_bypass.xml`, rules 102500–102508):
+
 | Rule ID | Level | Description |
 |---------|-------|-------------|
 | 102500 | 12 | POST to SimpleHelp OIDC callback — auth bypass attempt |
@@ -43,6 +45,18 @@ Approximately 14,000 SimpleHelp servers are publicly exposed (Shodan), with ~7.2
 | 102506 | 13 | New technician registration in server.log |
 | 102507 | 12 | OIDC login event in server.log |
 | 102508 | 14 | Script execution event in server.log post-OIDC |
+
+**Post-exploitation, API &amp; network monitoring** (`simplehelp_cve_2026_48558_post_exploit.xml`, rules 103763–103769):
+
+| Rule ID | Level | Description |
+|---------|-------|-------------|
+| 103763 | 0 | SimpleHelp service spawned child process on Windows (base anchor) |
+| 103764 | 14 | SimpleHelp spawned Windows interpreter cmd/PS/wscript — post-exploit execution |
+| 103765 | 13 | SimpleHelp spawned Windows download LOLBin certutil/bitsadmin/curl — payload staging |
+| 103766 | 14 | Java/SimpleHelp spawned Unix shell/interpreter on Linux — post-exploit execution |
+| 103767 | 13 | POST to /api/newtech — abnormal technician account creation API call |
+| 103768 | 15 | POST to /api/newtech returned 2xx — rogue Technician account CONFIRMED CREATED |
+| 103769 | 10 | Connection to SimpleHelp management port 5850/5900 — possible rogue RMM relay |
 
 ## Splunk Detection Query
 
