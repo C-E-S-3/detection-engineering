@@ -79,11 +79,13 @@
   <!-- Derived from OPNsense/pf firewall BLOCK logs                     -->
   <!-- ================================================================ -->
 
-  <!-- Rapid blocked connections from single IP - likely port scan -->
+  <!-- Rapid blocked connections from single IP - likely port scan.            -->
+  <!-- pf/OPNsense decoder emits data.dstport (Suricata's data.dest_port is a    -->
+  <!-- different decoder's field); the old name left this correlation inert.     -->
   <rule id="100736" level="8" frequency="30" timeframe="60">
     <if_matched_group>firewall</if_matched_group>
     <same_field>data.srcip</same_field>
-    <different_field>data.dest_port</different_field>
+    <different_field>data.dstport</different_field>
     <description>Firewall: Rapid port scan detected - single IP hitting 30+ blocked ports in 60s (T1046)</description>
     <mitre>
       <id>T1046</id>
@@ -91,11 +93,12 @@
     <group>firewall,portscan,scanning,</group>
   </rule>
 
-  <!-- Single source scanning multiple internal hosts -->
+  <!-- Single source scanning multiple internal hosts.                          -->
+  <!-- pf/OPNsense decoder emits data.dstip (not Suricata's data.dest_ip).       -->
   <rule id="100737" level="9" frequency="10" timeframe="60">
     <if_matched_group>firewall</if_matched_group>
     <same_field>data.srcip</same_field>
-    <different_field>data.dest_ip</different_field>
+    <different_field>data.dstip</different_field>
     <description>Firewall: Host sweep - single source scanning 10+ internal hosts in 60s (T1595.001)</description>
     <mitre>
       <id>T1595.001</id>
