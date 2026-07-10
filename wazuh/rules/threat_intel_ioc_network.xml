@@ -61,7 +61,7 @@
 
   <rule id="103001" level="14">
     <if_sid>103000</if_sid>
-    <field name="data.dest_ip">^23\.254\.164\.92$</field>
+    <dstip>23.254.164.92</dstip>
     <description>IOC: Outbound to Mastra npm easy-day-js dropper C2 (23.254.164.92) — npm postinstall hook retrieving cryptocurrency-stealing RAT; Sapphire Sleet / DPRK (T1195.002)</description>
     <mitre>
       <id>T1195.002</id>
@@ -72,7 +72,7 @@
 
   <rule id="103002" level="15">
     <if_sid>103000</if_sid>
-    <field name="data.dest_ip">^23\.254\.164\.123$</field>
+    <dstip>23.254.164.123</dstip>
     <description>IOC: Outbound to Mastra npm easy-day-js RAT beacon C2 (23.254.164.123) — active cryptocurrency-stealing RAT; 10-minute beacon interval; Sapphire Sleet / DPRK (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
@@ -92,7 +92,7 @@
 
   <rule id="103010" level="13">
     <if_sid>103000</if_sid>
-    <field name="data.dest_ip">^39\.107\.60\.51$</field>
+    <dstip>39.107.60.51</dstip>
     <description>IOC: Outbound to JetBrains malicious plugin API key exfil server (39.107.60.51) — 15 fake AI coding assistant plugins steal LLM API keys (T1528, T1041)</description>
     <mitre>
       <id>T1528</id>
@@ -113,7 +113,7 @@
 
   <rule id="103020" level="15">
     <if_sid>103000</if_sid>
-    <field name="data.dest_ip">^207\.148\.78\.36$</field>
+    <dstip>207.148.78.36</dstip>
     <description>IOC: Outbound to FishMonger SprySOCKS WIN_PLUS C2 (207.148.78.36) — Earth Lusca / I-SOON APT; TCP:443, UDP:53, WS:80 C2 channel (T1095)</description>
     <mitre>
       <id>T1095</id>
@@ -123,7 +123,7 @@
 
   <rule id="103021" level="14">
     <if_sid>103000</if_sid>
-    <field name="data.dest_ip">^207\.148\.75\.122$</field>
+    <dstip>207.148.75.122</dstip>
     <description>IOC: Outbound to FishMonger SprySOCKS delivery/staging server (207.148.75.122) — Earth Lusca / I-SOON APT initial payload delivery infrastructure (T1105)</description>
     <mitre>
       <id>T1105</id>
