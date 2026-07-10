@@ -1,0 +1,143 @@
+<!-- ============================================================
+     JoomShaper SP Page Builder Unrestricted File Upload RCE
+     CVE-2026-48908 — CVSS 9.8 CRITICAL
+     MITRE ATT&CK:
+       T1190       — Exploit Public-Facing Application
+       T1505.003   — Server Software Component: Web Shell
+       T1136.001   — Create Account: Local Account (rogue Joomla admin)
+       T1070.006   — Indicator Removal: Timestomp (webshell evasion)
+     Rule IDs: 103709–103714
+     CISA KEV: Added 2026-07-07, Federal Deadline 2026-07-10
+     Author: SecOps Engineer (Purple Team) — ESKA-411
+     Date: 2026-07-10
+     References:
+       - https://nvd.nist.gov/vuln/detail/CVE-2026-48908
+       - https://www.cisa.gov/news-events/alerts/2026/07/07/cisa-adds-three-known-exploited-vulnerabilities-catalog
+       - Public PoC: https://github.com/papageo75/CVE-2026-48908-PoC
+
+     Vulnerability summary:
+       CVE-2026-48908 is an unrestricted file upload vulnerability in the
+       JoomShaper SP Page Builder Joomla extension (CVSS 9.8). Unauthenticated
+       attackers POST to the following endpoint without any auth check:
+         POST /index.php?option=com_sppagebuilder&task=asset.uploadCustomIcon
+       The upload accepts arbitrary MIME types, allowing PHP webshell deployment.
+       Observed post-exploitation: PHP webshell dropped to:
+         /media/com_sppagebuilder/assets/iconfont/<uid>/fonts/<hash>.php
+       Rogue Joomla Super Administrator accounts created with email *@secure.local
+       and username pattern [roleword][2 digits] (e.g. webeditor48, siteeditor38).
+       Webshell timestamps are modified (timestomped) to evade detection.
+
+       Active exploitation ongoing as of CISA KEV addition 2026-07-07. Follows
+       the same exploitation template as CVE-2026-48907 (Joomla JCE, rules 102400-102412).
+
+     Log source prerequisites:
+       - Traefik access log in JSON format forwarded to Wazuh
+       - Built-in Wazuh JSON decoder (decoded_as=json)
+       - JSON field names follow Traefik defaults:
+           RequestPath, RequestMethod, RequestHost, DownstreamStatus,
+           ClientHost
+
+     Severity rationale:
+       0  — Base anchor (no alert)
+       13 — POST to SP Page Builder upload endpoint (high-confidence exploit attempt)
+       15 — Upload returned 2xx (webshell uploaded successfully)
+       15 — PHP file accessed in SP Page Builder media path (webshell execution)
+       13 — 3+ upload probes from same IP in 60s (automated exploit tool)
+       15 — Webshell command parameter in SP Page Builder media path (active execution)
+     ============================================================ -->
+
+<group name="initial_access,exploit_pubfacing,joomla,sppagebuilder,webshell,cve_2026_48908,">
+
+  <!-- ===========================================================
+       T1190 — Exploit Public-Facing Application
+       Rules 103709–103714: SP Page Builder upload RCE detection
+       Log source: Traefik access log (JSON decoder)
+       =========================================================== -->
+
+  <!-- Base anchor: any POST to the SP Page Builder component.
+       com_sppagebuilder is the Joomla component identifier for JoomShaper
+       SP Page Builder. All exploitation traffic starts with this component
+       name in the query string. Level 0: no alert — used for chaining. -->
+  <rule id="103709" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">option=com_sppagebuilder</field>
+    <description>JoomShaper SP Page Builder: POST to com_sppagebuilder component from $(ClientHost) (base anchor) (CVE-2026-48908)</description>
+    <group>joomla,sppagebuilder,initial_access,cve_2026_48908,</group>
+  </rule>
+
+  <!-- POST to the SP Page Builder uploadCustomIcon task.
+       This is the exact endpoint vulnerable to CVE-2026-48908.
+       Unauthenticated access is possible — no session or token required.
+       Level 13: direct exploitation attempt targeting a CISA KEV endpoint. -->
+  <rule id="103710" level="13">
+    <if_sid>103709</if_sid>
+    <field name="RequestPath" type="pcre2">task=asset\.uploadCustomIcon</field>
+    <description>JoomShaper SP Page Builder CVE-2026-48908: unauthenticated POST to uploadCustomIcon endpoint from $(ClientHost) to $(RequestHost)$(RequestPath) — CVE-2026-48908 exploitation attempt; PHP webshell upload (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,sppagebuilder,initial_access,exploit_pubfacing,file_upload,cve_2026_48908,cisa_kev,</group>
+  </rule>
+
+  <!-- Upload to SP Page Builder endpoint returned 2xx.
+       A successful HTTP 200/201 response to the upload endpoint indicates
+       the PHP webshell was accepted and written to the server filesystem.
+       Level 15: webshell deployment confirmed. -->
+  <rule id="103711" level="15">
+    <if_sid>103710</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>JoomShaper SP Page Builder CVE-2026-48908: upload endpoint returned $(DownstreamStatus) to $(ClientHost) — PHP webshell upload CONFIRMED at $(RequestHost); initiate incident response (T1190/T1505.003)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1505</id>
+    </mitre>
+    <group>joomla,sppagebuilder,initial_access,exploit_pubfacing,file_upload,webshell,upload_success,cve_2026_48908,cisa_kev,critical,</group>
+  </rule>
+
+  <!-- PHP file accessed under the SP Page Builder media/iconfont directory.
+       Documented webshell drop location: /media/com_sppagebuilder/assets/iconfont/<uid>/fonts/
+       An HTTP GET/POST to a .php file in this path indicates webshell execution.
+       Level 15: active webshell execution — T1505.003. -->
+  <rule id="103712" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)/media/com_sppagebuilder/.*\.php(?:\?|$)</field>
+    <description>JoomShaper SP Page Builder CVE-2026-48908: PHP file accessed in SP Page Builder media path from $(ClientHost) to $(RequestHost)$(RequestPath) — active webshell execution post-upload; initiate incident response (T1505.003)</description>
+    <mitre>
+      <id>T1505</id>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,sppagebuilder,webshell,post_exploitation,cve_2026_48908,cisa_kev,critical,</group>
+  </rule>
+
+  <!-- 3+ upload attempts from the same IP within 60 seconds.
+       Automated exploitation tools and PoC scripts (e.g. CVE-2026-48908-PoC)
+       send repeated upload requests to confirm file write success and identify
+       the dropped webshell path. Level 13: automated exploit tool. -->
+  <rule id="103713" level="13" frequency="3" timeframe="60">
+    <if_matched_sid>103710</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>JoomShaper SP Page Builder CVE-2026-48908: 3+ upload probes from $(ClientHost) in 60s — automated CVE-2026-48908 exploit tool (e.g. papageo75 PoC); $(RequestHost) actively targeted (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>joomla,sppagebuilder,initial_access,exploit_pubfacing,scanner,cve_2026_48908,cisa_kev,</group>
+  </rule>
+
+  <!-- Webshell command execution parameter in SP Page Builder media path.
+       Post-upload webshell execution typically passes shell commands via
+       common GET/POST parameter names (cmd, exec, c, shell, pass).
+       Level 15: active command execution via uploaded webshell — T1059.004. -->
+  <rule id="103714" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)/media/com_sppagebuilder/.*\.php.*(?:cmd=|command=|exec=|shell=|c=|pass=|passwd=|run=|system=)</field>
+    <description>JoomShaper SP Page Builder CVE-2026-48908: webshell command parameter in SP Page Builder media path $(RequestPath) from $(ClientHost) — active PHP webshell command execution (T1059.004/T1505.003); initiate incident response</description>
+    <mitre>
+      <id>T1059</id>
+      <id>T1505</id>
+    </mitre>
+    <group>joomla,sppagebuilder,webshell,execution,post_exploitation,cve_2026_48908,cisa_kev,critical,</group>
+  </rule>
+
+</group>
