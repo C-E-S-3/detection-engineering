@@ -17,7 +17,7 @@
   Privoxy debug levels parsed:
     debug 1  - Request: domain/path (destination for each request)
     debug 2  - Connect: domain:port (connection status)
-    debug 8  - Header: scan: ... (HTTP header parsing — method, headers)
+    debug 8  - Header: scan: ... (HTTP header parsing - method, headers)
                Crunch: Blocked: domain/path (blocked requests)
 -->
 
@@ -32,7 +32,7 @@
 </decoder>
 
 <!-- ================================================================ -->
-<!-- Connect: to domain (debug 2 — initial connection)                -->
+<!-- Connect: to domain (debug 2 - initial connection)                -->
 <!-- ================================================================ -->
 <decoder name="privoxy-connect">
   <parent>json</parent>
@@ -42,7 +42,7 @@
 </decoder>
 
 <!-- ================================================================ -->
-<!-- Header: scan: METHOD URL HTTP/x.x (debug 8 — request line)      -->
+<!-- Header: scan: METHOD URL HTTP/x.x (debug 8 - request line)      -->
 <!-- This captures the HTTP method (GET/POST/etc) and full URL        -->
 <!-- ================================================================ -->
 <decoder name="privoxy-header-request">
@@ -53,7 +53,7 @@
 </decoder>
 
 <!-- ================================================================ -->
-<!-- Header: scan: Name: Value (debug 8 — request/response headers)   -->
+<!-- Header: scan: Name: Value (debug 8 - request/response headers)   -->
 <!-- Captures header name and value for common security-relevant hdrs -->
 <!-- ================================================================ -->
 <decoder name="privoxy-header-field">
@@ -64,7 +64,7 @@
 </decoder>
 
 <!-- ================================================================ -->
-<!-- Header: scan: HTTP/x.x STATUS (debug 8 — response status line)  -->
+<!-- Header: scan: HTTP/x.x STATUS (debug 8 - response status line)  -->
 <!-- ================================================================ -->
 <decoder name="privoxy-header-response">
   <parent>json</parent>
