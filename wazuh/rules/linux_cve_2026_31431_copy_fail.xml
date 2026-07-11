@@ -1,6 +1,6 @@
 <!-- ============================================================
      Copy Fail Linux Kernel Privilege Escalation Detection Rules
-     CVE-2026-31431 (CVSS 7.8 HIGH, CISA KEV — added May 2026)
+     CVE-2026-31431 (CVSS 7.8 HIGH, CISA KEV - added May 2026)
      MITRE ATT&CK Techniques:
        T1068  - Exploitation for Privilege Escalation
        T1548.001 - Setuid and Setgid (secondary)
@@ -9,8 +9,8 @@
      Date: 2026-06-19
      References:
        - Microsoft Security Blog 2026-05-01 (CWE-362 race condition analysis)
-       - Unit42 PaloAlto Networks — technical deep dive
-       - Elastic detection-rules — potential_copy_fail_cve_2026_31431
+       - Unit42 PaloAlto Networks - technical deep dive
+       - Elastic detection-rules - potential_copy_fail_cve_2026_31431
        - CloudLinux kernel advisory (CVE-2026-31431)
 
      Vulnerability summary:
@@ -37,15 +37,15 @@
        10 - AF_ALG socket by non-root (suspicious; investigate)
         8 - splice() by non-root (context-dependent; raise if co-occurring)
        13 - AF_ALG by non-root non-crypto process (high confidence)
-       14 - Exploit loop: ≥15 AF_ALG events / 60s from same user
+       14 - Exploit loop: >=15 AF_ALG events / 60s from same user
        14 - Exploitation chain: AF_ALG burst then privilege escalation
      ============================================================ -->
 
 <group name="privilege_escalation,linux,copy_fail,cve_2026_31431,">
 
   <!-- ===========================================================
-       T1068 — Exploitation for Privilege Escalation
-       Rule IDs: 102800-102806 — Copy Fail (CVE-2026-31431)
+       T1068 - Exploitation for Privilege Escalation
+       Rule IDs: 102800-102806 - Copy Fail (CVE-2026-31431)
        =========================================================== -->
 
   <!-- Base anchor: AF_ALG socket creation recorded by auditd.
@@ -58,7 +58,7 @@
 
   <!-- AF_ALG socket created by any non-root, non-system user.
        auid=4294967295 is the unset/system auid for kernel threads and
-       early-boot services that have no audit session — excluded to prevent
+       early-boot services that have no audit session - excluded to prevent
        false positives on kernel module init paths. -->
   <rule id="102801" level="10">
     <if_sid>102800</if_sid>
@@ -110,14 +110,14 @@
     <group>privilege_escalation,splice,copy_fail,linux,</group>
   </rule>
 
-  <!-- EXPLOIT LOOP DETECTION: ≥15 AF_ALG socket events from same non-root user in 60s.
+  <!-- EXPLOIT LOOP DETECTION: >=15 AF_ALG socket events from same non-root user in 60s.
        The Copy Fail exploit races ~40 iterations to win the AEAD in-place overwrite.
        Frequency 15 / timeframe 60 catches the burst well below the 40-iteration
        maximum, tolerating any brief legitimate crypto usage. -->
   <rule id="102805" level="14" frequency="15" timeframe="60">
     <if_matched_sid>102801</if_matched_sid>
     <same_field>audit.auid</same_field>
-    <description>Copy Fail: High-frequency AF_ALG burst (≥15 socket events / 60s) by uid=$(audit.auid) -- race-condition loop matches CVE-2026-31431 exploit pattern; immediate investigation required (T1068)</description>
+    <description>Copy Fail: High-frequency AF_ALG burst (>=15 socket events / 60s) by uid=$(audit.auid) -- race-condition loop matches CVE-2026-31431 exploit pattern; immediate investigation required (T1068)</description>
     <mitre>
       <id>T1068</id>
     </mitre>
