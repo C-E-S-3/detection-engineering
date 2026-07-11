@@ -1,0 +1,213 @@
+<!-- ============================================================
+     Progress ShareFile StorageZones Controller Pre-Auth RCE
+     CVE-2026-2699 (CWE-287: Improper Authentication) CVSS 9.8
+     CVE-2026-2701 (CWE-434: Unrestricted Upload) CVSS 9.1
+     Affected: ShareFile Storage Zones Controller (SZC) <= 5.12.3
+     Fixed in: Storage Zones Controller 5.12.4 (March 2026)
+     MITRE ATT&amp;CK:
+       T1190     - Exploit Public-Facing Application (TA0001 Initial Access)
+       T1505.003 - Server Software Component: Web Shell (TA0003 Persistence)
+       T1059.001 - Command and Scripting Interpreter: PowerShell (TA0002 Execution)
+       T1059.003 - Command and Scripting Interpreter: Windows Command Shell
+       T1105     - Ingress Tool Transfer
+     CISA KEV: Not yet added as of 2026-07-11; actively exploited in wild
+     Rule IDs: 103780-103788
+     Author: Audit Engineer
+     Date: 2026-07-11
+
+     Vulnerability Summary:
+       Two-stage pre-authentication RCE chain in ShareFile's StorageZones
+       Controller (SZC) component:
+         CVE-2026-2699: Authentication bypass via crafted HTTP request sequence
+           that manipulates HMAC session establishment, granting unauthenticated
+           access to all API endpoints. ~784 exposed SZC instances on Shadowserver.
+         CVE-2026-2701: Arbitrary ASPX file write via StorageZones file management
+           API endpoint; combined with CVE-2026-2699 enables unauthenticated ASPX
+           webshell upload to the web-accessible StorageCenter directory.
+       Exploitation chain achieves IIS-hosted RCE as the IIS AppPool identity.
+       Active exploitation confirmed by Progress Software and watchTowr (2026-07-10).
+       Progress instructed all SZC admins to immediately shut down Windows servers.
+
+     Log source prerequisites:
+       - Traefik access logs in JSON format forwarded to Wazuh (HTTP detection layer).
+         JSON field names follow Traefik defaults: RequestMethod, RequestPath,
+         RequestHost, DownstreamStatus, ClientHost.
+       - Sysmon installed on Windows hosts running IIS/ShareFile SZC with:
+           EventID 1 (Process Creation) - Wazuh SID 61603
+           EventID 11 (File Created) - decoded_as=json, win.eventdata.eventID=11
+
+     Detection layers:
+       1. HTTP: POST requests to StorageZones Controller API paths (Traefik)
+       2. HTTP: ASPX file upload to StorageCenter via CVE-2026-2701 (Traefik)
+       3. Process: w3wp.exe spawning unexpected child processes (Sysmon EventID 1)
+       4. File: ASPX webshell written to ShareFile StorageCenter directory (Sysmon EventID 11)
+
+     Severity tiers:
+        9 - POST to ShareFile SZC API endpoint (info anchor)
+       11 - POST to SZC API returning HTTP 500 (exploit probe, misconfigured gadget)
+       12 - POST to SZC API returning 2xx; w3wp.exe spawning cmd/discovery tools
+       13 - POST to upload endpoint returning 2xx (webshell upload); w3wp.exe spawning download LOLBins
+       14 - w3wp.exe spawning PowerShell/pwsh/csc.exe (near-certain RCE)
+       15 - ASPX/ASHX webshell file creation in ShareFile StorageCenter (critical)
+     ============================================================ -->
+
+<group name="initial_access,exploit_pubfacing,sharefile,cve_2026_2699,cve_2026_2701,">
+
+  <!-- ===========================================================
+       Layer 1: HTTP / Traefik reverse proxy (JSON access logs)
+       Rule IDs: 103780-103783
+
+       CVE-2026-2699 exploitation targets the ShareFile SZC API.
+       Monitoring the reverse proxy layer catches exploit delivery
+       before host-level process or file events fire.
+       =========================================================== -->
+
+  <!-- Base anchor: POST to ShareFile StorageZones Controller API path.
+       Normal ShareFile API calls use these paths; this rule is an
+       info-level anchor that escalates when combined with status codes. -->
+  <rule id="103780" level="9">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)(?:/storagezone(?:s)?(?:/|$)|/api/[^?]*(?:upload|storezone|zone)|/download\.ashx|/upload\.aspx)</field>
+    <description>ShareFile CVE-2026-2699: POST to StorageZones Controller API from $(ClientHost) at $(RequestHost)$(RequestPath) -- potential authentication bypass probe (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharefile,cve_2026_2699,initial_access,exploit_pubfacing,</group>
+  </rule>
+
+  <!-- POST to SZC API returned 2xx: authentication bypass likely succeeded.
+       A 2xx response to a StorageZones API endpoint from an unauthenticated
+       source indicates CVE-2026-2699 exploitation; correlate with file-creation
+       rules (103788) on the target host to confirm webshell deployment. -->
+  <rule id="103781" level="12">
+    <if_sid>103780</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>ShareFile CVE-2026-2699: POST to StorageZones API at $(RequestHost)$(RequestPath) returned 2xx to $(ClientHost) -- authentication bypass likely succeeded; correlate with ASPX webshell events on target host (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharefile,cve_2026_2699,initial_access,exploit_pubfacing,auth_bypass,</group>
+  </rule>
+
+  <!-- POST to SZC API returned 500: exploit probe or misconfigured attempt.
+       HTTP 500 on StorageZones API indicates server-side error during exploit
+       chain execution; attacker is actively probing or refining the exploit. -->
+  <rule id="103782" level="11">
+    <if_sid>103780</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^500$</field>
+    <description>ShareFile CVE-2026-2699: POST to StorageZones API at $(RequestHost)$(RequestPath) from $(ClientHost) returned HTTP 500 -- exploit probe or error during auth bypass attempt (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharefile,cve_2026_2699,initial_access,exploit_pubfacing,</group>
+  </rule>
+
+  <!-- POST to upload/file-write endpoint returning 2xx: webshell upload via CVE-2026-2701.
+       A successful POST to an upload API endpoint after auth bypass (CVE-2026-2699)
+       indicates the file write phase of the exploit chain; ASPX webshell has been
+       delivered to the StorageCenter web root. -->
+  <rule id="103783" level="13">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)(?:/storagezone(?:s)?/upload|/api/[^?]*upload|/uploadchunk|/uploadfile)</field>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>ShareFile CVE-2026-2701: POST to upload endpoint at $(RequestHost)$(RequestPath) returned 2xx to $(ClientHost) -- file write phase of webshell deployment chain (T1190/T1505.003)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1505.003</id>
+    </mitre>
+    <group>sharefile,cve_2026_2701,initial_access,webshell,high_confidence,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Layer 2: Process execution (Sysmon EventID 1 -> Wazuh SID 61603)
+       Rule IDs: 103784-103787
+
+       Under normal ShareFile SZC operation w3wp.exe should not directly
+       spawn command interpreters or system utilities. Any unexpected
+       child process from the IIS worker on a ShareFile host is a strong
+       indicator that the webshell has been executed post-exploitation.
+       =========================================================== -->
+
+  <!-- Base anchor: w3wp.exe spawning any child process (silent, level 0).
+       Used as the parent condition for all process-execution sub-rules. -->
+  <rule id="103784" level="0">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\w3wp\.exe$</field>
+    <description>ShareFile CVE-2026-2699/2701: w3wp.exe spawned child process $(win.eventdata.image) on $(win.eventdata.computer) (base anchor)</description>
+  </rule>
+
+  <!-- w3wp.exe spawning PowerShell, pwsh, or .NET compiler.
+       Post-exploitation via the deployed ASPX webshell almost always begins
+       with PowerShell download cradles or .NET compilation for in-memory staging.
+       This is a near-certain indicator of active webshell execution. -->
+  <rule id="103785" level="14">
+    <if_sid>103784</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(powershell|pwsh|csc|vbc|jsc)\.exe$</field>
+    <description>ShareFile CVE-2026-2699/2701: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) -- near-certain webshell execution post ShareFile RCE; PowerShell download cradle or .NET staging (T1190/T1059.001)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.001</id>
+    </mitre>
+    <group>sharefile,cve_2026_2699,cve_2026_2701,rce,powershell,high_confidence,</group>
+  </rule>
+
+  <!-- w3wp.exe spawning download-and-execute LOLBins.
+       certutil, bitsadmin, mshta, wscript, and cscript are commonly abused
+       for second-stage payload download and execution after ShareFile webshell
+       deployment. -->
+  <rule id="103786" level="13">
+    <if_sid>103784</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(certutil|bitsadmin|mshta|wscript|cscript|curl|wget)\.exe$</field>
+    <description>ShareFile CVE-2026-2699/2701: w3wp.exe spawned download LOLBin $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) -- staged payload delivery via webshell post-exploitation (T1190/T1105)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1105</id>
+    </mitre>
+    <group>sharefile,cve_2026_2699,cve_2026_2701,rce,lolbin,</group>
+  </rule>
+
+  <!-- w3wp.exe spawning cmd.exe or host-discovery utilities.
+       Post-webshell enumeration via cmd.exe, whoami, ipconfig, nltest,
+       and net.exe is standard initial post-exploitation reconnaissance
+       on managed file transfer servers. -->
+  <rule id="103787" level="12">
+    <if_sid>103784</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(cmd|whoami|ipconfig|nltest|net|net1|hostname|systeminfo|tasklist|nslookup|ping|arp)\.exe$</field>
+    <description>ShareFile CVE-2026-2699/2701: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) -- post-exploit host enumeration; investigate for ShareFile SZC webshell execution (T1190/T1059.003)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.003</id>
+    </mitre>
+    <group>sharefile,cve_2026_2699,cve_2026_2701,rce,enumeration,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Layer 3: File creation (Sysmon EventID 11)
+       Rule ID: 103788
+
+       The ShareFile StorageCenter directory (c:\inetpub\wwwroot\ShareFile\StorageCenter\)
+       is web-accessible. File creation of ASPX/ASHX files in this path
+       by the IIS worker process is a near-certain webshell drop via CVE-2026-2701.
+       Under normal operation w3wp.exe does not create web script files.
+       =========================================================== -->
+
+  <!-- ASPX/ASHX webshell creation in ShareFile StorageCenter directory.
+       CVE-2026-2701 writes attacker-supplied ASPX content to the StorageCenter
+       web root. Sysmon EventID 11 (File Created) with w3wp.exe as the creating
+       process and a web script extension in the ShareFile path is a critical IOC. -->
+  <rule id="103788" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="win.eventdata.eventID" type="pcre2">^11$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\w3wp\.exe$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\\ShareFile\\StorageCenter\\.*\.(aspx|ashx|asmx|aspx\.config)$</field>
+    <description>ShareFile CVE-2026-2701 CRITICAL: w3wp.exe created ASPX/ASHX file $(win.eventdata.targetFilename) on $(win.eventdata.computer) -- WEBSHELL DROP via ShareFile pre-auth file upload; persistent RCE access established; initiate immediate incident response (T1505.003)</description>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1190</id>
+    </mitre>
+    <group>sharefile,cve_2026_2701,webshell,persistence,critical,high_confidence,</group>
+  </rule>
+
+</group>
