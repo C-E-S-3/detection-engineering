@@ -2,7 +2,7 @@
 <!-- Wazuh SIEM Self-Protection Rules
      Detects attacks against the Wazuh SIEM infrastructure itself, including:
      - CVE-2026-25769: RCE via insecure deserialization in Wazuh cluster protocol
-       (affects Wazuh 4.0.0–4.14.2; fixed in 4.14.3)
+       (affects Wazuh 4.0.0-4.14.2; fixed in 4.14.3)
      - Wazuh API brute force and unauthorized access
      - Wazuh cluster anomalies indicating compromise
      - Post-exploitation: config tampering, agent manipulation
@@ -15,7 +15,7 @@
   <rule id="103200" level="6">
     <if_sid>100001</if_sid>
     <match>Invalid credentials</match>
-    <description>Wazuh API: invalid credentials (potential brute force) — T1110</description>
+    <description>Wazuh API: invalid credentials (potential brute force) - T1110</description>
     <mitre>
       <id>T1110</id>
     </mitre>
@@ -24,7 +24,7 @@
 
   <rule id="103201" level="10" frequency="6" timeframe="60">
     <if_matched_sid>103200</if_matched_sid>
-    <description>Wazuh API brute force: 6+ failed logins in 60s — T1110</description>
+    <description>Wazuh API brute force: 6+ failed logins in 60s - T1110</description>
     <mitre>
       <id>T1110</id>
     </mitre>
@@ -35,7 +35,7 @@
     <if_sid>100001</if_sid>
     <match>Error getting token|JWT error|token expired|Unauthorized</match>
     <regex>wazuh-api|/security/user/authenticate</regex>
-    <description>Wazuh API: authentication anomaly — potential unauthorized access attempt — T1110</description>
+    <description>Wazuh API: authentication anomaly - potential unauthorized access attempt - T1110</description>
     <mitre>
       <id>T1110</id>
     </mitre>
@@ -48,7 +48,7 @@
     <if_sid>100001</if_sid>
     <match>wazuh-clusterd</match>
     <regex>Traceback|ImportError|ModuleNotFoundError|__import__|__reduce__|object_hook</regex>
-    <description>Wazuh cluster daemon: suspicious deserialization error — possible CVE-2026-25769 exploitation attempt (T1190)</description>
+    <description>Wazuh cluster daemon: suspicious deserialization error - possible CVE-2026-25769 exploitation attempt (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -59,7 +59,7 @@
     <if_sid>100001</if_sid>
     <match>wazuh-clusterd</match>
     <regex>subprocess|os\.system|eval\(|exec\(|compile\(|importlib|builtins</regex>
-    <description>Wazuh cluster daemon: Python code execution pattern in cluster log — high-confidence CVE-2026-25769 exploitation (T1190)</description>
+    <description>Wazuh cluster daemon: Python code execution pattern in cluster log - high-confidence CVE-2026-25769 exploitation (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -70,7 +70,7 @@
     <if_sid>100001</if_sid>
     <match>wazuh-clusterd</match>
     <regex>Failed to receive|Integrity check|Invalid cluster|Unknown cluster node|Invalid node name</regex>
-    <description>Wazuh cluster: unexpected node or integrity failure — potential rogue worker node (CVE-2026-25769 prerequisite) — T1190</description>
+    <description>Wazuh cluster: unexpected node or integrity failure - potential rogue worker node (CVE-2026-25769 prerequisite) - T1190</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -83,7 +83,7 @@
     <if_group>audit_command</if_group>
     <field name="audit.uid">109</field>
     <regex>bash|sh|python|python3|perl|ruby|nc|ncat|netcat|wget|curl|chmod|useradd</regex>
-    <description>Wazuh process (uid 109) spawned unexpected shell/tool — possible post-exploitation via CVE-2026-25769 (T1059)</description>
+    <description>Wazuh process (uid 109) spawned unexpected shell/tool - possible post-exploitation via CVE-2026-25769 (T1059)</description>
     <mitre>
       <id>T1059</id>
       <id>T1190</id>
@@ -95,7 +95,7 @@
     <if_group>audit_command</if_group>
     <field name="audit.uid">109</field>
     <regex>crontab|at |schtasks|systemctl enable|useradd|adduser|passwd|ssh-keygen|authorized_keys</regex>
-    <description>Wazuh process executing persistence mechanism — post-exploitation via SIEM compromise (T1059/T1543)</description>
+    <description>Wazuh process executing persistence mechanism - post-exploitation via SIEM compromise (T1059/T1543)</description>
     <mitre>
       <id>T1059</id>
       <id>T1543</id>
@@ -108,7 +108,7 @@
   <rule id="103230" level="12">
     <if_group>syscheck</if_group>
     <match>ossec.conf|local_rules.xml|wazuh-clusterd.conf</match>
-    <description>Wazuh configuration file modified — potential defense evasion/SIEM tampering (T1562.001)</description>
+    <description>Wazuh configuration file modified - potential defense evasion/SIEM tampering (T1562.001)</description>
     <mitre>
       <id>T1562.001</id>
     </mitre>
@@ -120,7 +120,7 @@
     <match>ossec.conf|local_rules.xml</match>
     <field name="syscheck.event">modified</field>
     <regex type="pcre2">(?:&lt;active-response&gt;|&lt;global&gt;|&lt;cluster&gt;)</regex>
-    <description>Wazuh critical config section modified (active-response/global/cluster) — high-risk defense evasion (T1562.001)</description>
+    <description>Wazuh critical config section modified (active-response/global/cluster) - high-risk defense evasion (T1562.001)</description>
     <mitre>
       <id>T1562.001</id>
     </mitre>
@@ -133,7 +133,7 @@
     <if_sid>100001</if_sid>
     <match>wazuh-agentd|ossec-agentd</match>
     <regex>Invalid shared configuration|Error unpacking|Error reading shared files|SharedFiles error</regex>
-    <description>Wazuh agent: shared configuration error — possible tampered agent config distribution from compromised manager (T1562.001)</description>
+    <description>Wazuh agent: shared configuration error - possible tampered agent config distribution from compromised manager (T1562.001)</description>
     <mitre>
       <id>T1562.001</id>
     </mitre>
@@ -145,7 +145,7 @@
     <match>wazuh-agentd|ossec-agentd</match>
     <regex>remote-config|merged.mg|agent.conf</regex>
     <field name="syscheck.event">modified</field>
-    <description>Wazuh agent: merged config file modified — possible compromised manager pushing malicious config (T1562.001)</description>
+    <description>Wazuh agent: merged config file modified - possible compromised manager pushing malicious config (T1562.001)</description>
     <mitre>
       <id>T1562.001</id>
     </mitre>
@@ -158,7 +158,7 @@
     <if_group>syscheck</if_group>
     <match>ossec.log|alerts.json|archives.json|active-responses.log</match>
     <field name="syscheck.event">deleted</field>
-    <description>Wazuh log/alert file deleted — active log suppression indicating defense evasion (T1070.002)</description>
+    <description>Wazuh log/alert file deleted - active log suppression indicating defense evasion (T1070.002)</description>
     <mitre>
       <id>T1070.002</id>
     </mitre>
@@ -168,7 +168,7 @@
   <rule id="103251" level="15">
     <if_sid>103250</if_sid>
     <match>alerts.json</match>
-    <description>Wazuh alerts.json deleted — critical: SIEM blind spot created, attacker may be covering tracks (T1070.002)</description>
+    <description>Wazuh alerts.json deleted - critical: SIEM blind spot created, attacker may be covering tracks (T1070.002)</description>
     <mitre>
       <id>T1070.002</id>
     </mitre>
@@ -180,7 +180,7 @@
   <rule id="103260" level="10">
     <if_group>firewall</if_group>
     <regex>DPT=1516|dpt=1516|port=1516</regex>
-    <description>Connection to Wazuh cluster communication port 1516 — unexpected cluster node may indicate CVE-2026-25769 setup (T1190)</description>
+    <description>Connection to Wazuh cluster communication port 1516 - unexpected cluster node may indicate CVE-2026-25769 setup (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -192,7 +192,7 @@
   <rule id="103270" level="15" frequency="3" timeframe="300">
     <if_matched_group>exploit_attempt</if_matched_group>
     <match>cve-2026-25769</match>
-    <description>CRITICAL: Multiple CVE-2026-25769 exploitation signals in 5 min — Wazuh SIEM under active attack. Upgrade to 4.14.3+ immediately. (T1190)</description>
+    <description>CRITICAL: Multiple CVE-2026-25769 exploitation signals in 5 min - Wazuh SIEM under active attack. Upgrade to 4.14.3+ immediately. (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
