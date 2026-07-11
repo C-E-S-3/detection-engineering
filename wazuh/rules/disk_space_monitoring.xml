@@ -17,7 +17,7 @@
 <group name="linux,disk_space,impact,">
 
   <!-- ================================================================ -->
-  <!-- BASE RULE — anchor for syslog disk space events                  -->
+  <!-- BASE RULE - anchor for syslog disk space events                  -->
   <!-- Matches ENOSPC and "no space left on device" from any source.    -->
   <!-- ================================================================ -->
 
@@ -28,7 +28,7 @@
 
 
   <!-- ================================================================ -->
-  <!-- KERNEL ENOSPC — filesystem at 100%                               -->
+  <!-- KERNEL ENOSPC - filesystem at 100%                               -->
   <!-- Fired when the kernel cannot allocate space for a write.         -->
   <!-- Indicates the physical/virtual disk is 100% full.               -->
   <!-- ================================================================ -->
@@ -36,7 +36,7 @@
   <rule id="101501" level="12">
     <if_sid>101500</if_sid>
     <program_name>kernel</program_name>
-    <description>Linux: Kernel ENOSPC — filesystem is 100% full; writes failing</description>
+    <description>Linux: Kernel ENOSPC - filesystem is 100% full; writes failing</description>
     <mitre>
       <id>T1499</id>
       <id>T1485</id>
@@ -46,14 +46,14 @@
 
 
   <!-- ================================================================ -->
-  <!-- USERSPACE ENOSPC — process failed to write                       -->
+  <!-- USERSPACE ENOSPC - process failed to write                       -->
   <!-- Any non-kernel process reporting no space left. Covers log       -->
   <!-- writers, databases, container runtimes, etc.                     -->
   <!-- ================================================================ -->
 
   <rule id="101502" level="10">
     <if_sid>101500</if_sid>
-    <description>Linux: Process failed with ENOSPC — disk full, writes dropped</description>
+    <description>Linux: Process failed with ENOSPC - disk full, writes dropped</description>
     <mitre>
       <id>T1499</id>
     </mitre>
@@ -62,7 +62,7 @@
 
 
   <!-- ================================================================ -->
-  <!-- HIGH DISK USAGE WARNING — >= 90% threshold                       -->
+  <!-- HIGH DISK USAGE WARNING - >= 90% threshold                       -->
   <!-- Catches monitoring-script output (e.g. df-based checks) that     -->
   <!-- report a partition at 90-100% before hard ENOSPC is reached.     -->
   <!-- Pattern: "partition '/foo': NN% full" or "filesystem 90%"        -->
@@ -70,13 +70,13 @@
 
   <rule id="101503" level="8">
     <match type="pcre2">(?i)(filesystem|partition|volume|disk)[^:]{0,60}(?:9[0-9]|100)\s*%</match>
-    <description>Linux: Filesystem usage >= 90% — approaching exhaustion</description>
+    <description>Linux: Filesystem usage >= 90% - approaching exhaustion</description>
     <group>disk_warning,impact,</group>
   </rule>
 
 
   <!-- ================================================================ -->
-  <!-- ROOTCHECK DISK WARNING — Wazuh built-in disk check escalation    -->
+  <!-- ROOTCHECK DISK WARNING - Wazuh built-in disk check escalation    -->
   <!-- Wazuh rootcheck fires rule 510 for generic anomaly events;       -->
   <!-- this child escalates when the anomaly is disk-space related.     -->
   <!-- ================================================================ -->
@@ -84,13 +84,13 @@
   <rule id="101504" level="9">
     <if_sid>510</if_sid>
     <match type="pcre2">(?i)(disk\s+usage|no\s+space|filesystem\s+full|partition.*full)</match>
-    <description>Linux: Wazuh rootcheck — disk space anomaly detected</description>
+    <description>Linux: Wazuh rootcheck - disk space anomaly detected</description>
     <group>disk_warning,rootcheck,impact,</group>
   </rule>
 
 
   <!-- ================================================================ -->
-  <!-- DOCKER OVERLAY DISK FULL — container filesystem exhaustion       -->
+  <!-- DOCKER OVERLAY DISK FULL - container filesystem exhaustion       -->
   <!-- Matches Docker container stderr/stdout (json-file log driver).   -->
   <!-- Chains off docker base rule 101200 (decoded_as=json + stream).  -->
   <!-- Overlay filesystem exhaustion can indicate:                      -->
@@ -102,7 +102,7 @@
   <rule id="101510" level="11">
     <if_sid>101200</if_sid>
     <field name="log" type="pcre2">(?i)(no\s+space\s+left\s+on\s+device|ENOSPC|overlay.*no\s+space|write.*no\s+space|disk\s+full)</field>
-    <description>Docker: Container reports disk full — overlay filesystem exhaustion</description>
+    <description>Docker: Container reports disk full - overlay filesystem exhaustion</description>
     <mitre>
       <id>T1499</id>
       <id>T1485</id>
@@ -116,7 +116,7 @@
   <rule id="101511" level="13" frequency="5" timeframe="60">
     <if_matched_sid>101510</if_matched_sid>
     <same_source_ip />
-    <description>Docker: Repeated disk-full errors in container — sustained write pressure (possible data staging)</description>
+    <description>Docker: Repeated disk-full errors in container - sustained write pressure (possible data staging)</description>
     <mitre>
       <id>T1499</id>
       <id>T1485</id>

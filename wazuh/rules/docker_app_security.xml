@@ -28,7 +28,7 @@
   <!-- KANIDM - Identity Provider                                       -->
   <!-- Container names: kanidm, kanidm-dev                              -->
   <!-- Log format: "<uuid> <LEVEL> <handler> [duration]"                -->
-  <!-- e.g.: "d27f0016... INFO handle_auth [ 125µs | 100.00% ]"        -->
+  <!-- e.g.: "d27f0016... INFO handle_auth [ 125us | 100.00% ]"        -->
   <!-- ================================================================ -->
 
   <!-- Auth event (handle_auth handler - Kanidm-specific function name) -->

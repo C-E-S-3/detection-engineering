@@ -141,7 +141,7 @@
     <group>credential_access,persistence,</group>
   </rule>
 
-  <!-- /etc/shadow READ by non-root user — T1003.008 credential dump, not just account change -->
+  <!-- /etc/shadow READ by non-root user - T1003.008 credential dump, not just account change -->
   <rule id="100623" level="14">
     <if_sid>100620</if_sid>
     <field name="audit.auid" negate="yes">^0$</field>
@@ -173,7 +173,7 @@
     <group>credential_access,</group>
   </rule>
 
-  <!-- T1003.007 — Proc Filesystem credential dumping (requires inframan PR #111) -->
+  <!-- T1003.007 - Proc Filesystem credential dumping (requires inframan PR #111) -->
   <!-- Fires on ptrace PEEK ops (gdb, gcore) and process_vm_readv                  -->
   <rule id="100624" level="13">
     <if_sid>100600</if_sid>
@@ -197,7 +197,7 @@
     <group>credential_access,credential_dumping,</group>
   </rule>
 
-  <!-- /proc/kcore raw kernel memory access — extremely high risk -->
+  <!-- /proc/kcore raw kernel memory access - extremely high risk -->
   <rule id="100626" level="15">
     <if_sid>100600</if_sid>
     <field name="audit.key">proc_kcore</field>
