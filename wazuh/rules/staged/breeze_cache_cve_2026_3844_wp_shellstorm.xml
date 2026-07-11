@@ -1,0 +1,178 @@
+<!-- ============================================================
+     WP-SHELLSTORM: CVE-2026-3844 Breeze Cache Plugin
+     Unauthenticated File Upload / PHP Webshell (CVSS 9.8)
+     MITRE ATT&amp;CK:
+       T1190  - Exploit Public-Facing Application
+       T1505.003 - Server Software Component: Web Shell
+       T1059.004 - Command and Scripting Interpreter: Unix Shell
+       T1071.001 - Application Layer Protocol: Web Protocols (C2)
+       T1105  - Ingress Tool Transfer
+     Rule IDs: 103770-103779
+     CVE: CVE-2026-3844 (WordPress Breeze Cache Plugin, CVSS 9.8)
+     Threat Actor: WP-SHELLSTORM (webshell access brokerage)
+     Campaign: Active exploitation; 27 CVEs; 1.4M+ domains targeted;
+       5700+ sites compromised (SOCRadar, June 2026)
+     IOC IP: 137.175.93.126 (WP-SHELLSTORM operator C2)
+     IOC SHA256: 84F7E396... (down.php primary backdoor)
+     Webshell naming: leading-dot hidden (.bd.php, .wp-log.php,
+       .nf-log.php, .sd.php), randomized suffix (.brq-*.php,
+       .leo_*.php, .wvp-*.php, .cc-*.php), PHTML (BZ_*.phtml)
+     Log source prerequisites:
+       - Traefik access log in JSON format forwarded to Wazuh
+         (rules 103770-103776): decoded_as=json; fields:
+         RequestMethod, RequestPath, DownstreamStatus, ClientHost,
+         RequestHost
+       - Firewall log group (rules 103777): firewall anchor 103000
+         must load before this file (alphabetical load order safe)
+       - Suricata EVE JSON forwarded to Wazuh (rule 103778):
+         parent rule 86601 (Suricata alert)
+       - Wazuh FIM / syscheck enabled on web root directories
+         (rule 103779): parent rule 554 (file added to system)
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-11
+     ESKA: ESKA-449
+     ============================================================ -->
+
+<group name="initial_access,webshell,wordpress,breeze_cache,wp_shellstorm,">
+
+  <!-- ================================================================ -->
+  <!-- T1190: BREEZE CACHE PLUGIN PATH PROBE (TRAEFIK JSON)           -->
+  <!-- Anchor rule: any access to Breeze plugin AJAX actions or files   -->
+  <!-- CVE-2026-3844 is triggered via unauthenticated AJAX endpoint     -->
+  <!-- ================================================================ -->
+
+  <rule id="103770" level="10">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?:wp-admin/admin-ajax\.php.*action=breeze_|wp-content/plugins/breeze/)</field>
+    <description>WP-SHELLSTORM CVE-2026-3844: Breeze Cache plugin path accessed from $(ClientHost) to $(RequestHost)$(RequestPath) - potential exploit probe (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,breeze_cache,reconnaissance,initial_access,cve_2026_3844,</group>
+  </rule>
+
+  <!-- Breeze Cache AJAX path returned 2xx - unauthenticated access confirmed -->
+  <rule id="103771" level="14">
+    <if_sid>103770</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>WP-SHELLSTORM CVE-2026-3844: Breeze Cache plugin returned 2xx to $(ClientHost) - unauthenticated access SUCCEEDED, file upload may have occurred (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,breeze_cache,initial_access,exploit_pubfacing,cve_2026_3844,rce_success,</group>
+  </rule>
+
+  <!-- POST to Breeze Cache action - unauthorized file write attempt -->
+  <rule id="103772" level="13">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">wp-admin/admin-ajax\.php.*action=breeze_(?:import|upload|backup|cache|clear|settings)</field>
+    <description>WP-SHELLSTORM CVE-2026-3844: POST to Breeze Cache AJAX action from $(ClientHost) to $(RequestHost)$(RequestPath) - unauthenticated file write attempt (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,breeze_cache,initial_access,exploit_pubfacing,cve_2026_3844,file_upload,</group>
+  </rule>
+
+  <!-- POST to Breeze action returned 2xx - file upload confirmed -->
+  <rule id="103773" level="15">
+    <if_sid>103772</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>WP-SHELLSTORM CVE-2026-3844: POST to Breeze Cache AJAX action returned 2xx to $(ClientHost) - unauthorized file operation CONFIRMED (T1505.003)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1505</id>
+    </mitre>
+    <group>wordpress,breeze_cache,initial_access,exploit_pubfacing,cve_2026_3844,file_upload,high_confidence,</group>
+  </rule>
+
+  <!-- ================================================================ -->
+  <!-- T1505.003: WP-SHELLSTORM WEBSHELL FILENAME PATTERNS             -->
+  <!-- Matches ALL documented WP-SHELLSTORM naming conventions:        -->
+  <!-- leading-dot hidden files, randomized-suffix variants, BZ_       -->
+  <!-- phtml variants, and the primary down.php backdoor               -->
+  <!-- ================================================================ -->
+
+  <rule id="103774" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?:/down\.php|/\.(?:bd|wp-log|nf-log|sd)\.php|/\.(?:brq-|leo_|wvp-|cc-)[^/?]*\.php|/BZ_[^/?]*\.phtml)(?:[?#]|$)</field>
+    <description>WP-SHELLSTORM webshell filename accessed from $(ClientHost) to $(RequestHost)$(RequestPath) - high-confidence WP-SHELLSTORM/CVE-2026-3844 backdoor request (T1505.003)</description>
+    <mitre>
+      <id>T1505</id>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,webshell,initial_access,wp_shellstorm,cve_2026_3844,high_confidence,</group>
+  </rule>
+
+  <!-- Webshell command execution parameters in wp-content PHP path -->
+  <rule id="103775" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">wp-content/.*\.php.*(?:cmd=|command=|exec=|shell=|c=|pass=|passwd=|action=shell)</field>
+    <description>WP-SHELLSTORM: Command execution parameter in wp-content PHP path from $(ClientHost) to $(RequestHost)$(RequestPath) - active webshell execution (T1059.004/T1505.003)</description>
+    <mitre>
+      <id>T1059</id>
+      <id>T1505</id>
+    </mitre>
+    <group>wordpress,webshell,execution,wp_shellstorm,cve_2026_3844,high_confidence,</group>
+  </rule>
+
+  <!-- 5+ Breeze Cache probes from same IP in 60s - automated CVE scanner -->
+  <rule id="103776" level="13" frequency="5" timeframe="60">
+    <if_matched_sid>103770</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>WP-SHELLSTORM CVE-2026-3844: 5+ Breeze Cache requests from $(ClientHost) in 60s - automated CVE-2026-3844 mass-scanning campaign (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,breeze_cache,scanner,initial_access,cve_2026_3844,</group>
+  </rule>
+
+  <!-- ================================================================ -->
+  <!-- T1071.001: OUTBOUND CONNECTION TO WP-SHELLSTORM C2 (FIREWALL)  -->
+  <!-- IOC: 137.175.93.126 - WP-SHELLSTORM operator server            -->
+  <!-- Binds to firewall anchor rule 103000 (firewall log group)       -->
+  <!-- Any outbound connection here is a near-certain true positive     -->
+  <!-- ================================================================ -->
+
+  <rule id="103777" level="15">
+    <if_sid>103000</if_sid>
+    <dstip>137.175.93.126</dstip>
+    <description>IOC: Outbound to WP-SHELLSTORM operator C2 (137.175.93.126) - active webshell brokerage campaign; any connection indicates post-exploitation C2 activity (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1505</id>
+    </mitre>
+    <group>ioc_c2,wordpress,wp_shellstorm,cve_2026_3844,high_confidence,</group>
+  </rule>
+
+  <!-- Suricata IDS: outbound traffic to WP-SHELLSTORM C2 -->
+  <rule id="103778" level="15">
+    <if_sid>86601</if_sid>
+    <field name="alert.dest_ip" type="pcre2">^137\.175\.93\.126$</field>
+    <description>Suricata: Outbound traffic to WP-SHELLSTORM C2 (137.175.93.126) - webshell brokerage operator; near-certain indicator of compromise (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>ioc_c2,suricata,ids,wordpress,wp_shellstorm,cve_2026_3844,high_confidence,</group>
+  </rule>
+
+  <!-- ================================================================ -->
+  <!-- T1105 / T1505.003: WEBSHELL FILE CREATED IN WEB ROOT (FIM)     -->
+  <!-- Wazuh syscheck rule 554 fires on new file added to system       -->
+  <!-- Matches down.php + all documented WP-SHELLSTORM naming patterns -->
+  <!-- in common WordPress web root directories                         -->
+  <!-- ================================================================ -->
+
+  <rule id="103779" level="15">
+    <if_sid>554</if_sid>
+    <field name="file" type="pcre2">(?:wp-content|public_html|htdocs|www)/.*?(?:down|\.bd|\.wp-log|\.nf-log|\.sd|\.brq-[^/]+|\.leo_[^/]+|\.wvp-[^/]+|\.cc-[^/]+|BZ_[^/]+)\.ph(?:p|tml)$</field>
+    <description>WP-SHELLSTORM webshell file created: $(file) - WP-SHELLSTORM/CVE-2026-3844 backdoor written to web root; Wazuh FIM alert (T1505.003/T1105)</description>
+    <mitre>
+      <id>T1505</id>
+      <id>T1105</id>
+    </mitre>
+    <group>wordpress,webshell,persistence,wp_shellstorm,cve_2026_3844,high_confidence,syscheck_file,</group>
+  </rule>
+
+</group>
