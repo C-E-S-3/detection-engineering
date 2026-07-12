@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <!-- Wazuh SIEM Self-Protection Rules
      Detects attacks against the Wazuh SIEM infrastructure itself, including:
      - CVE-2026-25769: RCE via insecure deserialization in Wazuh cluster protocol
