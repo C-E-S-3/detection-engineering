@@ -64,7 +64,7 @@
        =========================================================== -->
 
   <!-- Base anchor: w3wp.exe spawning any child process (silent, level 0) -->
-  <rule id="103700" level="0">
+  <rule id="103821" level="0">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\w3wp\.exe$</field>
     <description>SharePoint CVE-2026-45659: w3wp.exe spawned child process $(win.eventdata.image) on $(win.eventdata.computer) (base anchor)</description>
@@ -74,8 +74,8 @@
        .NET deserialization gadgets frequently invoke PowerShell as the
        first post-exploit action (download cradle) or compile a staged
        C# payload via csc.exe. Near-certain indicator of RCE. -->
-  <rule id="103701" level="14">
-    <if_sid>103700</if_sid>
+  <rule id="103822" level="14">
+    <if_sid>103821</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(powershell|pwsh|csc|vbc|jsc)\.exe$</field>
     <description>SharePoint CVE-2026-45659: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) -- near-certain deserialization RCE; PowerShell download cradle or .NET compilation post-exploit (T1190/T1059.001)</description>
     <mitre>
@@ -89,8 +89,8 @@
        certutil, bitsadmin, mshta, and scripting hosts are commonly used
        to stage and execute secondary payloads after initial RCE via
        .NET deserialization. -->
-  <rule id="103702" level="13">
-    <if_sid>103700</if_sid>
+  <rule id="103823" level="13">
+    <if_sid>103821</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(certutil|bitsadmin|mshta|wscript|cscript|curl|wget)\.exe$</field>
     <description>SharePoint CVE-2026-45659: w3wp.exe spawned download LOLBin $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) -- staged payload delivery post-deserialization exploit (T1190/T1105)</description>
     <mitre>
@@ -103,8 +103,8 @@
   <!-- w3wp.exe spawning execution LOLBins (proxy execution / payload loading).
        rundll32, regsvr32, msiexec, and wmic are frequently abused to load
        attacker DLLs or run malicious MSI installers from memory after RCE. -->
-  <rule id="103703" level="12">
-    <if_sid>103700</if_sid>
+  <rule id="103824" level="12">
+    <if_sid>103821</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(rundll32|regsvr32|msiexec|wmic|installutil|regasm|regsvcs)\.exe$</field>
     <description>SharePoint CVE-2026-45659: w3wp.exe spawned execution LOLBin $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) -- post-exploit proxy execution or payload loading (T1190/T1218)</description>
     <mitre>
@@ -118,8 +118,8 @@
        whoami, ipconfig, nltest, net, hostname, and systeminfo are the
        standard first-stage reconnaissance commands run after achieving
        code execution on a SharePoint server. -->
-  <rule id="103704" level="12">
-    <if_sid>103700</if_sid>
+  <rule id="103825" level="12">
+    <if_sid>103821</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(cmd|whoami|ipconfig|nltest|net|net1|hostname|systeminfo|tasklist|nslookup|ping|arp)\.exe$</field>
     <description>SharePoint CVE-2026-45659: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) -- post-exploit host enumeration or command shell; investigate for deserialization RCE (T1190/T1059.003)</description>
     <mitre>
@@ -142,7 +142,7 @@
   <!-- w3wp.exe writing ASPX/ASMX/ASHX/SVC file - webshell deployment.
        Sysmon EventID 11 (File Created) with w3wp.exe as the creating
        process and a web-script extension is a critical indicator. -->
-  <rule id="103705" level="15">
+  <rule id="103826" level="15">
     <decoded_as>json</decoded_as>
     <field name="win.eventdata.eventID" type="pcre2">^11$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\w3wp\.exe$</field>
@@ -166,7 +166,7 @@
        =========================================================== -->
 
   <!-- POST to SharePoint REST API or legacy SOAP endpoint (info anchor). -->
-  <rule id="103706" level="9">
+  <rule id="103827" level="9">
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">POST</field>
     <field name="RequestPath" type="pcre2">(?i)(?:/_api/|/_vti_bin/(?:client\.svc|webs\.asmx|lists\.asmx|sitedata\.asmx|usergroup\.asmx|authentication\.asmx)|/sites/[^/]+/_vti_bin/|/sites/[^/]+/lists/)</field>
@@ -181,8 +181,8 @@
        A 2xx response means SharePoint executed the deserialized payload.
        Correlate with process-execution rules (103701-103704) on the
        same host to confirm RCE. -->
-  <rule id="103707" level="12">
-    <if_sid>103706</if_sid>
+  <rule id="103828" level="12">
+    <if_sid>103827</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
     <description>SharePoint CVE-2026-45659: POST to SharePoint API at $(RequestHost)$(RequestPath) returned 2xx to $(ClientHost) -- deserialization payload acknowledged; correlate with w3wp.exe child-process events on the target host (T1190)</description>
     <mitre>
@@ -195,7 +195,7 @@
        .NET deserialization exceptions surface as 500 errors before an
        attacker refines the gadget chain. A 500 on _vti_bin is a strong
        indicator of active exploit probe or misconfigured gadget delivery. -->
-  <rule id="103708" level="11">
+  <rule id="103829" level="11">
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">POST</field>
     <field name="RequestPath" type="pcre2">(?i)/_vti_bin/</field>

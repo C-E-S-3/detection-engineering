@@ -51,7 +51,7 @@
   <!-- MICS API accessed — anomalous unless MICS admin is expected    -->
   <rule id="101801" level="11">
     <if_sid>101800</if_sid>
-    <description>Ivanti Sentry MICS API endpoint $(RequestPath) accessed via $(RequestMethod) from $(ClientHost) — anomalous MICS management API access (T1190)</description>
+    <description>Ivanti Sentry MICS API endpoint $(RequestPath) accessed via $(RequestMethod) from $(ClientHost) - anomalous MICS management API access (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -67,7 +67,7 @@
     <if_sid>101800</if_sid>
     <field name="RequestMethod">POST</field>
     <field name="DownstreamStatus" type="pcre2">^(200|500)$</field>
-    <description>Ivanti Sentry MICS API POST returning $(DownstreamStatus) from $(ClientHost) — possible CVE-2026-10520 exploitation attempt (T1190)</description>
+    <description>Ivanti Sentry MICS API POST returning $(DownstreamStatus) from $(ClientHost) - possible CVE-2026-10520 exploitation attempt (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -82,7 +82,7 @@
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">mics-config/handleMessage</field>
     <field name="RequestMethod">POST</field>
-    <description>Ivanti Sentry CVE-2026-10520 exploit path: POST to mics-config/handleMessage from $(ClientHost) — unauthenticated OS command injection (CVSS 10.0, CISA KEV) (T1190)</description>
+    <description>Ivanti Sentry CVE-2026-10520 exploit path: POST to mics-config/handleMessage from $(ClientHost) - unauthenticated OS command injection (CVSS 10.0, CISA KEV) (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -93,7 +93,7 @@
   <rule id="101804" level="12">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">mics-config/handleMessage</field>
-    <description>Ivanti Sentry MICS handleMessage endpoint probed from $(ClientHost) — CVE-2026-10520 reconnaissance or exploitation (T1190)</description>
+    <description>Ivanti Sentry MICS handleMessage endpoint probed from $(ClientHost) - CVE-2026-10520 reconnaissance or exploitation (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -107,7 +107,7 @@
     <field name="RequestPath" type="pcre2">^/mics/api/v2/sentry/(users|admins|accounts|auth|roles)/</field>
     <field name="RequestMethod" type="pcre2">^(POST|PUT|PATCH)$</field>
     <field name="DownstreamStatus" type="pcre2">^(200|201)$</field>
-    <description>Ivanti Sentry admin account API $(RequestPath) accepted $(RequestMethod) from $(ClientHost) — potential CVE-2026-10523 auth bypass + account creation (T1190/T1136.001)</description>
+    <description>Ivanti Sentry admin account API $(RequestPath) accepted $(RequestMethod) from $(ClientHost) - potential CVE-2026-10523 auth bypass + account creation (T1190/T1136.001)</description>
     <mitre>
       <id>T1190</id>
       <id>T1136.001</id>
@@ -119,13 +119,13 @@
   <!-- Indicates automated exploitation tooling or vulnerability scan  -->
   <rule id="101806" level="0">
     <if_sid>101800</if_sid>
-    <description>Ivanti Sentry MICS API repeated access — frequency baseline (101806)</description>
+    <description>Ivanti Sentry MICS API repeated access - frequency baseline (101806)</description>
     <group>ivanti_sentry,mics_api,frequency,</group>
   </rule>
 
   <rule id="101807" level="14">
     <if_sid>101800</if_sid>
-    <description>Ivanti Sentry MICS API scanned by $(ClientHost) — 10+ requests in 60 seconds indicates automated exploitation tooling for CVE-2026-10520 (T1190)</description>
+    <description>Ivanti Sentry MICS API scanned by $(ClientHost) - 10+ requests in 60 seconds indicates automated exploitation tooling for CVE-2026-10520 (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -138,7 +138,7 @@
   <rule id="101808" level="13">
     <if_sid>101800</if_sid>
     <field name="ClientHost" type="pcre2">(?!^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|127\.|::1|localhost))</field>
-    <description>Ivanti Sentry MICS API accessed from external IP $(ClientHost) — MICS admin API must not be internet-facing; CVE-2026-10520 exposure (T1190)</description>
+    <description>Ivanti Sentry MICS API accessed from external IP $(ClientHost) - MICS admin API must not be internet-facing; CVE-2026-10520 exposure (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -151,7 +151,7 @@
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">^/mics/api/</field>
     <field name="DownstreamStatus" type="pcre2">^(400|401|403|404|405|500|502|503)$</field>
-    <description>Ivanti Sentry MICS API error $(DownstreamStatus) from $(ClientHost) path $(RequestPath) — failed exploitation or recon of CVE-2026-10520 (T1190)</description>
+    <description>Ivanti Sentry MICS API error $(DownstreamStatus) from $(ClientHost) path $(RequestPath) - failed exploitation or recon of CVE-2026-10520 (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -164,7 +164,7 @@
   <rule id="101810" level="12">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">^/mics/api/v2/sentry/(export|import|backup|restore|config-download|config-upload)</field>
-    <description>Ivanti Sentry MICS config export/import API $(RequestPath) accessed from $(ClientHost) — potential configuration exfiltration or malicious config injection (T1190)</description>
+    <description>Ivanti Sentry MICS config export/import API $(RequestPath) accessed from $(ClientHost) - potential configuration exfiltration or malicious config injection (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>

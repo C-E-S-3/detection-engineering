@@ -62,7 +62,7 @@
   <!-- WinRM/WS-Management endpoint probed — anomalous on Linux infra  -->
   <rule id="101901" level="11">
     <if_sid>101900</if_sid>
-    <description>WinRM/WS-Management endpoint $(RequestPath) probed from $(ClientHost) — CVE-2026-47291 reconnaissance or exploitation attempt (T1190)</description>
+    <description>WinRM/WS-Management endpoint $(RequestPath) probed from $(ClientHost) - CVE-2026-47291 reconnaissance or exploitation attempt (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -76,7 +76,7 @@
     <if_sid>101900</if_sid>
     <field name="RequestMethod" type="pcre2">^(POST|PUT)$</field>
     <field name="DownstreamStatus" type="pcre2">^(200|201)$</field>
-    <description>WinRM/WS-Management POST accepted (HTTP $(DownstreamStatus)) from $(ClientHost) path $(RequestPath) — potential CVE-2026-47291 HTTP.sys exploitation success (T1190)</description>
+    <description>WinRM/WS-Management POST accepted (HTTP $(DownstreamStatus)) from $(ClientHost) path $(RequestPath) - potential CVE-2026-47291 HTTP.sys exploitation success (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -86,7 +86,7 @@
   <!-- Burst scan of WinRM surface: 5+ requests in 60s from one IP    -->
   <rule id="101903" level="14">
     <if_sid>101900</if_sid>
-    <description>WinRM/HTTP.sys scanning burst: $(ClientHost) sent 5+ requests to WinRM paths in 60s — automated CVE-2026-47291 exploitation tooling (T1190 / T1595.002)</description>
+    <description>WinRM/HTTP.sys scanning burst: $(ClientHost) sent 5+ requests to WinRM paths in 60s - automated CVE-2026-47291 exploitation tooling (T1190 / T1595.002)</description>
     <mitre>
       <id>T1190</id>
       <id>T1595.002</id>
@@ -98,7 +98,7 @@
   <rule id="101904" level="13">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(ET WEB_SERVER|ET EXPLOIT|CVE.2026.47291|HTTP\.sys|wsman|winrm.exploit)</field>
-    <description>Suricata: HTTP.sys/WinRM exploit signature — potential CVE-2026-47291 exploitation in-flight (T1190)</description>
+    <description>Suricata: HTTP.sys/WinRM exploit signature - potential CVE-2026-47291 exploitation in-flight (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -118,7 +118,7 @@
   <!-- IIS path probe — indicates scanning for HTTP.sys attack surface -->
   <rule id="101906" level="11">
     <if_sid>101905</if_sid>
-    <description>IIS-specific path $(RequestPath) probed from $(ClientHost) — CVE-2026-47291 attack surface fingerprinting (T1595.002)</description>
+    <description>IIS-specific path $(RequestPath) probed from $(ClientHost) - CVE-2026-47291 attack surface fingerprinting (T1595.002)</description>
     <mitre>
       <id>T1595.002</id>
     </mitre>
@@ -129,7 +129,7 @@
   <rule id="101907" level="14" timeframe="120">
     <if_matched_sid>101901</if_matched_sid>
     <if_sid>101906</if_sid>
-    <description>CRITICAL: WinRM probe + IIS fingerprinting from same source in 120s — active CVE-2026-47291 HTTP.sys exploitation campaign (T1190 / T1595.002)</description>
+    <description>CRITICAL: WinRM probe + IIS fingerprinting from same source in 120s - active CVE-2026-47291 HTTP.sys exploitation campaign (T1190 / T1595.002)</description>
     <mitre>
       <id>T1190</id>
       <id>T1595.002</id>
@@ -155,7 +155,7 @@
   <!-- OWA/EWS accessed — anomalous on this environment                -->
   <rule id="101909" level="11">
     <if_sid>101908</if_sid>
-    <description>Exchange OWA/EWS endpoint $(RequestPath) accessed from $(ClientHost) — CVE-2026-42897 reconnaissance or XSS weaponized-email delivery (T1566.002 / T1190)</description>
+    <description>Exchange OWA/EWS endpoint $(RequestPath) accessed from $(ClientHost) - CVE-2026-42897 reconnaissance or XSS weaponized-email delivery (T1566.002 / T1190)</description>
     <mitre>
       <id>T1566.002</id>
       <id>T1190</id>
@@ -168,7 +168,7 @@
   <rule id="101910" level="13">
     <if_sid>101908</if_sid>
     <field name="RequestPath" type="pcre2">(?i)(%3[Cc]|%3[Ee]|%22|%27|%3[Cc]script|javascript:|onerror=|onload=|%2[Ff]%2[Ff]|data%3[Aa]text)</field>
-    <description>Exchange OWA XSS payload in URL from $(ClientHost): $(RequestPath) — CVE-2026-42897 cross-site scripting weaponized link (T1566.002)</description>
+    <description>Exchange OWA XSS payload in URL from $(ClientHost): $(RequestPath) - CVE-2026-42897 cross-site scripting weaponized link (T1566.002)</description>
     <mitre>
       <id>T1566.002</id>
       <id>T1190</id>
@@ -179,7 +179,7 @@
   <!-- OWA burst from single IP — scanning for CVE-2026-42897 surface  -->
   <rule id="101911" level="13">
     <if_sid>101908</if_sid>
-    <description>Exchange OWA/EWS scanning burst from $(ClientHost): 8+ requests in 60s — automated CVE-2026-42897 exploitation tooling (T1190)</description>
+    <description>Exchange OWA/EWS scanning burst from $(ClientHost): 8+ requests in 60s - automated CVE-2026-42897 exploitation tooling (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -195,7 +195,7 @@
   <rule id="101912" level="14" timeframe="300">
     <if_matched_sid>101901</if_matched_sid>
     <if_sid>101909</if_sid>
-    <description>CRITICAL: WinRM/HTTP.sys + Exchange OWA probed in 5 min — coordinated June 2026 Patch Tuesday exploitation campaign (CVE-2026-47291 + CVE-2026-42897) (T1190)</description>
+    <description>CRITICAL: WinRM/HTTP.sys + Exchange OWA probed in 5 min - coordinated June 2026 Patch Tuesday exploitation campaign (CVE-2026-47291 + CVE-2026-42897) (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>

@@ -76,7 +76,7 @@
   <rule id="103600" level="13">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(CVE-2026-25089|fortisandbox.*vnc|FG-IR-26-141|start.vnc.*inject|fortisandbox.*command.inject)</field>
-    <description>Suricata: FortiSandbox CVE-2026-25089 VNC API command injection attempt — unauthenticated RCE (T1190)</description>
+    <description>Suricata: FortiSandbox CVE-2026-25089 VNC API command injection attempt - unauthenticated RCE (T1190)</description>
     <mitre>
       <id>T1190</id>
       <id>T1059.004</id>
@@ -92,7 +92,7 @@
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(fortisandbox|ET WEB_SERVER.*fortisandbox)</field>
     <field name="alert.http.method" type="pcre2">^POST$</field>
-    <description>Suricata: Unauthenticated POST to FortiSandbox API — possible CVE-2026-25089 probe (T1190)</description>
+    <description>Suricata: Unauthenticated POST to FortiSandbox API - possible CVE-2026-25089 probe (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -110,7 +110,7 @@
     <field name="audit.key">exec</field>
     <field name="audit.exe" type="pcre2">(?i)^/(bin|usr/bin)/(sh|bash|dash|curl|wget|python3?|perl|nc|ncat)$</field>
     <field name="hostname" type="pcre2">(?i)(fortisandbox|fsandbox)</field>
-    <description>FortiSandbox: unexpected shell/tool $(audit.exe) executed on $(hostname) — possible CVE-2026-25089 web injection exploitation (T1059.004)</description>
+    <description>FortiSandbox: unexpected shell/tool $(audit.exe) executed on $(hostname) - possible CVE-2026-25089 web injection exploitation (T1059.004)</description>
     <mitre>
       <id>T1190</id>
       <id>T1059.004</id>
@@ -126,7 +126,7 @@
   <rule id="103603" level="12" frequency="20" timeframe="60">
     <if_matched_sid>103601</if_matched_sid>
     <same_srcip></same_srcip>
-    <description>FortiSandbox probe burst: 20+ POST requests in 60s from $(srcip) — automated CVE-2026-25089 exploitation scan (T1190)</description>
+    <description>FortiSandbox probe burst: 20+ POST requests in 60s from $(srcip) - automated CVE-2026-25089 exploitation scan (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -163,7 +163,7 @@
     <if_matched_sid>5503,5551</if_matched_sid>
     <same_srcip></same_srcip>
     <field name="data.product" type="pcre2">(?i)(fortigate|fortios|fortiproxy)</field>
-    <description>FortiGate: 10+ authentication failures in 120s from $(srcip) — possible FortiBleed credential spray (T1078)</description>
+    <description>FortiGate: 10+ authentication failures in 120s from $(srcip) - possible FortiBleed credential spray (T1078)</description>
     <mitre>
       <id>T1078</id>
       <id>T1110.003</id>
@@ -180,7 +180,7 @@
     <if_sid>4716,4717</if_sid>
     <field name="data.logdesc" type="pcre2">(?i)(sniffer|packet.capture|diagnose.sniffer|diag.sniffer)</field>
     <field name="data.product" type="pcre2">(?i)(fortigate|fortios|fortiproxy)</field>
-    <description>FortiGate: packet sniffer/DIAG SNIFFER executed by admin $(data.user) — FortiBleed network sniffing TTP (T1040)</description>
+    <description>FortiGate: packet sniffer/DIAG SNIFFER executed by admin $(data.user) - FortiBleed network sniffing TTP (T1040)</description>
     <mitre>
       <id>T1040</id>
     </mitre>
@@ -194,7 +194,7 @@
   <rule id="103606" level="14">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(FortiGate.*sniffer|FortiBleed|diagnose.sniffer.packet|ET POLICY.*fortigate.*sniffer)</field>
-    <description>Suricata: FortiGate sniffer deployment pattern detected — FortiBleed campaign T1040</description>
+    <description>Suricata: FortiGate sniffer deployment pattern detected - FortiBleed campaign T1040</description>
     <mitre>
       <id>T1040</id>
     </mitre>
@@ -211,7 +211,7 @@
     <field name="data.subtype" type="pcre2">(?i)(admin|system)</field>
     <field name="data.action" type="pcre2">(?i)(login|logon)</field>
     <field name="data.authproto" type="pcre2">(?i)(https|gui|ssh)</field>
-    <description>FortiGate: admin login via $(data.authproto) by $(data.user) from $(data.srcip) — verify against known admin IPs (FortiBleed indicator T1078)</description>
+    <description>FortiGate: admin login via $(data.authproto) by $(data.user) from $(data.srcip) - verify against known admin IPs (FortiBleed indicator T1078)</description>
     <mitre>
       <id>T1078</id>
     </mitre>
@@ -227,7 +227,7 @@
     <if_matched_sid>103604</if_matched_sid>
     <same_srcip></same_srcip>
     <if_sid>103607</if_sid>
-    <description>FortiBleed CRITICAL: credential spray from $(srcip) succeeded — admin login confirmed after 10+ failures. FortiGate likely compromised (T1078/T1110)</description>
+    <description>FortiBleed CRITICAL: credential spray from $(srcip) succeeded - admin login confirmed after 10+ failures. FortiGate likely compromised (T1078/T1110)</description>
     <mitre>
       <id>T1078</id>
       <id>T1110.003</id>
@@ -263,7 +263,7 @@
     <field name="win.system.eventID" type="pcre2">^(1|4)$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)(sc\.exe|cmd\.exe|powershell\.exe)</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(type=\s*kernel|binPath.*\\(AppData|Temp|ProgramData|Users\\[^\\]+\\AppData).*\.sys)</field>
-    <description>Windows: kernel driver service created from user-writeable path by $(win.eventdata.image) — SprySOCKS WIN_DRV rootkit indicator (T1014/T1543.003)</description>
+    <description>Windows: kernel driver service created from user-writeable path by $(win.eventdata.image) - SprySOCKS WIN_DRV rootkit indicator (T1014/T1543.003)</description>
     <mitre>
       <id>T1014</id>
       <id>T1543.003</id>
@@ -279,7 +279,7 @@
   <rule id="103610" level="12">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(SprySOCKS|WIN_DRV|WIN_PLUS|ET MALWARE.*China.*Backdoor|ET MALWARE.*SprySOCKS)</field>
-    <description>Suricata: SprySOCKS China-linked backdoor C2 protocol detected — T1071.001 (T1014)</description>
+    <description>Suricata: SprySOCKS China-linked backdoor C2 protocol detected - T1071.001 (T1014)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1014</id>
@@ -297,7 +297,7 @@
     <field name="audit.key">network_modifications</field>
     <field name="audit.syscall" type="pcre2">^connect$</field>
     <field name="audit.exe" type="pcre2">(?i)^/(usr/lib|lib/systemd|usr/sbin|sbin)/(systemd-journal|dbus-daemon|NetworkManager|cups|rsyslogd)</field>
-    <description>Linux: system daemon $(audit.exe) made unexpected outbound connect() syscall — SprySOCKS Linux C2 indicator (T1071.001)</description>
+    <description>Linux: system daemon $(audit.exe) made unexpected outbound connect() syscall - SprySOCKS Linux C2 indicator (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1014</id>
@@ -314,7 +314,7 @@
   <rule id="103612" level="14">
     <if_sid>510,511,512</if_sid>
     <match>Hidden process</match>
-    <description>Wazuh rootcheck: hidden process detected — SprySOCKS WIN_DRV kernel driver concealment or similar rootkit (T1014)</description>
+    <description>Wazuh rootcheck: hidden process detected - SprySOCKS WIN_DRV kernel driver concealment or similar rootkit (T1014)</description>
     <mitre>
       <id>T1014</id>
       <id>T1055</id>
@@ -349,7 +349,7 @@
     <field name="win.system.eventID" type="pcre2">^1$</field>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)(chrome\.exe|msedge\.exe|firefox\.exe|brave\.exe|opera\.exe)</field>
     <field name="win.eventdata.image" type="pcre2">(?i)(\\Temp\\|\\AppData\\Local\\Temp\\|\\AppData\\Roaming\\)</field>
-    <description>Windows: browser $(win.eventdata.parentImage) spawned executable from TEMP path — OXLOADER malvertising delivery indicator (T1204.001)</description>
+    <description>Windows: browser $(win.eventdata.parentImage) spawned executable from TEMP path - OXLOADER malvertising delivery indicator (T1204.001)</description>
     <mitre>
       <id>T1204.001</id>
       <id>T1566.002</id>
@@ -367,7 +367,7 @@
     <field name="win.system.eventID" type="pcre2">^(11|23)$</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)(Google\\Chrome\\User Data\\Default\\(Login Data|Cookies|Web Data)|Mozilla\\Firefox\\Profiles\\.*\.(db|sqlite)|Brave-Browser\\User Data\\Default\\Login Data)</field>
     <field name="win.eventdata.image" type="pcre2">(?i)^(?!.*(chrome|msedge|firefox|brave|opera|chromium|GoogleUpdate).exe)</field>
-    <description>Windows: non-browser process $(win.eventdata.image) accessing browser credential database — CastleStealer credential theft (T1555.003)</description>
+    <description>Windows: non-browser process $(win.eventdata.image) accessing browser credential database - CastleStealer credential theft (T1555.003)</description>
     <mitre>
       <id>T1555.003</id>
       <id>T1552.001</id>
@@ -384,7 +384,7 @@
     <if_sid>61603</if_sid>
     <field name="win.system.eventID" type="pcre2">^(11|23)$</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)(\\Exodus\\exodus\.wallet|\\Electrum\\wallets\\|\\MetaMask\\|\\Telegram Desktop\\tdata\\|\\Roaming\\Binance\\|\.wallet\.dat$)</field>
-    <description>Windows: process $(win.eventdata.image) accessing crypto wallet or Telegram session file — CastleStealer active exfiltration (T1555)</description>
+    <description>Windows: process $(win.eventdata.image) accessing crypto wallet or Telegram session file - CastleStealer active exfiltration (T1555)</description>
     <mitre>
       <id>T1555</id>
       <id>T1552.001</id>
@@ -400,7 +400,7 @@
   <rule id="103616" level="12" frequency="5" timeframe="30">
     <if_matched_sid>103613</if_matched_sid>
     <same_dstip></same_dstip>
-    <description>OXLOADER: 5+ executable drops in TEMP within 30s — multi-stage payload staging pattern (T1204.001)</description>
+    <description>OXLOADER: 5+ executable drops in TEMP within 30s - multi-stage payload staging pattern (T1204.001)</description>
     <mitre>
       <id>T1204.001</id>
     </mitre>
@@ -415,7 +415,7 @@
   <rule id="103617" level="12">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(OXLOADER|CastleStealer|REF8372|ET MALWARE.*Russian.*stealer|ET MALWARE.*castlestealer)</field>
-    <description>Suricata: OXLOADER/CastleStealer C2 beacon detected — REF8372 Russian info-stealer campaign (T1071.001)</description>
+    <description>Suricata: OXLOADER/CastleStealer C2 beacon detected - REF8372 Russian info-stealer campaign (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1041</id>
@@ -452,7 +452,7 @@
     <field name="win.eventdata.image" type="pcre2">(?i)(mshta\.exe|wscript\.exe|cscript\.exe|cmd\.exe|powershell\.exe)</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(\.lnk|ShellExecute|\.hta)</field>
     <field name="win.eventdata.currentDirectory" type="pcre2">(?i)(\\Downloads\\|\\Temp\\|\\AppData\\Local\\Temp\\)</field>
-    <description>Windows: suspicious LNK/HTA execution from Downloads/Temp by $(win.eventdata.image) — NarwhalRAT APT37 delivery (T1204.002)</description>
+    <description>Windows: suspicious LNK/HTA execution from Downloads/Temp by $(win.eventdata.image) - NarwhalRAT APT37 delivery (T1204.002)</description>
     <mitre>
       <id>T1204.002</id>
       <id>T1547.009</id>
@@ -472,7 +472,7 @@
     <field name="win.eventdata.parentImage" type="pcre2">(?i)mshta\.exe</field>
     <field name="win.eventdata.image" type="pcre2">(?i)powershell\.exe</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(DownloadString|DownloadFile|WebClient|IEX|Invoke-Expression|FromBase64String|-enc |-encodedcommand)</field>
-    <description>Windows: mshta.exe spawned PowerShell downloader — NarwhalRAT APT37 stage-2 payload delivery (T1059.001/T1566.001)</description>
+    <description>Windows: mshta.exe spawned PowerShell downloader - NarwhalRAT APT37 stage-2 payload delivery (T1059.001/T1566.001)</description>
     <mitre>
       <id>T1059.001</id>
       <id>T1566.001</id>
@@ -491,7 +491,7 @@
     <field name="win.eventdata.image" type="pcre2">(?i)rundll32\.exe</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(AppData\\Roaming\\|AppData\\Local\\)</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)\.dll</field>
-    <description>Windows: rundll32.exe loading DLL from AppData — NarwhalRAT APT37 persistence mechanism (T1547.009/T1055)</description>
+    <description>Windows: rundll32.exe loading DLL from AppData - NarwhalRAT APT37 persistence mechanism (T1547.009/T1055)</description>
     <mitre>
       <id>T1547.009</id>
       <id>T1055</id>
@@ -509,7 +509,7 @@
     <field name="win.system.eventID" type="pcre2">^13$</field>
     <field name="win.eventdata.targetObject" type="pcre2">(?i)(HKCU|HKEY_CURRENT_USER)\\Software\\Microsoft\\Windows\\CurrentVersion\\Run</field>
     <field name="win.eventdata.details" type="pcre2">(?i)(rundll32.*AppData.*\.dll|AppData.*rundll32)</field>
-    <description>Windows: Registry Run key created pointing to rundll32/AppData DLL — NarwhalRAT APT37 logon persistence (T1547.001)</description>
+    <description>Windows: Registry Run key created pointing to rundll32/AppData DLL - NarwhalRAT APT37 logon persistence (T1547.001)</description>
     <mitre>
       <id>T1547.001</id>
       <id>T1547.009</id>
@@ -550,7 +550,7 @@
     <if_sid>31103,31100,31102</if_sid>
     <url>/wp-json/gravitysmtp/v1/settings</url>
     <match>200</match>
-    <description>Web: Gravity SMTP CVE-2026-4020 — unauthenticated GET to settings API returned 200 — credential exposure likely (T1552)</description>
+    <description>Web: Gravity SMTP CVE-2026-4020 - unauthenticated GET to settings API returned 200 - credential exposure likely (T1552)</description>
     <mitre>
       <id>T1552</id>
       <id>T1190</id>
@@ -566,7 +566,7 @@
   <rule id="103623" level="10" frequency="10" timeframe="60">
     <if_matched_sid>103622</if_matched_sid>
     <same_srcip></same_srcip>
-    <description>Web: Gravity SMTP settings API probe burst (10+ in 60s) from $(srcip) — CVE-2026-4020 mass scanning T1190</description>
+    <description>Web: Gravity SMTP settings API probe burst (10+ in 60s) from $(srcip) - CVE-2026-4020 mass scanning T1190</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -581,7 +581,7 @@
   <rule id="103624" level="13">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(ShapedPlugin.*backdoor|supply.chain.*WordPress|ET MALWARE.*WordPress.*plugin.*beacon|shapedplugin.*callback)</field>
-    <description>Suricata: ShapedPlugin WordPress supply chain backdoor callback detected — C2 communication from compromised plugin (T1195.002)</description>
+    <description>Suricata: ShapedPlugin WordPress supply chain backdoor callback detected - C2 communication from compromised plugin (T1195.002)</description>
     <mitre>
       <id>T1195.002</id>
       <id>T1071.001</id>
@@ -598,7 +598,7 @@
   <rule id="103625" level="11">
     <if_sid>550,553,554</if_sid>
     <field name="file" type="pcre2">(?i)/wp-content/plugins/(product-slider-pro|real-testimonials-pro|smart-post-show-pro|wp-smart-post-show)/.*\.php$</field>
-    <description>WordPress: ShapedPlugin plugin PHP file modified — $(file) — verify integrity; possible supply chain backdoor (T1195.002)</description>
+    <description>WordPress: ShapedPlugin plugin PHP file modified - $(file) - verify integrity; possible supply chain backdoor (T1195.002)</description>
     <mitre>
       <id>T1195.002</id>
       <id>T1505.003</id>
@@ -614,7 +614,7 @@
   <rule id="103626" level="10">
     <if_sid>31103,31100,31102</if_sid>
     <url type="pcre2">(?i)/wp-json/(edd|easy-digital-downloads)/v1/(software-licensing|update-check|license)</url>
-    <description>Web: WordPress EDD license/update check probed — possible ShapedPlugin supply chain pre-compromise reconnaissance (T1592)</description>
+    <description>Web: WordPress EDD license/update check probed - possible ShapedPlugin supply chain pre-compromise reconnaissance (T1592)</description>
     <mitre>
       <id>T1592</id>
       <id>T1195.002</id>

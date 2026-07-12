@@ -56,7 +56,7 @@
   <rule id="103672" level="14">
     <if_sid>86601</if_sid>
     <field name="alert.http.hostname" type="pcre2">(?i)^(goodpanelforgoodjob\.com|rebustan\.top|svclsc\.com|microsoft-telemetry\.at|spasopro\.at)$</field>
-    <description>Suricata: Amadey infostealer C2 HTTP beacon to known domain — Operation Endgame Phase 2 survivor infrastructure (T1071.001)</description>
+    <description>Suricata: Amadey infostealer C2 HTTP beacon to known domain - Operation Endgame Phase 2 survivor infrastructure (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1555.003</id>
@@ -73,7 +73,7 @@
     <if_group>web|accesslog</if_group>
     <match>POST</match>
     <url type="pcre2">^/[A-Za-z0-9]{5,16}/index\.php$</url>
-    <description>HTTP POST to short-path index.php — pattern consistent with Amadey infostealer C2 beacon (T1071.001); investigate for victim registration traffic</description>
+    <description>HTTP POST to short-path index.php - pattern consistent with Amadey infostealer C2 beacon (T1071.001); investigate for victim registration traffic</description>
     <mitre>
       <id>T1071.001</id>
     </mitre>
@@ -87,7 +87,7 @@
   <rule id="103674" level="13" frequency="5" timeframe="300">
     <if_matched_sid>103673</if_matched_sid>
     <same_field>data.srcip</same_field>
-    <description>Amadey C2 beacon rhythm: 5+ HTTP POST to short-path index.php from same source in 5 min — consistent with 40-120s infostealer beacon interval (T1071.001)</description>
+    <description>Amadey C2 beacon rhythm: 5+ HTTP POST to short-path index.php from same source in 5 min - consistent with 40-120s infostealer beacon interval (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
     </mitre>
@@ -111,7 +111,7 @@
   <rule id="103675" level="14">
     <if_sid>86601</if_sid>
     <field name="alert.http.hostname" type="pcre2">(?i)^(polse\.us|roger99699\.xyz|bluescry\.com|secure\.controlpanel\.asia|neltron-geltron\.shop|cdntestconnect\.com|bartsen284\.online)$</field>
-    <description>Suricata: StealC infostealer C2 HTTP exfil to known domain — Operation Endgame Phase 2 survivor infrastructure (T1041)</description>
+    <description>Suricata: StealC infostealer C2 HTTP exfil to known domain - Operation Endgame Phase 2 survivor infrastructure (T1041)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1041</id>
@@ -127,7 +127,7 @@
     <if_group>web|accesslog</if_group>
     <match>POST</match>
     <url type="pcre2">^/[0-9a-f]{20}\.php$</url>
-    <description>HTTP POST to 20-char hex .php path — highly specific pattern matching StealC infostealer C2 exfil endpoint; RC4-encrypted credential data (T1041)</description>
+    <description>HTTP POST to 20-char hex .php path - highly specific pattern matching StealC infostealer C2 exfil endpoint; RC4-encrypted credential data (T1041)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1041</id>
@@ -149,7 +149,7 @@
   <rule id="103677" level="13">
     <if_sid>86601</if_sid>
     <field name="alert.dns.rrname" type="pcre2">(?i)(goodpanelforgoodjob\.com|rebustan\.top|svclsc\.com|microsoft-telemetry\.at|spasopro\.at)</field>
-    <description>Suricata DNS: Internal host querying Amadey C2 domain — Operation Endgame Phase 2; compromised host C2 registration attempt (T1071.001)</description>
+    <description>Suricata DNS: Internal host querying Amadey C2 domain - Operation Endgame Phase 2; compromised host C2 registration attempt (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
     </mitre>
@@ -161,7 +161,7 @@
   <rule id="103678" level="13">
     <if_sid>86601</if_sid>
     <field name="alert.dns.rrname" type="pcre2">(?i)(polse\.us|roger99699\.xyz|bluescry\.com|secure\.controlpanel\.asia|neltron-geltron\.shop|cdntestconnect\.com|bartsen284\.online)</field>
-    <description>Suricata DNS: Internal host querying StealC C2 domain — Operation Endgame Phase 2; RC4-encrypted credential exfil attempt expected (T1041)</description>
+    <description>Suricata DNS: Internal host querying StealC C2 domain - Operation Endgame Phase 2; RC4-encrypted credential exfil attempt expected (T1041)</description>
     <mitre>
       <id>T1041</id>
       <id>T1071.001</id>
@@ -185,7 +185,7 @@
   <rule id="103679" level="13">
     <if_sid>86601</if_sid>
     <field name="alert.http.hostname" type="pcre2">(?i)^(photo-[0-9]+\.cfd|zloapobikahy23\.bond|higoksbupwou\.com|aluminiostramuntana\.com)$</field>
-    <description>Suricata: TonRAT Node.js implant C2 beacon to Cloudflare-fronted domain — photo-zip hospitality campaign (T1071.001)</description>
+    <description>Suricata: TonRAT Node.js implant C2 beacon to Cloudflare-fronted domain - photo-zip hospitality campaign (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
     </mitre>
@@ -197,7 +197,7 @@
   <rule id="103680" level="12">
     <if_sid>86601</if_sid>
     <field name="alert.dns.rrname" type="pcre2">(?i)(photo-[0-9]+\.cfd|zloapobikahy23\.bond|higoksbupwou\.com|aluminiostramuntana\.com)</field>
-    <description>Suricata DNS: Internal host querying TonRAT C2 domain — Node.js implant C2 registration (T1071.001)</description>
+    <description>Suricata DNS: Internal host querying TonRAT C2 domain - Node.js implant C2 registration (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
     </mitre>
@@ -212,7 +212,7 @@
   <rule id="103681" level="11">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(ProgramData|AppData\\(Local|Roaming)\\(?!nodejs|nvm|npm))[\\][^\\]+\\node\.exe$</field>
-    <description>TonRAT: node.exe executed from ProgramData/AppData subdirectory — legitimate Node.js does not deploy to these paths; DPRK-affiliated implant (T1036.005)</description>
+    <description>TonRAT: node.exe executed from ProgramData/AppData subdirectory - legitimate Node.js does not deploy to these paths; DPRK-affiliated implant (T1036.005)</description>
     <mitre>
       <id>T1036.005</id>
       <id>T1105</id>
@@ -228,7 +228,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(powershell|pwsh)\.exe$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\csc\.exe$</field>
-    <description>TonRAT delivery: csc.exe (C# compiler) spawned by PowerShell — compile-after-delivery DLL stage; consistent with TonRAT 7-phase obfuscated PowerShell loader (T1027.004)</description>
+    <description>TonRAT delivery: csc.exe (C# compiler) spawned by PowerShell - compile-after-delivery DLL stage; consistent with TonRAT 7-phase obfuscated PowerShell loader (T1027.004)</description>
     <mitre>
       <id>T1027.004</id>
       <id>T1059.001</id>
@@ -243,7 +243,7 @@
   <rule id="103683" level="12">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(IMG|PHOTO)-[0-9]+\.png\.lnk$</field>
-    <description>TonRAT dropper: LNK file masquerading as PNG image (PHOTO/IMG-XXXXXXXXX.png.lnk) — photo-zip campaign dropper delivery (T1204.002 / T1566.001)</description>
+    <description>TonRAT dropper: LNK file masquerading as PNG image (PHOTO/IMG-XXXXXXXXX.png.lnk) - photo-zip campaign dropper delivery (T1204.002 / T1566.001)</description>
     <mitre>
       <id>T1204.002</id>
       <id>T1566.001</id>
@@ -265,7 +265,7 @@
   <rule id="103690" level="15" frequency="3" timeframe="300">
     <if_matched_sid>103672,103673,103675,103677,103678</if_matched_sid>
     <same_field>data.srcip</same_field>
-    <description>CRITICAL: Multiple Operation Endgame C2 indicators from same host in 5 min — active infostealer compromise; credential exfil likely in progress (T1041)</description>
+    <description>CRITICAL: Multiple Operation Endgame C2 indicators from same host in 5 min - active infostealer compromise; credential exfil likely in progress (T1041)</description>
     <mitre>
       <id>T1041</id>
       <id>T1555.003</id>
@@ -292,7 +292,7 @@
   <rule id="103692" level="13">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(ET MALWARE|ETPRO MALWARE).*(Amadey|StealC|StealerC|SocGholish|GootLoader|Endgame)</field>
-    <description>Suricata ET MALWARE: Amadey/StealC/SocGholish infostealer C2 or delivery traffic detected — Operation Endgame survivor infrastructure (T1071.001)</description>
+    <description>Suricata ET MALWARE: Amadey/StealC/SocGholish infostealer C2 or delivery traffic detected - Operation Endgame survivor infrastructure (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1555.003</id>
@@ -306,7 +306,7 @@
   <rule id="103693" level="12">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(ET MALWARE|ETPRO MALWARE).*(TonRAT|Ton\.RAT|nodejs.implant|hospitality.campaign)</field>
-    <description>Suricata ET MALWARE: TonRAT Node.js implant C2 traffic detected — photo-zip hospitality campaign (T1071.001)</description>
+    <description>Suricata ET MALWARE: TonRAT Node.js implant C2 traffic detected - photo-zip hospitality campaign (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
     </mitre>

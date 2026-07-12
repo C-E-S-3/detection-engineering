@@ -77,7 +77,7 @@
   <rule id="103746" level="13">
     <if_sid>103745</if_sid>
     <field name="RequestPath" type="pcre2">(?i)(?:task=.*upload|view=.*upload|upload.*=.*ck|format=json.*ck)</field>
-    <description>Joomlack Page Builder CK CVE-2026-56290: POST to CK Page Builder upload endpoint from $(ClientHost) to $(RequestHost)$(RequestPath) — improper access control bypass; CSRF token readable by any visitor enables unauthenticated PHP upload (T1190)</description>
+    <description>Joomlack Page Builder CK CVE-2026-56290: POST to CK Page Builder upload endpoint from $(ClientHost) to $(RequestHost)$(RequestPath) - improper access control bypass; CSRF token readable by any visitor enables unauthenticated PHP upload (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -90,7 +90,7 @@
   <rule id="103747" level="15">
     <if_sid>103746</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
-    <description>Joomlack Page Builder CK CVE-2026-56290: CK upload endpoint returned $(DownstreamStatus) to $(ClientHost) — PHP webshell upload CONFIRMED at $(RequestHost); initiate incident response (T1190/T1505.003)</description>
+    <description>Joomlack Page Builder CK CVE-2026-56290: CK upload endpoint returned $(DownstreamStatus) to $(ClientHost) - PHP webshell upload CONFIRMED at $(RequestHost); initiate incident response (T1190/T1505.003)</description>
     <mitre>
       <id>T1190</id>
       <id>T1505</id>
@@ -105,7 +105,7 @@
   <rule id="103748" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/media/com_ckpagebuilder/.*\.php(?:\?|$)</field>
-    <description>Joomlack Page Builder CK CVE-2026-56290: PHP file accessed in CK Page Builder media path from $(ClientHost) to $(RequestHost)$(RequestPath) — active webshell execution; initiate incident response (T1505.003)</description>
+    <description>Joomlack Page Builder CK CVE-2026-56290: PHP file accessed in CK Page Builder media path from $(ClientHost) to $(RequestHost)$(RequestPath) - active webshell execution; initiate incident response (T1505.003)</description>
     <mitre>
       <id>T1505</id>
       <id>T1190</id>
@@ -120,7 +120,7 @@
   <rule id="103749" level="13" frequency="3" timeframe="60">
     <if_matched_sid>103746</if_matched_sid>
     <same_field>ClientHost</same_field>
-    <description>Joomlack Page Builder CK CVE-2026-56290: 3+ upload probes from $(ClientHost) in 60s — automated CVE-2026-56290 exploit tool; $(RequestHost) actively targeted (T1190)</description>
+    <description>Joomlack Page Builder CK CVE-2026-56290: 3+ upload probes from $(ClientHost) in 60s - automated CVE-2026-56290 exploit tool; $(RequestHost) actively targeted (T1190)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -138,7 +138,7 @@
     <if_matched_sid>103734</if_matched_sid>
     <if_sid>103746</if_sid>
     <same_field>ClientHost</same_field>
-    <description>Joomla 2026 Plugin RCE Campaign: $(ClientHost) probed both SP Page Builder (CVE-2026-48908, rule 103734) and CK Page Builder (CVE-2026-56290) upload endpoints within 5 min — coordinated multi-CVE Joomla exploitation campaign; $(RequestHost) targeted (T1190)</description>
+    <description>Joomla 2026 Plugin RCE Campaign: $(ClientHost) probed both SP Page Builder (CVE-2026-48908, rule 103734) and CK Page Builder (CVE-2026-56290) upload endpoints within 5 min - coordinated multi-CVE Joomla exploitation campaign; $(RequestHost) targeted (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>

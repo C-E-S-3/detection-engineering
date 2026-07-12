@@ -71,7 +71,7 @@
   <rule id="103103" level="11" frequency="5" timeframe="60">
     <if_matched_sid>103102</if_matched_sid>
     <same_field>addr.remote</same_field>
-    <description>Teleport: Brute-force — 5+ auth failures from $(addr.remote) in 60 s (T1110)</description>
+    <description>Teleport: Brute-force - 5+ auth failures from $(addr.remote) in 60 s (T1110)</description>
     <mitre>
       <id>T1110</id>
     </mitre>
@@ -83,7 +83,7 @@
     <if_matched_sid>103102</if_matched_sid>
     <same_field>addr.remote</same_field>
     <different_field>user</different_field>
-    <description>Teleport: Credential stuffing — 5+ auth failures for different users from $(addr.remote) in 120 s (T1110)</description>
+    <description>Teleport: Credential stuffing - 5+ auth failures for different users from $(addr.remote) in 120 s (T1110)</description>
     <mitre>
       <id>T1110.001</id>
     </mitre>
@@ -105,7 +105,7 @@
     <if_sid>103100,103101</if_sid>
     <field name="event" type="pcre2">^session\.start$</field>
     <field name="cert_type" type="pcre2">^(host|db|app|kube)$</field>
-    <description>Teleport: Non-user session.start with $(cert_type) certificate — verify cert issuance chain (T1550/CVE-2025-49825)</description>
+    <description>Teleport: Non-user session.start with $(cert_type) certificate - verify cert issuance chain (T1550/CVE-2025-49825)</description>
     <mitre>
       <id>T1550</id>
       <id>T1078</id>
@@ -118,7 +118,7 @@
     <if_sid>103100,103101</if_sid>
     <field name="event" type="pcre2">^session\.start$</field>
     <field name="addr.remote" negate="yes" type="pcre2">^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|127\.|::1)</field>
-    <description>Teleport: Session started from external IP $(addr.remote) by user $(user) — verify authorization (T1078)</description>
+    <description>Teleport: Session started from external IP $(addr.remote) by user $(user) - verify authorization (T1078)</description>
     <mitre>
       <id>T1078</id>
     </mitre>
@@ -129,7 +129,7 @@
   <rule id="103112" level="12">
     <if_sid>103100,103101</if_sid>
     <field name="event" type="pcre2">^cert\.create$</field>
-    <description>Teleport: 10+ certificates created within 60 s — possible CVE-2025-49825 exploitation or token abuse (T1550)</description>
+    <description>Teleport: 10+ certificates created within 60 s - possible CVE-2025-49825 exploitation or token abuse (T1550)</description>
     <mitre>
       <id>T1550</id>
     </mitre>
@@ -145,7 +145,7 @@
   <rule id="103120" level="8">
     <if_sid>103100,103101</if_sid>
     <field name="teleport.code" type="pcre2">^T9000I$</field>
-    <description>Teleport: New role created by $(user) — review role permissions (T1098)</description>
+    <description>Teleport: New role created by $(user) - review role permissions (T1098)</description>
     <mitre>
       <id>T1098</id>
     </mitre>
@@ -156,7 +156,7 @@
   <rule id="103121" level="11">
     <if_sid>103120</if_sid>
     <field name="name" type="pcre2">(?i)(admin|root|sudo|superuser|operator|sre|devops|infra)</field>
-    <description>Teleport: Privileged role "$(name)" created by $(user) — immediate review required (T1098)</description>
+    <description>Teleport: Privileged role "$(name)" created by $(user) - immediate review required (T1098)</description>
     <mitre>
       <id>T1098</id>
     </mitre>
@@ -178,7 +178,7 @@
   <rule id="103123" level="12">
     <if_sid>103122</if_sid>
     <field name="bot_name" type="pcre2">\w+</field>
-    <description>Teleport: Machine/bot account $(bot_name) created by $(user) — verify scope (T1136)</description>
+    <description>Teleport: Machine/bot account $(bot_name) created by $(user) - verify scope (T1136)</description>
     <mitre>
       <id>T1136.001</id>
     </mitre>
@@ -189,7 +189,7 @@
   <rule id="103124" level="8">
     <if_sid>103100,103101</if_sid>
     <field name="teleport.code" type="pcre2">^T6000I$</field>
-    <description>Teleport: Join token created by $(user) — new node enrollment authorized (T1098)</description>
+    <description>Teleport: Join token created by $(user) - new node enrollment authorized (T1098)</description>
     <mitre>
       <id>T1098</id>
     </mitre>
@@ -248,7 +248,7 @@
   <rule id="103128" level="11">
     <program_name>systemd</program_name>
     <match type="pcre2">teleport\.service.*(failed|start-limit|core-dump|killed)</match>
-    <description>Teleport: Service crash/restart detected — potential exploitation attempt (CVE-2025-49825)</description>
+    <description>Teleport: Service crash/restart detected - potential exploitation attempt (CVE-2025-49825)</description>
     <mitre>
       <id>T1499</id>
     </mitre>
@@ -258,7 +258,7 @@
   <!-- Repeated Teleport service restarts — crash loop -->
   <rule id="103129" level="13" frequency="3" timeframe="300">
     <if_matched_sid>103128</if_matched_sid>
-    <description>Teleport: Service crash loop (3+ in 5 min) — high-confidence exploitation or misconfiguration (CVE-2025-49825)</description>
+    <description>Teleport: Service crash loop (3+ in 5 min) - high-confidence exploitation or misconfiguration (CVE-2025-49825)</description>
     <mitre>
       <id>T1499</id>
     </mitre>
@@ -277,7 +277,7 @@
   <rule id="103130" level="12">
     <if_sid>550,554</if_sid>
     <field name="file" type="pcre2">^/etc/teleport\.yaml$</field>
-    <description>Teleport: Configuration file /etc/teleport.yaml modified — verify audit_events_uri not disabled (T1562)</description>
+    <description>Teleport: Configuration file /etc/teleport.yaml modified - verify audit_events_uri not disabled (T1562)</description>
     <mitre>
       <id>T1562</id>
       <id>T1562.006</id>
@@ -289,7 +289,7 @@
   <rule id="103131" level="13">
     <if_sid>553</if_sid>
     <field name="file" type="pcre2">^/etc/teleport\.yaml$</field>
-    <description>Teleport: Configuration file /etc/teleport.yaml deleted — possible Teleport teardown or tampering (T1562)</description>
+    <description>Teleport: Configuration file /etc/teleport.yaml deleted - possible Teleport teardown or tampering (T1562)</description>
     <mitre>
       <id>T1562</id>
     </mitre>

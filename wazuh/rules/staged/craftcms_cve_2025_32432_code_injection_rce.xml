@@ -83,7 +83,7 @@
        Level 13: direct exploitation attempt against CISA KEV endpoint. -->
   <rule id="103807" level="13">
     <if_sid>103806</if_sid>
-    <description>Craft CMS CVE-2025-32432: unauthenticated POST to conditions/render endpoint from $(ClientHost) to $(RequestHost)$(RequestPath) — Twig SSTI code injection exploitation attempt; unauthenticated RCE likely (T1190)</description>
+    <description>Craft CMS CVE-2025-32432: unauthenticated POST to conditions/render endpoint from $(ClientHost) to $(RequestHost)$(RequestPath) - Twig SSTI code injection exploitation attempt; unauthenticated RCE likely (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -98,7 +98,7 @@
   <rule id="103808" level="15">
     <if_sid>103806</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
-    <description>Craft CMS CVE-2025-32432: conditions/render returned $(DownstreamStatus) to $(ClientHost) — Twig SSTI code injection EXECUTED at $(RequestHost); unauthenticated RCE achieved; initiate incident response (T1190)</description>
+    <description>Craft CMS CVE-2025-32432: conditions/render returned $(DownstreamStatus) to $(ClientHost) - Twig SSTI code injection EXECUTED at $(RequestHost); unauthenticated RCE achieved; initiate incident response (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -114,7 +114,7 @@
   <rule id="103809" level="12">
     <if_sid>103806</if_sid>
     <field name="DownstreamStatus" type="pcre2">^5\d{2}$</field>
-    <description>Craft CMS CVE-2025-32432: conditions/render returned $(DownstreamStatus) to $(ClientHost) — Twig SSTI injection attempted; server error during template evaluation; active exploitation in progress (T1190)</description>
+    <description>Craft CMS CVE-2025-32432: conditions/render returned $(DownstreamStatus) to $(ClientHost) - Twig SSTI injection attempted; server error during template evaluation; active exploitation in progress (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -128,7 +128,7 @@
   <rule id="103810" level="13" frequency="3" timeframe="60">
     <if_matched_sid>103806</if_matched_sid>
     <same_field>ClientHost</same_field>
-    <description>Craft CMS CVE-2025-32432: 3+ conditions/render probes from $(ClientHost) in 60s — automated CVE-2025-32432 exploit tool; $(RequestHost) actively targeted (T1190)</description>
+    <description>Craft CMS CVE-2025-32432: 3+ conditions/render probes from $(ClientHost) in 60s - automated CVE-2025-32432 exploit tool; $(RequestHost) actively targeted (T1190)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -146,7 +146,7 @@
   <rule id="103811" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/(?:web/uploads|web/assets|uploads|cpresources)/.*\.ph(?:p[3-8]?|tml)(?:\?|$)</field>
-    <description>Craft CMS CVE-2025-32432: PHP file accessed in Craft CMS asset/uploads path from $(ClientHost) to $(RequestHost)$(RequestPath) — PHP should not exist in Craft asset directories; likely webshell dropped via CVE-2025-32432 code injection (T1505.003)</description>
+    <description>Craft CMS CVE-2025-32432: PHP file accessed in Craft CMS asset/uploads path from $(ClientHost) to $(RequestHost)$(RequestPath) - PHP should not exist in Craft asset directories; likely webshell dropped via CVE-2025-32432 code injection (T1505.003)</description>
     <mitre>
       <id>T1505</id>
       <id>T1190</id>
