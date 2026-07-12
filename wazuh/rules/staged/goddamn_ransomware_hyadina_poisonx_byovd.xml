@@ -8,7 +8,7 @@
        T1078      - Valid Accounts (AnyDesk initial access)
        T1555.003  - Credentials from Web Browsers (NirSoft)
        T1570      - Lateral Tool Transfer (PsExec)
-     Rule IDs: 103821-103832
+     Rule IDs: 103842-103849
      Author: SecOps Engineer
      Date: 2026-07-12
 
@@ -34,15 +34,15 @@
 
      Log source prerequisites:
        - Sysmon EventID 1 (ProcessCreate) -> Wazuh SID 61603
-         Required for process ancestry rules (103825, 103826, 103827)
+         Required for process ancestry rules (103847, 103848, 103849)
        - Sysmon EventID 11 (FileCreate) -> Wazuh SID 61644
-         Required for encrypted file extension detection (103824)
+         Required for encrypted file extension detection (103845)
        - Wazuh FIM (syscheck) monitoring Windows driver store paths:
            C:\Windows\System32\drivers\
            C:\Windows\SysWOW64\drivers\
-         Required for g11.sys file detection (103821, 103822)
+         Required for g11.sys file detection (103842, 103843)
        - Windows System event log (EventID 7045 - New Service Installed) forwarded
-         Required for kernel service registration detection (103823)
+         Required for kernel service registration detection (103844)
 
      Severity tiers:
        12 - Behavioral indicator (e.g. NirSoft tool, AnyDesk install from odd path)
@@ -61,7 +61,7 @@
        Requires Wazuh syscheck monitoring C:\Windows\System32\drivers\ and
        C:\Windows\SysWOW64\drivers\.
        =========================================================== -->
-  <rule id="103821" level="15">
+  <rule id="103842" level="15">
     <if_sid>554,553,550</if_sid>
     <match>g11.sys</match>
     <description>PoisonX BYOVD: g11.sys kernel driver written to system path on $(agent.name) -- GodDamn ransomware (Hyadina RaaS) BYOVD EDR-kill driver staged for installation (T1543.003, T1562.001)</description>
@@ -78,7 +78,7 @@
        checking is enabled in ossec.conf. This rule fires on the confirmed IOC
        hash regardless of filename, catching renamed copies.
        =========================================================== -->
-  <rule id="103822" level="15">
+  <rule id="103843" level="15">
     <if_sid>550,553,554,593</if_sid>
     <match>2d91a78e739891c9854c254f5b2a6b84c0e167dfa253466cbccd2cdd1c20145d</match>
     <description>PoisonX BYOVD: confirmed IOC hash 2d91a78e (g11.sys) detected by FIM on $(agent.name) -- GodDamn/Hyadina ransomware EDR-kill kernel driver (T1543.003, T1562.001)</description>
@@ -95,7 +95,7 @@
        named "g11" (ServiceType=kernel driver). The Windows system log records
        new service installations via EventID 7045 (System log, not Security).
        =========================================================== -->
-  <rule id="103823" level="14">
+  <rule id="103844" level="14">
     <if_group>windows</if_group>
     <field name="win.system.eventID">^7045$</field>
     <field name="win.eventdata.serviceName" type="pcre2">^g11$</field>
@@ -113,7 +113,7 @@
        ending in "Damn") to all encrypted files. Mass file creation with this
        extension on any host is an active ransomware indicator.
        =========================================================== -->
-  <rule id="103824" level="14">
+  <rule id="103845" level="14">
     <if_sid>61644</if_sid>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.God8?Damn$</field>
     <description>GodDamn Ransomware: file with .God8Damn extension created on $(win.eventdata.computer) -- Hyadina RaaS file encryption in progress (T1486)</description>
@@ -128,8 +128,8 @@
        Frequency rule: 20+ .God8Damn files in 60 seconds indicates mass
        encryption activity already underway. Isolate the host immediately.
        =========================================================== -->
-  <rule id="103828" level="15" frequency="20" timeframe="60">
-    <if_matched_sid>103824</if_matched_sid>
+  <rule id="103846" level="15" frequency="20" timeframe="60">
+    <if_matched_sid>103845</if_matched_sid>
     <same_field>win.eventdata.computer</same_field>
     <description>GodDamn Ransomware: MASS ENCRYPTION — 20+ .God8Damn files in 60s on $(win.eventdata.computer) -- CRITICAL: isolate host immediately (T1486)</description>
     <mitre>
@@ -145,7 +145,7 @@
        C:\Program Files\Broadcom\ or C:\Program Files\Symantec\. Any instance of
        symantec.exe outside these paths is near-certain masquerading.
        =========================================================== -->
-  <rule id="103825" level="13">
+  <rule id="103847" level="13">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\symantec\.exe$</field>
     <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)\\(Program Files|Program Files \(x86\))\\(Broadcom|Symantec|Norton|Symantec Endpoint Protection)\\.+\\symantec\.exe$</field>
@@ -163,7 +163,7 @@
        etc.) for credential harvesting before lateral movement and encryption.
        These tools have no legitimate administrative use in an enterprise environment.
        =========================================================== -->
-  <rule id="103826" level="12">
+  <rule id="103848" level="12">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(WebBrowserPassView|MailPassView|PasswordFox|ChromePass|IEPassView|OperaPassView|BulletsPassView|MessenPass|PstPassword|OutlookPassView|WirelessKeyView|NetworkPasswordRecovery|VaultPasswordView|CredentialsFileView|rdpv|dialupass|SniffPass|RouterPassView|WebPassView|ProductKey|ProduKey)\.exe$</field>
     <description>GodDamn/Hyadina: NirSoft credential theft tool $(win.eventdata.image) executed on $(win.eventdata.computer) by $(win.eventdata.user) -- credential harvesting phase preceding lateral movement (T1555.003)</description>
@@ -179,7 +179,7 @@
        Hyadina uses PsExec for worm-style lateral movement. Distinguish from
        legitimate PsExec use by flagging network paths as the parent process origin.
        =========================================================== -->
-  <rule id="103827" level="12">
+  <rule id="103849" level="12">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(PsExec|PSEXEC|psexec64)\.exe$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)\\\\[a-zA-Z0-9_\-\.]+\\[a-zA-Z$]+\\</field>
