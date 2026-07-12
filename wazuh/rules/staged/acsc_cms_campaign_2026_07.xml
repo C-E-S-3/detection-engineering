@@ -1,0 +1,357 @@
+<!-- ============================================================
+     ACSC CMS Exploitation Campaign - July 2026
+     Multi-CVE WordPress and CMS Platform Webshell Deployment
+
+     Advisory: Australian Cyber Security Centre (ACSC) 2026-07-11
+     Campaign summary: Large-scale exploitation of CMS plugins deploying
+     PHP webshells for persistent access, credential theft, and lateral
+     movement. Campaign may be AI-assisted in exploit scaling.
+
+     CVEs covered in this file:
+       CVE-2026-0740  - Ninja Forms File Uploads <=3.3.26 (CVSS 9.8)
+                        Unauthenticated arbitrary file upload -> RCE
+       CVE-2026-1357  - WPvivid Backup <=0.9.123 (CVSS 9.8)
+                        Predictable null-byte AES key bypass -> PHP upload -> RCE
+       CVE-2026-31843 - pay-uz Laravel <=2.2.24 (CVSS 9.8)
+                        Unauthenticated PHP payment hook overwrite -> RCE
+       CVE-2025-32432 - Craft CMS 3.x/4.x/5.x (CVSS 10.0) [CISA KEV]
+                        Unauthenticated code injection via asset transform (T1190)
+       CVE-2026-1969  - ThemeREX Addons <2.38.5 (CVSS 5.3)
+                        Incomplete fix for CVE-2024-13448; AJAX file upload bypass
+       CVE-2025-7443  - BerqWP <2.1.3 (unauthenticated file upload)
+       CVE-2025-7852  - WPBookit <1.6.9 (unauthenticated file upload -> RCE)
+       CVE-2025-13486 - ACF Extended (arbitrary file upload via AJAX)
+
+     Already covered separately:
+       CVE-2026-3844  - Breeze Cache (PR #57, rules 103770-103779)
+       CVE-2026-48907 - Joomla JCE (staged/joomla_jce_cve_2026_48907_php_upload_rce.xml)
+
+     MITRE ATT&amp;CK:
+       T1190     - Exploit Public-Facing Application (TA0001 Initial Access)
+       T1505.003 - Server Software Component: Web Shell (TA0003 Persistence)
+       T1059.004 - Command and Scripting Interpreter: Unix Shell (via webshell)
+       T1078     - Valid Accounts (credential theft post-webshell)
+       T1105     - Ingress Tool Transfer (secondary payload staging)
+
+     Log source prerequisites:
+       - Traefik access logs in JSON format forwarded to Wazuh.
+         Fields: RequestMethod, RequestPath, DownstreamStatus, ClientHost,
+         RequestHost (rules 103780-103796, 103799)
+       - Wazuh FIM / syscheck enabled on CMS web root directories
+         (rules 103797, 103798): parent rule 554 (file added to system)
+
+     Rule IDs: 103780-103799
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-12
+     ESKA: ESKA-457
+     ============================================================ -->
+
+<!-- ============================================================
+     CVE-2026-0740: NINJA FORMS FILE UPLOADS - UNAUTHENTICATED RCE
+     Rule IDs: 103780-103783
+     Ninja Forms File Uploads plugin <=3.3.26; missing file type
+     validation in NF_FU_AJAX_Controllers_Uploads::handle_upload.
+     Unauthenticated attackers can upload arbitrary PHP files via
+     the nf_fu_upload WordPress AJAX action.
+     ============================================================ -->
+
+<group name="initial_access,webshell,wordpress,ninja_forms,acsc_cms_campaign,">
+
+  <!-- POST to Ninja Forms file upload AJAX action -->
+  <rule id="103780" level="10">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?:wp-admin/admin-ajax\.php.*action=nf_fu_upload|wp-content/plugins/ninja-forms-uploads?/)</field>
+    <description>ACSC CMS Campaign CVE-2026-0740: POST to Ninja Forms file upload AJAX action from $(ClientHost) to $(RequestHost)$(RequestPath) - unauthenticated upload attempt (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,ninja_forms,cve_2026_0740,initial_access,file_upload,</group>
+  </rule>
+
+  <!-- Ninja Forms upload returned 2xx - file write likely succeeded -->
+  <rule id="103781" level="14">
+    <if_sid>103780</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>ACSC CMS Campaign CVE-2026-0740: Ninja Forms upload action returned 2xx to $(ClientHost) - unauthenticated file write CONFIRMED; PHP webshell may have been deployed (T1190/T1505.003)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1505.003</id>
+    </mitre>
+    <group>wordpress,ninja_forms,cve_2026_0740,initial_access,file_upload,rce_success,</group>
+  </rule>
+
+  <!-- 5+ Ninja Forms upload probes from same IP in 60s - automated scanner -->
+  <rule id="103782" level="12" frequency="5" timeframe="60">
+    <if_matched_sid>103780</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>ACSC CMS Campaign CVE-2026-0740: 5+ Ninja Forms upload probes from $(ClientHost) in 60s - automated mass-scanning for CVE-2026-0740 (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,ninja_forms,cve_2026_0740,scanner,initial_access,</group>
+  </rule>
+
+  <!-- Webshell command execution in Ninja Forms upload path -->
+  <rule id="103783" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">wp-content/uploads/nf-uploads/.*\.ph(?:p\d?|tml).*(?:cmd=|exec=|shell=|c=|command=|system=|passthru=|eval=)</field>
+    <description>ACSC CMS Campaign CVE-2026-0740: Command execution parameter in Ninja Forms upload directory from $(ClientHost) - WEBSHELL ACTIVE; PHP backdoor executing commands (T1505.003/T1059.004)</description>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1059.004</id>
+    </mitre>
+    <group>wordpress,ninja_forms,cve_2026_0740,webshell,execution,high_confidence,</group>
+  </rule>
+
+</group>
+
+
+<!-- ============================================================
+     CVE-2026-1357: WPVIVID BACKUP - PREDICTABLE KEY BYPASS -> RCE
+     Rule IDs: 103784-103787
+     WPvivid Backup <=0.9.123; AES decryption failure falls through
+     to null-byte key, allowing attacker to predict encryption and
+     upload malicious PHP to publicly accessible directories via
+     the wpvivid_action=send_to_site AJAX handler.
+     ============================================================ -->
+
+<group name="initial_access,webshell,wordpress,wpvivid,acsc_cms_campaign,">
+
+  <!-- POST to WPvivid send_to_site action - crypto bypass upload vector -->
+  <rule id="103784" level="11">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">wp-admin/admin-ajax\.php.*wpvivid_action=send_to_site</field>
+    <description>ACSC CMS Campaign CVE-2026-1357: POST to WPvivid send_to_site AJAX action from $(ClientHost) to $(RequestHost)$(RequestPath) - predictable AES key bypass upload attempt (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,wpvivid,cve_2026_1357,initial_access,file_upload,</group>
+  </rule>
+
+  <!-- WPvivid send_to_site returned 2xx - PHP file write succeeded -->
+  <rule id="103785" level="14">
+    <if_sid>103784</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>ACSC CMS Campaign CVE-2026-1357: WPvivid send_to_site returned 2xx to $(ClientHost) - unauthenticated PHP file write CONFIRMED via null-byte AES bypass (T1190/T1505.003)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1505.003</id>
+    </mitre>
+    <group>wordpress,wpvivid,cve_2026_1357,initial_access,rce_success,file_upload,high_confidence,</group>
+  </rule>
+
+  <!-- 3+ WPvivid send_to_site probes in 60s - automated exploitation attempt -->
+  <rule id="103786" level="12" frequency="3" timeframe="60">
+    <if_matched_sid>103784</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>ACSC CMS Campaign CVE-2026-1357: 3+ WPvivid send_to_site requests from $(ClientHost) in 60s - automated CVE-2026-1357 exploitation attempt (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,wpvivid,cve_2026_1357,scanner,initial_access,</group>
+  </rule>
+
+  <!-- PHP file created in WPvivid staging directory (FIM) -->
+  <rule id="103787" level="15">
+    <if_sid>554</if_sid>
+    <field name="file" type="pcre2">wp-content/(?:uploads/wpvivid|backups/wpvivid|cache/wpvivid)/.*\.ph(?:p\d?|tml)$</field>
+    <description>ACSC CMS Campaign CVE-2026-1357: PHP file created in WPvivid directory $(file) - WEBSHELL DROP via null-byte AES bypass; investigate immediately (T1505.003)</description>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,wpvivid,cve_2026_1357,webshell,persistence,syscheck_file,high_confidence,</group>
+  </rule>
+
+</group>
+
+
+<!-- ============================================================
+     CVE-2026-31843: PAY-UZ LARAVEL - UNAUTHENTICATED PHP OVERWRITE
+     Rule IDs: 103788-103790
+     goodoneuz/pay-uz <=2.2.24; /payment/api/editable/update endpoint
+     exposed via Route::any() without authentication middleware,
+     allowing unauthenticated overwrite of PHP payment hook files.
+     ============================================================ -->
+
+<group name="initial_access,webshell,laravel,pay_uz,acsc_cms_campaign,">
+
+  <!-- POST/ANY to pay-uz editable update endpoint - unauthenticated PHP overwrite -->
+  <rule id="103788" level="12">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)/payment/api/editable/update(?:[?#/]|$)</field>
+    <description>ACSC CMS Campaign CVE-2026-31843: Request to pay-uz unauthenticated PHP overwrite endpoint from $(ClientHost) to $(RequestHost)$(RequestPath) - payment hook file overwrite attempt (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>laravel,pay_uz,cve_2026_31843,initial_access,file_upload,</group>
+  </rule>
+
+  <!-- pay-uz editable/update returned 2xx - PHP file overwrite succeeded -->
+  <rule id="103789" level="15">
+    <if_sid>103788</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>ACSC CMS Campaign CVE-2026-31843 CRITICAL: pay-uz editable/update returned 2xx to $(ClientHost) - PHP payment hook file OVERWRITTEN; malicious code now executes during payment processing (T1190/T1505.003)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1505.003</id>
+    </mitre>
+    <group>laravel,pay_uz,cve_2026_31843,initial_access,rce_success,high_confidence,</group>
+  </rule>
+
+  <!-- 3+ pay-uz endpoint probes in 60s - automated scanner -->
+  <rule id="103790" level="13" frequency="3" timeframe="60">
+    <if_matched_sid>103788</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>ACSC CMS Campaign CVE-2026-31843: 3+ requests to pay-uz editable/update from $(ClientHost) in 60s - automated exploitation scan (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>laravel,pay_uz,cve_2026_31843,scanner,initial_access,</group>
+  </rule>
+
+</group>
+
+
+<!-- ============================================================
+     CVE-2025-32432: CRAFT CMS - UNAUTHENTICATED CODE INJECTION
+     Rule IDs: 103791-103794
+     Craft CMS 3.0-3.9.14, 4.0-4.14.14, 5.0-5.6.16 (CVSS 10.0)
+     CISA KEV (added 2026-03-20). CWE-94 code injection via the
+     image transform/asset action controller. Extends CVE-2023-41892.
+     Unauthenticated attackers inject PHP code via crafted POST
+     to Craft action controllers with template/transform parameters.
+     ============================================================ -->
+
+<group name="initial_access,webshell,craft_cms,acsc_cms_campaign,">
+
+  <!-- POST to Craft CMS action controller endpoint - base anchor -->
+  <rule id="103791" level="10">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)(?:/actions/assets/(?:generate-transform|edit-image|save-asset)|/index\.php\?(?:p=|action=)(?:admin/)?actions/assets/|/actions/app/migrate)</field>
+    <description>ACSC CMS Campaign CVE-2025-32432: POST to Craft CMS asset action controller from $(ClientHost) to $(RequestHost)$(RequestPath) - potential code injection probe (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>craft_cms,cve_2025_32432,initial_access,exploit_pubfacing,</group>
+  </rule>
+
+  <!-- Craft CMS action with PHP code injection pattern in path/query -->
+  <rule id="103792" level="13">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)/actions/.*?(?:transforms?\[|__class__|phpinfo|system\(|passthru|eval\(|base64_decode|assert\(|preg_replace.*[/e])</field>
+    <description>ACSC CMS Campaign CVE-2025-32432: Craft CMS action path contains PHP code injection pattern from $(ClientHost) to $(RequestHost)$(RequestPath) - active exploit attempt (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>craft_cms,cve_2025_32432,initial_access,exploit_pubfacing,code_injection,high_confidence,</group>
+  </rule>
+
+  <!-- Craft CMS action controller returned 2xx - injection may have executed -->
+  <rule id="103793" level="14">
+    <if_sid>103791</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>ACSC CMS Campaign CVE-2025-32432: Craft CMS asset action returned 2xx to $(ClientHost) - code injection payload acknowledged; correlate with webshell file creation on host (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>craft_cms,cve_2025_32432,initial_access,rce_success,high_confidence,</group>
+  </rule>
+
+  <!-- PHP file created in Craft CMS public web directories (FIM) -->
+  <rule id="103794" level="15">
+    <if_sid>554</if_sid>
+    <field name="file" type="pcre2">(?:web|public|public_html|webroot|htdocs)/(?:cpresources|uploads|assets|files|images)/.*\.ph(?:p\d?|tml)$</field>
+    <description>ACSC CMS Campaign CVE-2025-32432: PHP file created in Craft CMS public resource directory $(file) - WEBSHELL DEPLOYED; initiate immediate incident response (T1505.003)</description>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1190</id>
+    </mitre>
+    <group>craft_cms,cve_2025_32432,webshell,persistence,syscheck_file,high_confidence,</group>
+  </rule>
+
+</group>
+
+
+<!-- ============================================================
+     ACSC CMS CAMPAIGN - ADDITIONAL WORDPRESS PLUGIN EXPLOITS
+     Rule IDs: 103795-103799
+     Covers additional CVEs from ACSC advisory targeting WordPress:
+       CVE-2026-1969  - ThemeREX Addons <2.38.5 (CVSS 5.3)
+                        AJAX file upload bypass (incomplete fix)
+       CVE-2025-7443  - BerqWP (unauthenticated file upload)
+       CVE-2025-7852  - WPBookit (unauthenticated file upload -> RCE)
+       CVE-2025-13486 - ACF Extended (arbitrary file upload via AJAX)
+     Plus generic campaign-level patterns for webshell activation.
+     ============================================================ -->
+
+<group name="initial_access,webshell,wordpress,acsc_cms_campaign,">
+
+  <!-- ThemeREX Addons CVE-2026-1969: AJAX upload bypass -->
+  <rule id="103795" level="11">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">wp-admin/admin-ajax\.php.*action=(?:trx_addons_(?:upload|ajax)|acfe_ajax_upload|berqwp_(?:upload|ajax)|wpbookit_(?:upload|ajax)|nf_fu_)</field>
+    <description>ACSC CMS Campaign: POST to vulnerable WordPress plugin upload AJAX action (ThemeREX/BerqWP/WPBookit/ACF Extended) from $(ClientHost) to $(RequestHost)$(RequestPath) - unauthenticated file upload attempt (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,cve_2026_1969,acsc_cms_campaign,initial_access,file_upload,</group>
+  </rule>
+
+  <!-- Plugin upload action returned 2xx - file write succeeded -->
+  <rule id="103796" level="14">
+    <if_sid>103795</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>ACSC CMS Campaign: WordPress plugin upload action returned 2xx to $(ClientHost) - unauthenticated file write SUCCEEDED; PHP webshell likely deployed (T1190/T1505.003)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1505.003</id>
+    </mitre>
+    <group>wordpress,acsc_cms_campaign,initial_access,rce_success,file_upload,high_confidence,</group>
+  </rule>
+
+  <!-- Generic: PHP file accessed in WordPress uploads dir with shell params -->
+  <rule id="103797" level="14">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">wp-content/uploads/.*\.ph(?:p\d?|tml).*(?:cmd=|exec=|shell=|c=|command=|system=|passthru=|eval=|run=|op=)</field>
+    <description>ACSC CMS Campaign: Webshell command execution parameter in wp-content/uploads PHP path from $(ClientHost) to $(RequestHost)$(RequestPath) - active webshell executing commands (T1505.003/T1059.004)</description>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1059.004</id>
+    </mitre>
+    <group>wordpress,webshell,execution,acsc_cms_campaign,high_confidence,</group>
+  </rule>
+
+  <!-- Generic: PHP/PHTML file created in CMS upload directories (FIM) -->
+  <rule id="103798" level="13">
+    <if_sid>554</if_sid>
+    <field name="file" type="pcre2">(?:wp-content/uploads|wp-content/cache|wp-content/themes/[^/]+|wp-content/plugins/[^/]+/tmp)/.*\.ph(?:p\d?|tml)$</field>
+    <description>ACSC CMS Campaign: PHP file created in WordPress upload/cache/plugin directory $(file) - potential webshell deployment matching ACSC July 2026 campaign pattern (T1505.003)</description>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1105</id>
+    </mitre>
+    <group>wordpress,webshell,persistence,syscheck_file,acsc_cms_campaign,</group>
+  </rule>
+
+  <!-- Multi-CVE scanner: requests to multiple CMS exploit endpoints in 120s -->
+  <rule id="103799" level="13" frequency="3" timeframe="120">
+    <if_matched_group>acsc_cms_campaign,initial_access,</if_matched_group>
+    <same_field>ClientHost</same_field>
+    <description>ACSC CMS Campaign: 3+ CMS exploit endpoint requests from $(ClientHost) in 120s across multiple plugin targets - automated mass-exploitation campaign matching ACSC July 2026 advisory (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,acsc_cms_campaign,scanner,initial_access,multi_cve,</group>
+  </rule>
+
+</group>
