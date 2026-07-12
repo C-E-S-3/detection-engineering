@@ -1,0 +1,194 @@
+<!-- ============================================================
+     GodDamn Ransomware (Hyadina RaaS) and PoisonX BYOVD Detection Rules
+     MITRE ATT&CK Techniques:
+       T1543.003  - Create or Modify System Process: Windows Service
+       T1562.001  - Impair Defenses: Disable or Modify Tools (BYOVD EDR kill)
+       T1486      - Data Encrypted for Impact
+       T1036.005  - Masquerading: Match Legitimate Name or Location
+       T1078      - Valid Accounts (AnyDesk initial access)
+       T1555.003  - Credentials from Web Browsers (NirSoft)
+       T1570      - Lateral Tool Transfer (PsExec)
+     Rule IDs: 103821-103832
+     Author: SecOps Engineer
+     Date: 2026-07-12
+
+     Threat Actor: Hyadina (RaaS); ransomware lineage: Monster 2022 -> Beast -> GodDamn
+     References:
+       - Broadcom / Symantec: https://www.security.com/threat-intelligence/goddamn-ransomware-beast-rebrand
+       - IOC source: Broadcom Symantec Threat Intelligence (July 2026)
+
+     Threat Summary:
+       GodDamn is a ransomware-as-a-service family operated by the Hyadina group.
+       The hallmark tool is PoisonX: a BYOVD kernel driver (g11.sys) that is
+       Microsoft-signed and authored by GitHub user "oxfemale". The dropper
+       (symantec.exe) copies g11.sys into the Windows driver store and creates a
+       kernel service, which then issues IOCTLs to terminate EDR processes at ring 0.
+       After EDR impairment, NirSoft credential theft tools harvest browser/email
+       passwords, PsExec spreads laterally, and the encryptor appends .God8Damn to
+       all encrypted files. No ransom note is dropped on disk; extortion is conducted
+       via qTox and email.
+
+     IOC hashes (SHA256):
+       2d91a78e739891c9854c254f5b2a6b84c0e167dfa253466cbccd2cdd1c20145d
+         PoisonX BYOVD kernel driver g11.sys; Microsoft-signed; author GitHub oxfemale
+
+     Log source prerequisites:
+       - Sysmon EventID 1 (ProcessCreate) -> Wazuh SID 61603
+         Required for process ancestry rules (103825, 103826, 103827)
+       - Sysmon EventID 11 (FileCreate) -> Wazuh SID 61644
+         Required for encrypted file extension detection (103824)
+       - Wazuh FIM (syscheck) monitoring Windows driver store paths:
+           C:\Windows\System32\drivers\
+           C:\Windows\SysWOW64\drivers\
+         Required for g11.sys file detection (103821, 103822)
+       - Windows System event log (EventID 7045 - New Service Installed) forwarded
+         Required for kernel service registration detection (103823)
+
+     Severity tiers:
+       12 - Behavioral indicator (e.g. NirSoft tool, AnyDesk install from odd path)
+       13 - Masquerading process or suspicious driver path (high suspicion)
+       14 - Campaign-specific IOC: .God8Damn extension, g11 service name, PsExec chain
+       15 - Confirmed PoisonX IOC hash or g11.sys filename in driver store
+     ============================================================ -->
+
+<group name="ransomware,defense_evasion,windows,hyadina,goddamn,poisonx_byovd,">
+
+  <!-- ===========================================================
+       FIM: g11.sys file created or modified in driver store (T1543.003, T1562.001)
+       PoisonX dropper (symantec.exe) writes g11.sys into the Windows driver
+       store path before registering it as a kernel service. The filename g11.sys
+       in a driver directory has no known legitimate use.
+       Requires Wazuh syscheck monitoring C:\Windows\System32\drivers\ and
+       C:\Windows\SysWOW64\drivers\.
+       =========================================================== -->
+  <rule id="103821" level="15">
+    <if_sid>554,553,550</if_sid>
+    <match>g11.sys</match>
+    <description>PoisonX BYOVD: g11.sys kernel driver written to system path on $(agent.name) -- GodDamn ransomware (Hyadina RaaS) BYOVD EDR-kill driver staged for installation (T1543.003, T1562.001)</description>
+    <mitre>
+      <id>T1543.003</id>
+      <id>T1562.001</id>
+    </mitre>
+    <group>poisonx,byovd,driver_write,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       FIM: SHA256 IOC match for PoisonX g11.sys driver (T1543.003, T1562.001)
+       Wazuh syscheck includes SHA256 in file modification alerts when hash
+       checking is enabled in ossec.conf. This rule fires on the confirmed IOC
+       hash regardless of filename, catching renamed copies.
+       =========================================================== -->
+  <rule id="103822" level="15">
+    <if_sid>550,553,554,593</if_sid>
+    <match>2d91a78e739891c9854c254f5b2a6b84c0e167dfa253466cbccd2cdd1c20145d</match>
+    <description>PoisonX BYOVD: confirmed IOC hash 2d91a78e (g11.sys) detected by FIM on $(agent.name) -- GodDamn/Hyadina ransomware EDR-kill kernel driver (T1543.003, T1562.001)</description>
+    <mitre>
+      <id>T1543.003</id>
+      <id>T1562.001</id>
+    </mitre>
+    <group>poisonx,byovd,ioc_match,driver_hash,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Windows System EventID 7045: g11 kernel service registered (T1543.003)
+       After writing the driver, the PoisonX dropper creates a kernel service
+       named "g11" (ServiceType=kernel driver). The Windows system log records
+       new service installations via EventID 7045 (System log, not Security).
+       =========================================================== -->
+  <rule id="103823" level="14">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^7045$</field>
+    <field name="win.eventdata.serviceName" type="pcre2">^g11$</field>
+    <description>PoisonX BYOVD: Windows kernel service "g11" registered on $(agent.name) -- PoisonX BYOVD EDR-kill driver kernel service installation (T1543.003)</description>
+    <mitre>
+      <id>T1543.003</id>
+      <id>T1562.001</id>
+    </mitre>
+    <group>poisonx,byovd,service_install,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Sysmon EventID 11 (61644): .God8Damn file extension created (T1486)
+       GodDamn encryptor appends .God8Damn (or a victim-specific extension
+       ending in "Damn") to all encrypted files. Mass file creation with this
+       extension on any host is an active ransomware indicator.
+       =========================================================== -->
+  <rule id="103824" level="14">
+    <if_sid>61644</if_sid>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.God8?Damn$</field>
+    <description>GodDamn Ransomware: file with .God8Damn extension created on $(win.eventdata.computer) -- Hyadina RaaS file encryption in progress (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,goddamn,file_encryption,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Sysmon EventID 11 (61644): Mass .God8Damn file creation (T1486, critical)
+       Frequency rule: 20+ .God8Damn files in 60 seconds indicates mass
+       encryption activity already underway. Isolate the host immediately.
+       =========================================================== -->
+  <rule id="103828" level="15" frequency="20" timeframe="60">
+    <if_matched_sid>103824</if_matched_sid>
+    <same_field>win.eventdata.computer</same_field>
+    <description>GodDamn Ransomware: MASS ENCRYPTION — 20+ .God8Damn files in 60s on $(win.eventdata.computer) -- CRITICAL: isolate host immediately (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,goddamn,mass_encryption,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Sysmon EventID 1 (61603): symantec.exe spawned outside Symantec install paths
+       The PoisonX dropper masquerades as a Symantec process by naming itself
+       symantec.exe. Legitimate Symantec/Broadcom security software runs from
+       C:\Program Files\Broadcom\ or C:\Program Files\Symantec\. Any instance of
+       symantec.exe outside these paths is near-certain masquerading.
+       =========================================================== -->
+  <rule id="103825" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\symantec\.exe$</field>
+    <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)\\(Program Files|Program Files \(x86\))\\(Broadcom|Symantec|Norton|Symantec Endpoint Protection)\\.+\\symantec\.exe$</field>
+    <description>PoisonX BYOVD: symantec.exe launched from non-standard path $(win.eventdata.image) on $(win.eventdata.computer) -- GodDamn/Hyadina dropper masquerades as Symantec process (T1036.005)</description>
+    <mitre>
+      <id>T1036.005</id>
+      <id>T1543.003</id>
+    </mitre>
+    <group>poisonx,masquerading,dropper,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Sysmon EventID 1 (61603): NirSoft credential theft tools executed
+       The Hyadina group uses NirSoft utilities (WebBrowserPassView, MailPassView,
+       etc.) for credential harvesting before lateral movement and encryption.
+       These tools have no legitimate administrative use in an enterprise environment.
+       =========================================================== -->
+  <rule id="103826" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(WebBrowserPassView|MailPassView|PasswordFox|ChromePass|IEPassView|OperaPassView|BulletsPassView|MessenPass|PstPassword|OutlookPassView|WirelessKeyView|NetworkPasswordRecovery|VaultPasswordView|CredentialsFileView|rdpv|dialupass|SniffPass|RouterPassView|WebPassView|ProductKey|ProduKey)\.exe$</field>
+    <description>GodDamn/Hyadina: NirSoft credential theft tool $(win.eventdata.image) executed on $(win.eventdata.computer) by $(win.eventdata.user) -- credential harvesting phase preceding lateral movement (T1555.003)</description>
+    <mitre>
+      <id>T1555.003</id>
+      <id>T1078</id>
+    </mitre>
+    <group>credential_theft,nirsoft,hyadina,goddamn,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Sysmon EventID 1 (61603): PsExec lateral movement from non-admin share paths
+       Hyadina uses PsExec for worm-style lateral movement. Distinguish from
+       legitimate PsExec use by flagging network paths as the parent process origin.
+       =========================================================== -->
+  <rule id="103827" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(PsExec|PSEXEC|psexec64)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)\\\\[a-zA-Z0-9_\-\.]+\\[a-zA-Z$]+\\</field>
+    <description>GodDamn/Hyadina: PsExec launched against remote UNC share on $(win.eventdata.computer) by $(win.eventdata.user) -- lateral movement pattern consistent with Hyadina ransomware spreading (T1570)</description>
+    <mitre>
+      <id>T1570</id>
+      <id>T1486</id>
+    </mitre>
+    <group>lateral_movement,psexec,hyadina,goddamn,</group>
+  </rule>
+
+</group>
