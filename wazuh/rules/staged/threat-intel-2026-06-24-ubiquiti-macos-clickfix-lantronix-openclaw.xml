@@ -75,7 +75,7 @@
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(path.?trav|directory.?trav|CVE-2026-34909|ET WEB_SERVER.*(\.\.\/|%2F\.\.|%252F))</field>
     <field name="alert.metadata.affected_product" type="pcre2">(?i)UniFi|ubiquiti</field>
-    <description>Suricata: Path traversal attempt against Ubiquiti UniFi management — CVE-2026-34909 (T1190)</description>
+    <description>Suricata: Path traversal attempt against Ubiquiti UniFi management - CVE-2026-34909 (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -93,7 +93,7 @@
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(path.?trav|\.\.\/|%2F\.\.%2F|%252F|directory.?trav)</field>
     <field name="alert.dest_port" type="pcre2">^(8080|8443)$</field>
-    <description>Suricata: Path traversal targeting port $(alert.dest_port) — possible UniFi CVE-2026-34909 exploitation (T1190)</description>
+    <description>Suricata: Path traversal targeting port $(alert.dest_port) - possible UniFi CVE-2026-34909 exploitation (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -111,7 +111,7 @@
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(cmd.?inject|command.?inject|CVE-2026-34910|ET WEB_SERVER.*(;|\||%3B|%7C|%60|%24%28))</field>
     <field name="alert.dest_port" type="pcre2">^(443|8080|8443)$</field>
-    <description>Suricata: OS command injection POST to management port $(alert.dest_port) — CVE-2026-34910 UniFi RCE (T1190/T1059.004)</description>
+    <description>Suricata: OS command injection POST to management port $(alert.dest_port) - CVE-2026-34910 UniFi RCE (T1190/T1059.004)</description>
     <mitre>
       <id>T1190</id>
       <id>T1059.004</id>
@@ -129,7 +129,7 @@
   <rule id="103561" level="12">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(CVE-2026-34908|access.?control.?bypass|auth.?bypass.*(unifi|ubiquiti))</field>
-    <description>Suricata: Ubiquiti UniFi OS access control bypass probe — CVE-2026-34908 (T1190)</description>
+    <description>Suricata: Ubiquiti UniFi OS access control bypass probe - CVE-2026-34908 (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -147,7 +147,7 @@
   <rule id="103562" level="13" frequency="20" timeframe="60">
     <if_matched_sid>103559</if_matched_sid>
     <same_srcip></same_srcip>
-    <description>Rapid path traversal burst (20+ in 60s) from $(srcip) against UniFi management — automated CVE-2026-34908/34909 exploitation (T1190)</description>
+    <description>Rapid path traversal burst (20+ in 60s) from $(srcip) against UniFi management - automated CVE-2026-34908/34909 exploitation (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -166,7 +166,7 @@
     <if_matched_sid>103560</if_matched_sid>
     <same_srcip></same_srcip>
     <if_sid>103559</if_sid>
-    <description>CRITICAL: UniFi OS exploitation chain detected from $(srcip) — path traversal followed by command injection (CVE-2026-34909 → CVE-2026-34910) (T1190)</description>
+    <description>CRITICAL: UniFi OS exploitation chain detected from $(srcip) - path traversal followed by command injection (CVE-2026-34909 -> CVE-2026-34910) (T1190)</description>
     <mitre>
       <id>T1190</id>
       <id>T1059.004</id>
@@ -205,7 +205,7 @@
     <field name="process.name" type="pcre2">^hdiutil$</field>
     <field name="process.args" type="pcre2">attach.*-quiet|-quiet.*attach</field>
     <field name="process.parent.name" type="pcre2">^(bash|zsh|sh|Terminal|osascript|python3?|ruby)$</field>
-    <description>macOS: hdiutil attach -quiet from interactive shell parent $(process.parent.name) — ClickFix AMOS DMG delivery step 1 (T1204.002)</description>
+    <description>macOS: hdiutil attach -quiet from interactive shell parent $(process.parent.name) - ClickFix AMOS DMG delivery step 1 (T1204.002)</description>
     <mitre>
       <id>T1204.002</id>
       <id>T1059.004</id>
@@ -224,7 +224,7 @@
     <field name="process.name" type="pcre2">^hdiutil$</field>
     <field name="process.args" type="pcre2">attach.*-nobrowse|-nobrowse.*attach</field>
     <field name="process.parent.name" type="pcre2">^(bash|zsh|sh|Terminal|osascript|python3?|ruby)$</field>
-    <description>macOS: hdiutil attach -nobrowse from interactive shell parent $(process.parent.name) — ClickFix AMOS DMG delivery (T1204.002)</description>
+    <description>macOS: hdiutil attach -nobrowse from interactive shell parent $(process.parent.name) - ClickFix AMOS DMG delivery (T1204.002)</description>
     <mitre>
       <id>T1204.002</id>
       <id>T1059.004</id>
@@ -242,7 +242,7 @@
   <rule id="103566" level="13">
     <if_sid>103564</if_sid>
     <field name="process.args" type="pcre2">-nobrowse</field>
-    <description>macOS: hdiutil attach -quiet -nobrowse from shell parent — HIGH CONFIDENCE ClickFix AMOS delivery (T1204.002)</description>
+    <description>macOS: hdiutil attach -quiet -nobrowse from shell parent - HIGH CONFIDENCE ClickFix AMOS delivery (T1204.002)</description>
     <mitre>
       <id>T1204.002</id>
       <id>T1059.004</id>
@@ -262,7 +262,7 @@
     <field name="process.name" type="pcre2">^curl$</field>
     <field name="process.args" type="pcre2">(\.(dmg|pkg)|\.app\.zip).*(-s\b|--silent|-S\b|-o\b|-O\b|-L\b)</field>
     <field name="process.parent.name" type="pcre2">^(bash|zsh|sh|Terminal|osascript)$</field>
-    <description>macOS: curl silently downloading DMG/PKG payload from interactive shell parent $(process.parent.name) — possible ClickFix AMOS download (T1059.004/T1204.002)</description>
+    <description>macOS: curl silently downloading DMG/PKG payload from interactive shell parent $(process.parent.name) - possible ClickFix AMOS download (T1059.004/T1204.002)</description>
     <mitre>
       <id>T1059.004</id>
       <id>T1204.002</id>
@@ -281,7 +281,7 @@
     <decoded_as>json</decoded_as>
     <field name="process.executable" type="pcre2">^/Volumes/</field>
     <field name="process.parent.name" type="pcre2">^(bash|zsh|sh|Terminal|osascript|open)$</field>
-    <description>macOS: process $(process.name) executed directly from /Volumes/ path by $(process.parent.name) — possible AMOS/DMG payload execution (T1204.002)</description>
+    <description>macOS: process $(process.name) executed directly from /Volumes/ path by $(process.parent.name) - possible AMOS/DMG payload execution (T1204.002)</description>
     <mitre>
       <id>T1204.002</id>
     </mitre>
@@ -298,7 +298,7 @@
   <rule id="103569" level="14">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)svs-verificationdate\.beer</field>
-    <description>Suricata: Connection to AMOS C2 domain svs-verificationdate.beer — ClickFix/AMOS stealer IOC (T1071.001)</description>
+    <description>Suricata: Connection to AMOS C2 domain svs-verificationdate.beer - ClickFix/AMOS stealer IOC (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1204.002</id>
@@ -316,7 +316,7 @@
   <rule id="103570" level="14">
     <if_sid>86601</if_sid>
     <field name="alert.dest_ip" type="pcre2">^91\.92\.242\.30$</field>
-    <description>Suricata: Outbound connection to AMOS/ClawHavoc C2 IP 91.92.242.30 — active C2 IOC (T1071.001)</description>
+    <description>Suricata: Outbound connection to AMOS/ClawHavoc C2 IP 91.92.242.30 - active C2 IOC (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
     </mitre>
@@ -331,7 +331,7 @@
   <rule id="103571" level="14">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)hgodpcx\.ajb8\.com</field>
-    <description>Suricata: Connection to AMOS secondary C2 domain hgodpcx.ajb8.com — ClickFix stealer IOC (T1071.001)</description>
+    <description>Suricata: Connection to AMOS secondary C2 domain hgodpcx.ajb8.com - ClickFix stealer IOC (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
     </mitre>
@@ -365,7 +365,7 @@
   <rule id="103572" level="13">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(CVE-2025-67038|Lantronix|EDS5000|lantronix.cmd.inject)</field>
-    <description>Suricata: Lantronix EDS5000 OS command injection exploit — CVE-2025-67038 (T1190)</description>
+    <description>Suricata: Lantronix EDS5000 OS command injection exploit - CVE-2025-67038 (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -383,7 +383,7 @@
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(cmd.?inject|ET WEB_SERVER.*(username|user=).*(;|\||%3B|%7C|%60|%24%28))</field>
     <field name="alert.dest_port" type="pcre2">^(80|8080)$</field>
-    <description>Suricata: Command injection in username parameter POST to port $(alert.dest_port) — possible CVE-2025-67038 Lantronix EDS5000 exploit (T1190)</description>
+    <description>Suricata: Command injection in username parameter POST to port $(alert.dest_port) - possible CVE-2025-67038 Lantronix EDS5000 exploit (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -400,7 +400,7 @@
   <rule id="103574" level="10" frequency="10" timeframe="60">
     <if_matched_sid>103573</if_matched_sid>
     <same_srcip></same_srcip>
-    <description>Rapid OT management port probe burst from $(srcip) — reconnaissance precursor to CVE-2025-67038 exploitation (T1190)</description>
+    <description>Rapid OT management port probe burst from $(srcip) - reconnaissance precursor to CVE-2025-67038 exploitation (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -433,7 +433,7 @@
   <rule id="103575" level="13">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(CVE-2026-25253|ClawHavoc|clawhub.*(exploit|rce|inject))</field>
-    <description>Suricata: OpenClaw ClawHub 1-click RCE exploit detected — CVE-2026-25253 ClawHavoc campaign (T1190/T1195.002)</description>
+    <description>Suricata: OpenClaw ClawHub 1-click RCE exploit detected - CVE-2026-25253 ClawHavoc campaign (T1190/T1195.002)</description>
     <mitre>
       <id>T1190</id>
       <id>T1195.002</id>
@@ -454,7 +454,7 @@
     <field name="RequestPath" type="pcre2">(?i)/(skills?|marketplace)/(install|add|fetch)</field>
     <field name="RequestMethod">POST</field>
     <field name="RequestHost" type="pcre2">(?i)(openclaw|clawdeploy|clawhub)</field>
-    <description>OpenClaw marketplace skill install API called — verify source is trusted (ClawHavoc supply chain T1195.002)</description>
+    <description>OpenClaw marketplace skill install API called - verify source is trusted (ClawHavoc supply chain T1195.002)</description>
     <mitre>
       <id>T1195.002</id>
     </mitre>
@@ -471,7 +471,7 @@
   <rule id="103577" level="13">
     <if_sid>103576</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2[0-9][0-9]$</field>
-    <description>OpenClaw marketplace skill install SUCCEEDED (HTTP $(DownstreamStatus)) — possible ClawHavoc malicious skill installed (T1195.002)</description>
+    <description>OpenClaw marketplace skill install SUCCEEDED (HTTP $(DownstreamStatus)) - possible ClawHavoc malicious skill installed (T1195.002)</description>
     <mitre>
       <id>T1195.002</id>
     </mitre>
@@ -490,7 +490,7 @@
     <decoded_as>json</decoded_as>
     <field name="process.parent.name" type="pcre2">(?i)(openclaw|clawagent|clawhub-runtime)</field>
     <field name="process.executable" negate="yes" type="pcre2">(?i)/usr/(bin|local/bin|sbin)/|/opt/openclaw/</field>
-    <description>Unexpected process $(process.name) spawned by OpenClaw agent runtime from $(process.executable) — possible ClawHavoc payload execution (T1195.002)</description>
+    <description>Unexpected process $(process.name) spawned by OpenClaw agent runtime from $(process.executable) - possible ClawHavoc payload execution (T1195.002)</description>
     <mitre>
       <id>T1195.002</id>
       <id>T1059.004</id>

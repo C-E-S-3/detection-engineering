@@ -175,7 +175,7 @@
   <!-- Symlink chain: place + reload + root session -- three-stage exploit confirmed -->
   <rule id="102312" level="15" frequency="3" timeframe="600">
     <if_matched_sid>102300,102302,102306</if_matched_sid>
-    <description>LiteSpeed CVE-2026-54420 full kill chain: symlink placed → config reload → root session opened within 10 min -- CONFIRMED exploitation (T1068/T1078.003)</description>
+    <description>LiteSpeed CVE-2026-54420 full kill chain: symlink placed -> config reload -> root session opened within 10 min -- CONFIRMED exploitation (T1068/T1078.003)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1068</id>

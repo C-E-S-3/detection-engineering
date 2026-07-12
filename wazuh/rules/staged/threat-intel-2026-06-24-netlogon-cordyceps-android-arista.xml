@@ -68,7 +68,7 @@
     <if_sid>60010</if_sid>
     <field name="win.system.eventID">^5805$</field>
     <field name="win.system.channel">Security</field>
-    <description>Netlogon secure channel establishment failure on $(hostname) from $(win.eventdata.machineName) — possible CVE-2026-41089 exploitation probe (T1210)</description>
+    <description>Netlogon secure channel establishment failure on $(hostname) from $(win.eventdata.machineName) - possible CVE-2026-41089 exploitation probe (T1210)</description>
     <mitre>
       <id>T1210</id>
     </mitre>
@@ -84,7 +84,7 @@
     <if_sid>60010</if_sid>
     <field name="win.system.eventID">^582[789]$|^583[01]$</field>
     <field name="win.system.channel">Security</field>
-    <description>Netlogon secure channel error (EventID $(win.system.eventID)) on $(hostname) — Netlogon authentication anomaly consistent with CVE-2026-41089 exploitation (T1210)</description>
+    <description>Netlogon secure channel error (EventID $(win.system.eventID)) on $(hostname) - Netlogon authentication anomaly consistent with CVE-2026-41089 exploitation (T1210)</description>
     <mitre>
       <id>T1210</id>
     </mitre>
@@ -102,7 +102,7 @@
     <field name="win.system.channel">Application</field>
     <field name="win.eventdata.applicationName" type="pcre2">(?i)\\?lsass\.exe$</field>
     <field name="win.eventdata.faultModuleName" type="pcre2">(?i)netlogon(\.dll)?$</field>
-    <description>CRITICAL: lsass.exe crashed with netlogon.DLL as fault module on $(hostname) (ExceptionCode: $(win.eventdata.exceptionCode)) — CVE-2026-41089 RCE exploitation in progress (T1210)</description>
+    <description>CRITICAL: lsass.exe crashed with netlogon.DLL as fault module on $(hostname) (ExceptionCode: $(win.eventdata.exceptionCode)) - CVE-2026-41089 RCE exploitation in progress (T1210)</description>
     <mitre>
       <id>T1210</id>
       <id>T1190</id>
@@ -120,7 +120,7 @@
     <field name="win.system.channel">System</field>
     <field name="win.eventdata.param1" type="pcre2">(?i)^Netlogon$</field>
     <field name="win.eventdata.param2" type="pcre2">(?i)(stopped|running)</field>
-    <description>Netlogon service state change on domain controller $(hostname) — unexpected Netlogon stop/restart may indicate CVE-2026-41089 exploitation (T1543.003)</description>
+    <description>Netlogon service state change on domain controller $(hostname) - unexpected Netlogon stop/restart may indicate CVE-2026-41089 exploitation (T1543.003)</description>
     <mitre>
       <id>T1543.003</id>
       <id>T1210</id>
@@ -136,7 +136,7 @@
   <rule id="103631" level="14" frequency="5" timeframe="120">
     <if_matched_sid>103627</if_matched_sid>
     <same_field>win.eventdata.machineName</same_field>
-    <description>Netlogon channel failure burst from $(win.eventdata.machineName) on $(hostname) — 5+ failures in 120s, CVE-2026-41089 domain controller exploit sweep (T1210)</description>
+    <description>Netlogon channel failure burst from $(win.eventdata.machineName) on $(hostname) - 5+ failures in 120s, CVE-2026-41089 domain controller exploit sweep (T1210)</description>
     <mitre>
       <id>T1210</id>
       <id>T1190</id>
@@ -153,7 +153,7 @@
     <if_sid>60010</if_sid>
     <field name="win.system.eventID">^4742$</field>
     <field name="win.system.channel">Security</field>
-    <description>Domain computer account modified on DC $(hostname) by $(win.eventdata.subjectUserName) — monitor in context of Netlogon anomalies for CVE-2026-41089 post-exploitation (T1078.002)</description>
+    <description>Domain computer account modified on DC $(hostname) by $(win.eventdata.subjectUserName) - monitor in context of Netlogon anomalies for CVE-2026-41089 post-exploitation (T1078.002)</description>
     <mitre>
       <id>T1078.002</id>
     </mitre>
@@ -167,7 +167,7 @@
   <rule id="103633" level="13">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(CVE-2026-41089|netlogon.*overflow|netlogon.*exploit|netlogon.*rce|MS-NRPC.*overflow)</field>
-    <description>Suricata: malformed Netlogon RPC traffic detected — CVE-2026-41089 domain controller exploit attempt (T1210)</description>
+    <description>Suricata: malformed Netlogon RPC traffic detected - CVE-2026-41089 domain controller exploit attempt (T1210)</description>
     <mitre>
       <id>T1210</id>
       <id>T1190</id>
@@ -206,7 +206,7 @@
     <field name="github.action" type="pcre2">(?i)(workflows\.completed|workflow_run\.requested)</field>
     <field name="github.event" type="pcre2">(?i)(pull_request|pull_request_target)</field>
     <field name="github.actor_is_outside_collaborator">true</field>
-    <description>GitHub Actions workflow triggered by external fork contributor $(github.actor) — verify PR permissions comply with Cordyceps supply chain hardening (T1195.001)</description>
+    <description>GitHub Actions workflow triggered by external fork contributor $(github.actor) - verify PR permissions comply with Cordyceps supply chain hardening (T1195.001)</description>
     <mitre>
       <id>T1195.001</id>
     </mitre>
@@ -222,7 +222,7 @@
     <field name="github.action" type="pcre2">(?i)workflow_run</field>
     <field name="github.workflow_trigger" type="pcre2">(?i)pull_request_target</field>
     <field name="github.token_scope" type="pcre2">(?i)(write|admin)</field>
-    <description>GitHub Actions pull_request_target workflow with write token scope executed by $(github.actor) — Cordyceps CI/CD supply chain risk: secrets may be accessible (T1195.001)</description>
+    <description>GitHub Actions pull_request_target workflow with write token scope executed by $(github.actor) - Cordyceps CI/CD supply chain risk: secrets may be accessible (T1195.001)</description>
     <mitre>
       <id>T1195.001</id>
       <id>T1552.004</id>
@@ -239,7 +239,7 @@
     <if_sid>61603,80792</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)(runner\.Worker|github.*runner|actions-runner)</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(curl.*(Authorization|Bearer|token|secret)|env\s*\|.*curl|printenv.*token|base64.*GITHUB_TOKEN)</field>
-    <description>Suspicious credential exfiltration command in CI runner on $(hostname): $(win.eventdata.commandLine) — possible Cordyceps supply chain CI hijack (T1552.004)</description>
+    <description>Suspicious credential exfiltration command in CI runner on $(hostname): $(win.eventdata.commandLine) - possible Cordyceps supply chain CI hijack (T1552.004)</description>
     <mitre>
       <id>T1552.004</id>
       <id>T1059.004</id>
@@ -255,7 +255,7 @@
     <if_sid>87701</if_sid>
     <field name="github.action" type="pcre2">(?i)(secret\.accessed|org\.secret_accessed|repo\.secret_accessed)</field>
     <field name="github.actor_is_outside_collaborator">true</field>
-    <description>GitHub repository secret accessed in workflow triggered by external contributor $(github.actor) — Cordyceps CI/CD credential theft pattern (T1552.004)</description>
+    <description>GitHub repository secret accessed in workflow triggered by external contributor $(github.actor) - Cordyceps CI/CD credential theft pattern (T1552.004)</description>
     <mitre>
       <id>T1552.004</id>
       <id>T1195.001</id>
@@ -272,7 +272,7 @@
     <field name="github.action" type="pcre2">(?i)(pr\.files_changed|push)</field>
     <field name="github.head_repo_owner" type="pcre2">(?i)\w+</field>
     <field name="github.filename" type="pcre2">(?i)\.github/workflows/.*\.ya?ml$</field>
-    <description>GitHub Actions workflow file modified in PR from fork by $(github.actor) — review for Cordyceps supply chain injection (T1195.001)</description>
+    <description>GitHub Actions workflow file modified in PR from fork by $(github.actor) - review for Cordyceps supply chain injection (T1195.001)</description>
     <mitre>
       <id>T1195.001</id>
     </mitre>
@@ -307,7 +307,7 @@
     <field name="mdm.platform" type="pcre2">(?i)android</field>
     <field name="mdm.security_patch_level" type="pcre2">^202[0-5]-|^2026-0[1-5]-(?!0[5-9]|[1-9][0-9])|^2026-06-0[1-4]$</field>
     <field name="mdm.event_type" type="pcre2">(?i)(compliance|enrollment|checkin)</field>
-    <description>Android device $(mdm.device_name) enrolled via MDM has patch level $(mdm.security_patch_level) — vulnerable to CVE-2025-48595 LPE (CISA KEV); patch to 2026-06-05+ (T1404)</description>
+    <description>Android device $(mdm.device_name) enrolled via MDM has patch level $(mdm.security_patch_level) - vulnerable to CVE-2025-48595 LPE (CISA KEV); patch to 2026-06-05+ (T1404)</description>
     <mitre>
       <id>T1404</id>
     </mitre>
@@ -324,7 +324,7 @@
     <field name="android.event_type" type="pcre2">(?i)(process_started|uid_changed|privilege_escalation)</field>
     <field name="android.process_uid" type="pcre2">^([0-9]|[1-9][0-9]{0,2}|1000)$</field>
     <field name="android.parent_uid" type="pcre2">^[1-9][0-9]{4,}$</field>
-    <description>Android: non-system app (UID $(android.parent_uid)) spawned process with escalated UID $(android.process_uid) — CVE-2025-48595 LPE exploit pattern on $(android.device_id) (T1404)</description>
+    <description>Android: non-system app (UID $(android.parent_uid)) spawned process with escalated UID $(android.process_uid) - CVE-2025-48595 LPE exploit pattern on $(android.device_id) (T1404)</description>
     <mitre>
       <id>T1404</id>
     </mitre>
@@ -338,7 +338,7 @@
   <rule id="103641" level="12">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(CVE-2025-48595|android.*framework.*overflow|android.*lpe.*c2|mobile.*spyware.*c2)</field>
-    <description>Suricata: network signature match for CVE-2025-48595 Android LPE campaign C2 traffic from $(src_ip) — possible targeted mobile exploitation (T1404)</description>
+    <description>Suricata: network signature match for CVE-2025-48595 Android LPE campaign C2 traffic from $(src_ip) - possible targeted mobile exploitation (T1404)</description>
     <mitre>
       <id>T1404</id>
     </mitre>
@@ -374,7 +374,7 @@
   <rule id="103642" level="11">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(CVE-2026-7473|arista.*tunnel|vxlan.*unexpected|ET POLICY.*VXLAN|unexpected.*decapsulat)</field>
-    <description>Suricata: unexpected tunnel encapsulation toward Arista EOS device from $(src_ip) — possible CVE-2026-7473 tunnel injection (T1572)</description>
+    <description>Suricata: unexpected tunnel encapsulation toward Arista EOS device from $(src_ip) - possible CVE-2026-7473 tunnel injection (T1572)</description>
     <mitre>
       <id>T1572</id>
       <id>T1205</id>
@@ -390,7 +390,7 @@
   <rule id="103643" level="12">
     <field name="arista.syslog.facility" type="pcre2">(?i)(SECURITY|ACL|ACLMGR|IPACL)</field>
     <field name="arista.syslog.message" type="pcre2">(?i)(tunnel.*denied|decap.*acl.*drop|unexpected.*tunnel.*protocol|vxlan.*denied|gre.*denied)</field>
-    <description>Arista EOS ACL blocked unexpected tunnel protocol on $(arista.interface) from $(src_ip) — CVE-2026-7473 exploitation attempt blocked by ACL mitigation (T1572)</description>
+    <description>Arista EOS ACL blocked unexpected tunnel protocol on $(arista.interface) from $(src_ip) - CVE-2026-7473 exploitation attempt blocked by ACL mitigation (T1572)</description>
     <mitre>
       <id>T1572</id>
     </mitre>
@@ -405,7 +405,7 @@
   <rule id="103644" level="12">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(ET SCAN.*VXLAN|ET SCAN.*GRE.*(flood|scan|sweep)|tunnel.*scan|arista.*vxlan.*scan)</field>
-    <description>Suricata: high-rate VXLAN/GRE scan from $(src_ip) — possible CVE-2026-7473 Arista EOS tunnel injection sweep (T1572)</description>
+    <description>Suricata: high-rate VXLAN/GRE scan from $(src_ip) - possible CVE-2026-7473 Arista EOS tunnel injection sweep (T1572)</description>
     <mitre>
       <id>T1572</id>
       <id>T1046</id>
@@ -420,7 +420,7 @@
        Level 11: Arista logging unexpected forwarding event; verify tunnel config. -->
   <rule id="103645" level="11">
     <field name="arista.syslog.message" type="pcre2">(?i)(unexpected.*forward|decap.*forward.*anomaly|tunnel.*forward.*unknown|inner.*payload.*forwarded|TCAM.*tunnel.*exception)</field>
-    <description>Arista EOS forwarded unexpected inner tunnel payload on $(arista.interface) — possible CVE-2026-7473 bypass of network segmentation (T1572)</description>
+    <description>Arista EOS forwarded unexpected inner tunnel payload on $(arista.interface) - possible CVE-2026-7473 bypass of network segmentation (T1572)</description>
     <mitre>
       <id>T1572</id>
       <id>T1205</id>

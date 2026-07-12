@@ -71,7 +71,7 @@
   <rule id="103728" level="10">
     <if_sid>103727</if_sid>
     <field name="RequestPath" type="pcre2">(?i)/CFIDE/(?:administrator|adminapi|componentutils|debug|wizards)/</field>
-    <description>Adobe ColdFusion CVE-2026-48282: admin/management path accessed from $(ClientHost) to $(RequestHost)$(RequestPath) — ColdFusion administrator area probe, pre-exploitation reconnaissance (T1190)</description>
+    <description>Adobe ColdFusion CVE-2026-48282: admin/management path accessed from $(ClientHost) to $(RequestHost)$(RequestPath) - ColdFusion administrator area probe, pre-exploitation reconnaissance (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -86,7 +86,7 @@
   <rule id="103729" level="13">
     <if_sid>103727</if_sid>
     <field name="RequestPath" type="pcre2">(?i)(?:\.\.[\\/]|%2e%2e[\\/]|%252e%252e[\\/]|%2e%2e%2f|%252e%252e%252f|\.\.%2f|\.\.%5c|%2e\.[\\/])</field>
-    <description>Adobe ColdFusion CVE-2026-48282: path traversal sequences in ColdFusion request from $(ClientHost) to $(RequestHost)$(RequestPath) — APSB26-68 exploitation attempt; arbitrary file read/write via directory traversal (T1190)</description>
+    <description>Adobe ColdFusion CVE-2026-48282: path traversal sequences in ColdFusion request from $(ClientHost) to $(RequestHost)$(RequestPath) - APSB26-68 exploitation attempt; arbitrary file read/write via directory traversal (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -100,7 +100,7 @@
   <rule id="103730" level="15">
     <if_sid>103729</if_sid>
     <field name="DownstreamStatus" type="pcre2">^(200|201|206)$</field>
-    <description>Adobe ColdFusion CVE-2026-48282: path traversal SUCCEEDED — server returned $(DownstreamStatus) to $(ClientHost) for $(RequestHost)$(RequestPath) — arbitrary file read/write confirmed; initiate incident response (T1190)</description>
+    <description>Adobe ColdFusion CVE-2026-48282: path traversal SUCCEEDED - server returned $(DownstreamStatus) to $(ClientHost) for $(RequestHost)$(RequestPath) - arbitrary file read/write confirmed; initiate incident response (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -114,7 +114,7 @@
   <rule id="103731" level="13" frequency="5" timeframe="60">
     <if_matched_sid>103729</if_matched_sid>
     <same_field>ClientHost</same_field>
-    <description>Adobe ColdFusion CVE-2026-48282: 5+ path traversal probes from $(ClientHost) in 60s — automated CVE-2026-48282 scanner or PoC tool; $(RequestHost) actively targeted (T1190)</description>
+    <description>Adobe ColdFusion CVE-2026-48282: 5+ path traversal probes from $(ClientHost) in 60s - automated CVE-2026-48282 scanner or PoC tool; $(RequestHost) actively targeted (T1190)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -130,7 +130,7 @@
   <rule id="103732" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)(?:/CFIDE/|/cfide/|/cf_scripts/|/cfml/).*\.(?:php|jsp|jspx|asp|aspx|cfm\.php)</field>
-    <description>Adobe ColdFusion CVE-2026-48282: PHP/JSP file accessed under ColdFusion path from $(ClientHost) to $(RequestHost)$(RequestPath) — possible post-upload webshell execution (T1505.003); initiate incident response (T1190)</description>
+    <description>Adobe ColdFusion CVE-2026-48282: PHP/JSP file accessed under ColdFusion path from $(ClientHost) to $(RequestHost)$(RequestPath) - possible post-upload webshell execution (T1505.003); initiate incident response (T1190)</description>
     <mitre>
       <id>T1190</id>
       <id>T1505</id>

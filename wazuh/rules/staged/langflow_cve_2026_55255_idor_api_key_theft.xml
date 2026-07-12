@@ -83,7 +83,7 @@
   <rule id="103740" level="10" frequency="5" timeframe="60">
     <if_matched_sid>103739</if_matched_sid>
     <same_field>ClientHost</same_field>
-    <description>Langflow CVE-2026-55255: 5+ GET requests to /api/v1/flows/ from $(ClientHost) in 60s — possible cross-tenant flow UUID enumeration; IDOR reconnaissance (T1190/T1087.001)</description>
+    <description>Langflow CVE-2026-55255: 5+ GET requests to /api/v1/flows/ from $(ClientHost) in 60s - possible cross-tenant flow UUID enumeration; IDOR reconnaissance (T1190/T1087.001)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -99,7 +99,7 @@
   <rule id="103741" level="13" frequency="15" timeframe="120">
     <if_matched_sid>103739</if_matched_sid>
     <same_field>ClientHost</same_field>
-    <description>Langflow CVE-2026-55255: 15+ GET requests to /api/v1/flows/ from $(ClientHost) in 120s — high-confidence cross-tenant flow UUID enumeration; IDOR campaign targeting $(RequestHost) (T1190/T1087.001)</description>
+    <description>Langflow CVE-2026-55255: 15+ GET requests to /api/v1/flows/ from $(ClientHost) in 120s - high-confidence cross-tenant flow UUID enumeration; IDOR campaign targeting $(RequestHost) (T1190/T1087.001)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -135,7 +135,7 @@
   <rule id="103743" level="11">
     <if_sid>103742</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
-    <description>Langflow CVE-2026-55255: POST to /api/v1/responses returned $(DownstreamStatus) from $(ClientHost) to $(RequestHost) — cross-tenant flow execution completed; LLM API key/credential exfiltration possible (T1528)</description>
+    <description>Langflow CVE-2026-55255: POST to /api/v1/responses returned $(DownstreamStatus) from $(ClientHost) to $(RequestHost) - cross-tenant flow execution completed; LLM API key/credential exfiltration possible (T1528)</description>
     <mitre>
       <id>T1190</id>
       <id>T1528</id>
@@ -153,7 +153,7 @@
     <if_matched_sid>103740</if_matched_sid>
     <if_sid>103742</if_sid>
     <same_field>ClientHost</same_field>
-    <description>Langflow CVE-2026-55255 EXPLOITATION CHAIN: $(ClientHost) enumerated /api/v1/flows/ then POST to /api/v1/responses within 5 min — high-confidence cross-tenant IDOR attack; LLM API keys and credentials likely exfiltrated (T1190/T1528); initiate incident response</description>
+    <description>Langflow CVE-2026-55255 EXPLOITATION CHAIN: $(ClientHost) enumerated /api/v1/flows/ then POST to /api/v1/responses within 5 min - high-confidence cross-tenant IDOR attack; LLM API keys and credentials likely exfiltrated (T1190/T1528); initiate incident response</description>
     <mitre>
       <id>T1190</id>
       <id>T1528</id>

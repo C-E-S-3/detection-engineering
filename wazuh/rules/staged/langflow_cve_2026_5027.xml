@@ -37,7 +37,7 @@
   <!-- Langflow file upload — any POST (low-level visibility) -->
   <rule id="101702" level="7">
     <if_matched_sid>101700</if_matched_sid>
-    <description>Langflow: File upload endpoint POST — monitor for exploitation (CVE-2026-5027, T1190)</description>
+    <description>Langflow: File upload endpoint POST - monitor for exploitation (CVE-2026-5027, T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -48,7 +48,7 @@
   <rule id="101703" level="15">
     <if_matched_sid>101700</if_matched_sid>
     <url type="pcre2">(?i)(\.\./|\.\.\\|%2e%2e%2f|%252e%252e%252f|%2e%2e/|\.\.%2f)</url>
-    <description>CRITICAL: Langflow path traversal attempt in /api/v2/files — CVE-2026-5027 exploitation, unauthenticated RCE risk (T1190)</description>
+    <description>CRITICAL: Langflow path traversal attempt in /api/v2/files - CVE-2026-5027 exploitation, unauthenticated RCE risk (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -59,7 +59,7 @@
   <rule id="101704" level="15">
     <if_matched_sid>101703</if_matched_sid>
     <field name="http_response_code" type="pcre2">^(200|201)$</field>
-    <description>CRITICAL: Langflow CVE-2026-5027 path traversal SUCCEEDED — arbitrary file write achieved, cron injection RCE imminent (T1190, T1053.003)</description>
+    <description>CRITICAL: Langflow CVE-2026-5027 path traversal SUCCEEDED - arbitrary file write achieved, cron injection RCE imminent (T1190, T1053.003)</description>
     <mitre>
       <id>T1190</id>
       <id>T1053.003</id>
@@ -76,7 +76,7 @@
   <!-- Langflow auto-login request from external source -->
   <rule id="101705" level="11">
     <if_matched_sid>101701</if_matched_sid>
-    <description>Langflow: auto-login endpoint POST — possible authentication bypass attempt (CVE-2026-5027, T1190)</description>
+    <description>Langflow: auto-login endpoint POST - possible authentication bypass attempt (CVE-2026-5027, T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -88,7 +88,7 @@
     <if_matched_sid>101705</if_matched_sid>
     <if_sid>101702</if_sid>
     <same_field>data.srcip</same_field>
-    <description>Langflow: auto-login followed by /api/v2/files upload from same IP in 2 min — CVE-2026-5027 exploitation chain (T1190)</description>
+    <description>Langflow: auto-login followed by /api/v2/files upload from same IP in 2 min - CVE-2026-5027 exploitation chain (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -108,7 +108,7 @@
   <rule id="101710" level="15">
     <if_sid>100630</if_sid>
     <field name="audit.exe" type="pcre2">(?i)(/usr/bin/python\d*|/usr/local/bin/python\d*|uvicorn|gunicorn|/usr/bin/env)</field>
-    <description>CRITICAL: Cron directory written by Python/uvicorn/gunicorn process — Langflow CVE-2026-5027 cron injection RCE as root (T1053.003, T1059.004)</description>
+    <description>CRITICAL: Cron directory written by Python/uvicorn/gunicorn process - Langflow CVE-2026-5027 cron injection RCE as root (T1053.003, T1059.004)</description>
     <mitre>
       <id>T1053.003</id>
       <id>T1059.004</id>
@@ -120,7 +120,7 @@
   <rule id="101711" level="14">
     <if_sid>100630</if_sid>
     <field name="audit.exe" type="pcre2">(?i)(node|npm|ruby|php-fpm|php|java|\.jar|nginx|apache|httpd|flask|django|fastapi|langflow|uvicorn|gunicorn|celery)</field>
-    <description>Web application process writing cron configuration — possible RCE via cron injection (T1053.003)</description>
+    <description>Web application process writing cron configuration - possible RCE via cron injection (T1053.003)</description>
     <mitre>
       <id>T1053.003</id>
     </mitre>
@@ -135,7 +135,7 @@
   <rule id="101712" level="15" timeframe="300">
     <if_matched_sid>101703</if_matched_sid>
     <if_sid>101710</if_sid>
-    <description>CRITICAL: Langflow CVE-2026-5027 path traversal followed by cron modification — confirmed RCE exploitation chain (T1190, T1053.003)</description>
+    <description>CRITICAL: Langflow CVE-2026-5027 path traversal followed by cron modification - confirmed RCE exploitation chain (T1190, T1053.003)</description>
     <mitre>
       <id>T1190</id>
       <id>T1053.003</id>
