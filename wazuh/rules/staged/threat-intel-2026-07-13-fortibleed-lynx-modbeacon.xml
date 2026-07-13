@@ -1,0 +1,246 @@
+<!-- ============================================================
+     FortiBleed Attribution: Lynx/INC Ransom + ModBeacon Silver Fox gRPC C2
+     Date: 2026-07-13
+     Rule IDs: 103873-103882
+     Author: SecOps Engineer (Purple Team)
+
+     Sources:
+       1. FortiBleed campaign attribution to Lynx RaaS + INC Ransom RaaS
+          (Bleeping Computer / SOCRadar, July 13, 2026)
+          New IOCs confirmed: READ-ME.lynx.txt ransom note, .lynx encrypted
+          extension, .inc_encrypt extension (updated INC Ransom variant),
+          and the 'adminin' FortiOS backdoor admin account.
+          Campaign: ~20-person IAB; 105M+ credentials harvested; 12+ confirmed
+          ransomware deployments via FortiGate SSL-VPN credential theft.
+          Pre-existing rules for FortiBleed network sniffing / credential spray:
+            threat-intel-2026-06-24-fortisandbox-fortibleed-sprysoaks-oxloader.xml
+            inc_ransomware.xml (covers INC-README.txt, .INC extension)
+          This file adds the Lynx-specific IOCs and new INC .inc_encrypt variant.
+
+       2. Silver Fox APT deploys MODBEACON Rust RAT with gRPC streaming C2
+          (The Hacker News / Group-IB, July 10, 2026)
+          China-linked threat actor; targets tech/education/state-owned enterprises
+          in Asia-Pacific. Rust-compiled RAT, modular plugin architecture, gRPC
+          bidirectional streaming over HTTPS routed through Amazon CloudFront and
+          Cloudflare CDN (domain fronting). No static IOC domains published;
+          detection must be behavioral.
+
+     MITRE ATT&CK Coverage:
+       T1486     Data Encrypted for Impact (Lynx/INC Ransom file encryption)
+       T1136.001 Create Account: Local Account (adminin FortiOS backdoor)
+       T1071.001 Application Layer Protocol: Web Protocols (ModBeacon gRPC C2)
+       T1090.004 Proxy: Domain Fronting (ModBeacon CloudFront/Cloudflare fronting)
+       T1102     Web Service (ModBeacon CDN infrastructure abuse)
+
+     Log source prerequisites:
+       - Sysmon EventID 11 (File Created) forwarded to Wazuh (SID 61644)
+       - Wazuh FIM / syscheck enabled on monitored hosts
+       - Sysmon EventID 3 (Network Connection) forwarded to Wazuh (SID 61605)
+       - FortiGate syslog (CEF / key-value) forwarded to Wazuh
+
+     Severity tiers:
+       13  Encrypted file extension or suspicious network beaconing
+       14  Ransom note dropped or FortiOS backdoor account created
+       15  Confirmed active encryption (mass file events)
+     ============================================================ -->
+
+<group name="impact,ransomware,c2,fortibleed,lynx_ransomware,inc_ransomware,modbeacon,silver_fox,">
+
+  <!-- ==========================================================
+       SECTION 1: Lynx Ransomware (FortiBleed attribution, 2026-07-13)
+       Lynx is a RaaS operated by threat actors linked to FortiBleed IAB.
+       Key artifacts:
+         - Ransom note: READ-ME.lynx.txt (dropped in every encrypted directory)
+         - Encrypted extension: .lynx appended to each encrypted file
+       Detection covers Windows (Sysmon EventID 11) and cross-platform FIM.
+       ========================================================== -->
+
+  <!-- Rule 103873: Lynx ransomware ransom note via Sysmon EventID 11 (Windows)
+       READ-ME.lynx.txt is the primary Lynx ransom note. Its creation by any
+       Windows process via Sysmon FileCreate is a high-confidence T1486 indicator.
+       SID 61644 = Wazuh Sysmon EventID 11 (File Created). -->
+  <rule id="103873" level="14">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)READ-ME\.lynx\.txt$</field>
+    <description>Lynx Ransomware (FortiBleed IAB): ransom note READ-ME.lynx.txt created on $(win.eventdata.computer) by $(win.eventdata.image) -- post-encryption artifact; FortiBleed-linked RaaS confirmed (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>lynx_ransomware,fortibleed,ransom_note,ransomware,windows,</group>
+  </rule>
+
+  <!-- Rule 103874: Lynx ransom note via Wazuh FIM / syscheck (Linux + Windows)
+       Wazuh file integrity monitoring captures file creation events cross-platform.
+       Complements the Sysmon rule above for Linux hosts and hosts without Sysmon. -->
+  <rule id="103874" level="14">
+    <if_group>syscheck</if_group>
+    <regex>READ-ME\.lynx\.txt</regex>
+    <description>Lynx Ransomware (FortiBleed IAB): ransom note READ-ME.lynx.txt detected by Wazuh FIM -- post-encryption indicator; Lynx RaaS affiliate confirmed (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>lynx_ransomware,fortibleed,ransom_note,ransomware,</group>
+  </rule>
+
+  <!-- Rule 103875: Lynx .lynx encrypted file extension via Sysmon EventID 11 (Windows)
+       Lynx ransomware appends the .lynx extension to every encrypted file.
+       FileCreate with .lynx extension on Windows is a strong T1486 indicator.
+       Single file occurrence is medium-high confidence; frequency rule 103877
+       escalates to critical on mass creation. -->
+  <rule id="103875" level="13">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.lynx$</field>
+    <description>Lynx Ransomware: file with .lynx encrypted extension created on $(win.eventdata.computer) by $(win.eventdata.image) -- active encryption in progress (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>lynx_ransomware,fortibleed,file_encryption,ransomware,windows,</group>
+  </rule>
+
+  <!-- Rule 103876: Lynx .lynx encrypted extension via Wazuh FIM / syscheck
+       Syscheck-based detection catches Linux targets and Windows hosts without Sysmon.
+       .lynx extension on any monitored path is anomalous. -->
+  <rule id="103876" level="13">
+    <if_group>syscheck</if_group>
+    <regex>\.lynx$</regex>
+    <description>Lynx Ransomware: file with .lynx encrypted extension detected by Wazuh FIM -- active Lynx ransomware encryption (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>lynx_ransomware,fortibleed,file_encryption,ransomware,</group>
+  </rule>
+
+  <!-- Rule 103877: Mass .lynx file creation - active encryption in progress (CRITICAL)
+       5+ .lynx files created in 60 seconds on the same agent = ransomware actively
+       encrypting the filesystem. This is the most actionable Lynx detection;
+       immediate isolation of the host is required. -->
+  <rule id="103877" level="15" frequency="5" timeframe="60">
+    <if_matched_sid>103875</if_matched_sid>
+    <same_field>agent.name</same_field>
+    <description>Lynx Ransomware CRITICAL: mass .lynx file encryption in progress on $(agent.name) -- 5+ encrypted files in 60s; ISOLATE HOST immediately (T1486)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>lynx_ransomware,fortibleed,mass_encryption,ransomware,critical,</group>
+  </rule>
+
+  <!-- ==========================================================
+       SECTION 2: INC Ransom .inc_encrypt Variant (FortiBleed attribution)
+       New INC Ransom encrypted file extension '.inc_encrypt' identified in
+       FortiBleed attribution report (July 13, 2026). Existing inc_ransomware.xml
+       covers the older '.INC' extension and 'INC-README.txt' ransom note.
+       This rule adds the updated extension confirmed in FortiBleed-linked campaigns.
+       ========================================================== -->
+
+  <!-- Rule 103878: INC Ransom .inc_encrypt extension via Sysmon EventID 11 (Windows)
+       The .inc_encrypt extension is the newer INC Ransom variant seen in FortiBleed
+       attribution. Distinct from the earlier .INC extension (covered in inc_ransomware.xml).
+       File creation with .inc_encrypt on any path is a high-confidence T1486 indicator. -->
+  <rule id="103878" level="13">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.inc_encrypt$</field>
+    <description>INC Ransom (FortiBleed variant): file with .inc_encrypt extension created on $(win.eventdata.computer) by $(win.eventdata.image) -- updated INC Ransom encryption; initiate incident response (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>inc_ransomware,fortibleed,file_encryption,ransomware,windows,</group>
+  </rule>
+
+  <!-- ==========================================================
+       SECTION 3: FortiBleed 'adminin' Backdoor Account (T1136.001)
+       After gaining FortiGate admin access, FortiBleed operators create a
+       backdoor FortiOS administrator account named 'adminin'. This account
+       provides persistent re-entry independent of stolen credential lifecycle.
+       Indicator: FortiOS event log showing admin account 'adminin' created/used.
+       ========================================================== -->
+
+  <!-- Rule 103879: FortiGate 'adminin' backdoor admin account in FortiOS syslog
+       FortiOS logs admin create/add events with msg field containing the new account
+       name. Any event referencing 'adminin' in a FortiGate syslog is a confirmed
+       FortiBleed persistence artifact. -->
+  <rule id="103879" level="14">
+    <if_sid>4716,4717,4718,4719,5501,5502</if_sid>
+    <field name="data.product" type="pcre2">(?i)(fortigate|fortios|fortiproxy)</field>
+    <regex>adminin</regex>
+    <description>FortiBleed CRITICAL: FortiGate 'adminin' backdoor administrator account detected in FortiOS event log -- confirmed FortiBleed persistence IOC; audit admin accounts immediately (T1136.001)</description>
+    <mitre>
+      <id>T1136.001</id>
+      <id>T1078</id>
+    </mitre>
+    <group>fortibleed,fortigate,backdoor_account,persistence,critical,</group>
+  </rule>
+
+  <!-- ==========================================================
+       SECTION 4: MODBEACON Silver Fox gRPC C2 (T1071.001 / T1090.004)
+       China-linked Silver Fox APT deploys MODBEACON, a Rust-compiled RAT that
+       uses HTTP/2 gRPC bidirectional streaming for persistent C2. To evade
+       blocking, C2 traffic is domain-fronted through Amazon CloudFront and
+       Cloudflare CDN endpoints. No static IOC domains were published.
+
+       Detection approach (behavioral):
+         - Non-browser processes making HTTPS connections to CDN infrastructure
+           via Sysmon EventID 3 (Network Connection, SID 61605)
+         - High-frequency connections from same process to CDN hosts in short
+           window indicate gRPC streaming session (20+ in 5 min = C2 beaconing)
+
+       Expected false positives:
+         - Electron apps (VS Code, Slack, Discord) legitimately use CloudFront/CDN
+         - Exclude common update services (msiexec, svchost, wuauclt)
+         - Tune process exclusions for your environment before promotion to block
+       ========================================================== -->
+
+  <!-- Rule 103880: Non-browser/non-update process connecting to CDN on HTTPS
+       MODBEACON fronts gRPC C2 through CloudFront/Cloudflare CDN on port 443.
+       A non-browser, non-update process making HTTPS connections to major CDN
+       providers warrants investigation for Silver Fox implant activity.
+       Level 11: medium-high; tune process exclusion list before alerting. -->
+  <rule id="103880" level="11">
+    <if_sid>61605</if_sid>
+    <field name="win.eventdata.destinationPort" type="pcre2">^443$</field>
+    <field name="win.eventdata.destinationHostname" type="pcre2">(?i)\.(cloudfront\.net|cloudflare\.com|r2\.cloudflarestorage\.com|cf-ipv4\.com|amazonaws\.com)$</field>
+    <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)\\(chrome|msedge|msedgewebview2|firefox|brave|opera|iexplore|safari|code|slack|discord|teams|msiexec|svchost|wuauclt|trustedinstaller|windowsupdate|winupdate|MicrosoftEdgeUpdate|GoogleUpdate|OneDrive|Dropbox)\.exe$</field>
+    <description>MODBEACON Silver Fox: non-browser process $(win.eventdata.image) on $(win.eventdata.computer) connecting to CDN endpoint $(win.eventdata.destinationHostname) on HTTPS -- possible gRPC C2 domain fronting (T1090.004/T1071.001)</description>
+    <mitre>
+      <id>T1090.004</id>
+      <id>T1071.001</id>
+      <id>T1102</id>
+    </mitre>
+    <group>modbeacon,silver_fox,c2,domain_fronting,cdn,windows,</group>
+  </rule>
+
+  <!-- Rule 103881: Sustained CDN beaconing - 20+ connections from same process in 5 min
+       gRPC bidirectional streaming maintains a persistent connection with frequent
+       keepalive frames. 20+ observed connections from the same non-browser process
+       to CDN infrastructure in a 5-minute window is characteristic of MODBEACON
+       C2 session maintenance. -->
+  <rule id="103881" level="12" frequency="20" timeframe="300">
+    <if_matched_sid>103880</if_matched_sid>
+    <same_field>win.eventdata.image</same_field>
+    <description>MODBEACON Silver Fox: sustained CDN HTTPS beaconing from $(win.eventdata.image) -- 20+ connections to CDN infrastructure in 5 min; high-confidence gRPC C2 streaming session (T1090.004/T1071.001)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1090.004</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>modbeacon,silver_fox,c2,domain_fronting,cdn,beaconing,high_confidence,windows,</group>
+  </rule>
+
+  <!-- Rule 103882: Lynx/INC confirmed infection - ransom note AND encrypted files same host
+       Composite: if Lynx ransom note (103873) was seen and .lynx encrypted file
+       events (103875) are observed on the same host within the event cache window,
+       infection is confirmed. Escalate to maximum severity. -->
+  <rule id="103882" level="15">
+    <if_sid>103873</if_sid>
+    <if_matched_sid>103875</if_matched_sid>
+    <description>Lynx Ransomware CONFIRMED INFECTION on $(win.eventdata.computer): ransom note READ-ME.lynx.txt AND .lynx encrypted files present -- FortiBleed-linked Lynx RaaS; ISOLATE HOST and initiate IR (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>lynx_ransomware,fortibleed,confirmed_infection,ransomware,critical,</group>
+  </rule>
+
+</group>
