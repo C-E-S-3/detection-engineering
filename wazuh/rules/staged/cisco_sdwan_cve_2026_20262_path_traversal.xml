@@ -52,7 +52,7 @@
     <group>cisco_sdwan,path_traversal,initial_access,exploit_pubfacing,cve_2026_20262,cisa_kev,</group>
   </rule>
 
-  <!-- Successful response to path traversal -- escalation likely succeeded -->
+  <!-- Successful response to path traversal - escalation likely succeeded -->
   <rule id="102201" level="15">
     <if_sid>102200</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
@@ -64,7 +64,7 @@
     <group>cisco_sdwan,path_traversal,initial_access,exploit_pubfacing,cve_2026_20262,cisa_kev,rce_success,</group>
   </rule>
 
-  <!-- Double-encoded path traversal (%252e%252e) -- evasion attempt -->
+  <!-- Double-encoded path traversal (%252e%252e) - evasion attempt -->
   <rule id="102202" level="14">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">^/dataservice/.*%25(?:2e|2E){2}</field>
@@ -76,7 +76,7 @@
     <group>cisco_sdwan,path_traversal,initial_access,exploit_pubfacing,cve_2026_20262,cisa_kev,encoded_traversal,</group>
   </rule>
 
-  <!-- Access to sensitive file paths via /dataservice/ -- post-traversal file read -->
+  <!-- Access to sensitive file paths via /dataservice/ - post-traversal file read -->
   <rule id="102203" level="14">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">^/dataservice/.*(?:etc/shadow|etc/passwd|etc/cron|root/|\.ssh/authorized_keys|\.bash_history|proc/self)</field>
@@ -89,7 +89,7 @@
     <group>cisco_sdwan,path_traversal,initial_access,exploit_pubfacing,cve_2026_20262,cisa_kev,sensitive_path,</group>
   </rule>
 
-  <!-- SD-WAN Manager API reconnaissance -- probing before exploitation -->
+  <!-- SD-WAN Manager API reconnaissance - probing before exploitation -->
   <rule id="102204" level="9">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">^/dataservice/(?:version|about|client/server-info|token)</field>
@@ -117,7 +117,7 @@
        Rules 102206-102208
        =========================================================== -->
 
-  <!-- 5+ path traversal attempts from same IP in 60s -- automated scanner -->
+  <!-- 5+ path traversal attempts from same IP in 60s - automated scanner -->
   <rule id="102206" level="14" frequency="5" timeframe="60">
     <if_matched_sid>102200</if_matched_sid>
     <same_field>ClientHost</same_field>
@@ -129,7 +129,7 @@
     <group>cisco_sdwan,path_traversal,initial_access,exploit_pubfacing,cve_2026_20262,cisa_kev,scanner,</group>
   </rule>
 
-  <!-- 3+ path traversal attempts targeting different hosts -- horizontal scanning -->
+  <!-- 3+ path traversal attempts targeting different hosts - horizontal scanning -->
   <rule id="102207" level="13" frequency="3" timeframe="120">
     <if_matched_sid>102200</if_matched_sid>
     <same_field>ClientHost</same_field>
@@ -160,7 +160,7 @@
     <group>cisco_sdwan,path_traversal,initial_access,exploit_pubfacing,cve_2026_20262,cisa_kev,high_confidence,</group>
   </rule>
 
-  <!-- Unexpected 403/401 on /dataservice/ after initial auth -- auth state anomaly -->
+  <!-- Unexpected 403/401 on /dataservice/ after initial auth - auth state anomaly -->
   <rule id="102210" level="10">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">^/dataservice/</field>
@@ -172,7 +172,7 @@
     <group>cisco_sdwan,initial_access,exploit_pubfacing,cve_2026_20262,auth_failure,</group>
   </rule>
 
-  <!-- High volume of 403/401 responses from same source -- credential spraying -->
+  <!-- High volume of 403/401 responses from same source - credential spraying -->
   <rule id="102211" level="13" frequency="10" timeframe="60">
     <if_matched_sid>102210</if_matched_sid>
     <same_field>ClientHost</same_field>
@@ -185,7 +185,7 @@
     <group>cisco_sdwan,brute_force,initial_access,cve_2026_20262,credential_access,</group>
   </rule>
 
-  <!-- Generic SD-WAN Manager API scanning (any path) -- low-confidence baseline -->
+  <!-- Generic SD-WAN Manager API scanning (any path) - low-confidence baseline -->
   <rule id="102212" level="7">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">^/dataservice/</field>
