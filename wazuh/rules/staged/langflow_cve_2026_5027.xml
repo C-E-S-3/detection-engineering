@@ -3,7 +3,7 @@
 <!-- MITRE ATT&CK: T1190 (Exploit Public-Facing Application)                         -->
 <!--               T1053.003 (Scheduled Task/Job: Cron)                               -->
 <!--               T1059.004 (Command and Scripting Interpreter: Unix Shell)           -->
-<!-- CVE: CVE-2026-5027 (CVSS 8.8) — Langflow ≤ 1.8.4 path traversal in             -->
+<!-- CVE: CVE-2026-5027 (CVSS 8.8)  - Langflow <= 1.8.4 path traversal in             -->
 <!--      POST /api/v2/files; unauthenticated when auto-login enabled (default);      -->
 <!--      cron injection achieves unauthenticated RCE as root                         -->
 <!-- Added: 2026-06-14 | Actively exploited June 10 2026; patched in 1.10.0          -->
@@ -11,7 +11,7 @@
 <group name="local,web,langflow,initial_access,persistence,">
 
   <!-- ================================================================ -->
-  <!-- BASE ANCHORS — Level 0, informational                            -->
+  <!-- BASE ANCHORS  - Level 0, informational                            -->
   <!-- ================================================================ -->
 
   <!-- Base: any POST to Langflow file upload endpoint -->
@@ -34,7 +34,7 @@
   <!-- CVE-2026-5027: PATH TRAVERSAL IN FILE UPLOAD (T1190)            -->
   <!-- ================================================================ -->
 
-  <!-- Langflow file upload — any POST (low-level visibility) -->
+  <!-- Langflow file upload  - any POST (low-level visibility) -->
   <rule id="101702" level="7">
     <if_matched_sid>101700</if_matched_sid>
     <description>Langflow: File upload endpoint POST - monitor for exploitation (CVE-2026-5027, T1190)</description>
@@ -83,7 +83,7 @@
     <group>web,langflow,auth_bypass,</group>
   </rule>
 
-  <!-- Auth bypass followed by file upload within 120 seconds — exploitation chain -->
+  <!-- Auth bypass followed by file upload within 120 seconds  - exploitation chain -->
   <rule id="101706" level="14" timeframe="120">
     <if_matched_sid>101705</if_matched_sid>
     <if_sid>101702</if_sid>
@@ -98,7 +98,7 @@
   <!-- ================================================================ -->
   <!-- CVE-2026-5027: CRON INJECTION POST-EXPLOITATION (T1053.003)     -->
   <!-- Detects cron file writes via auditd when parent is a web app    -->
-  <!-- process (Python/uvicorn/gunicorn) — canonical Langflow RCE path -->
+  <!-- process (Python/uvicorn/gunicorn)  - canonical Langflow RCE path -->
   <!-- ================================================================ -->
 
   <!-- Cron directory write by Python/uvicorn/gunicorn process (webshell execution)

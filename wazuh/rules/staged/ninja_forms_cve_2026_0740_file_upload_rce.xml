@@ -1,20 +1,20 @@
 <!-- ============================================================
-     Ninja Forms File Uploads — Unauthenticated Arbitrary File Upload RCE
-     CVE-2026-0740 — CVSS 9.8 CRITICAL
+     Ninja Forms File Uploads  - Unauthenticated Arbitrary File Upload RCE
+     CVE-2026-0740  - CVSS 9.8 CRITICAL
      MITRE ATT&amp;CK:
-       T1190     — Exploit Public-Facing Application
-       T1505.003 — Server Software Component: Web Shell
-       T1059.004 — Command and Scripting Interpreter: Unix Shell
-     Rule IDs: 103789–103794
+       T1190      - Exploit Public-Facing Application
+       T1505.003  - Server Software Component: Web Shell
+       T1059.004  - Command and Scripting Interpreter: Unix Shell
+     Rule IDs: 103789-103794
      ACSC CMS Campaign Advisory: 2026-07-11
-     Author: SecOps Engineer (Purple Team) — ESKA-457
+     Author: SecOps Engineer (Purple Team)  - ESKA-457
      Date: 2026-07-12
      References:
        - https://nvd.nist.gov/vuln/detail/CVE-2026-0740
 
      Vulnerability summary:
        CVE-2026-0740 is an unauthenticated arbitrary file upload vulnerability
-       in the Ninja Forms File Uploads extension for WordPress (version ≤3.3.26,
+       in the Ninja Forms File Uploads extension for WordPress (version <=3.3.26,
        CVSS 9.8). The extension exposes a REST API namespace (/wp-json/ninja-forms/
        or /wp-json/nf-api/) for file handling without enforcing WordPress
        capability or nonce checks on unauthenticated requests. Attackers POST
@@ -36,19 +36,19 @@
            ClientHost
 
      Severity rationale:
-       0  — Base anchor (no alert; used for chaining)
-       13 — POST to Ninja Forms upload REST endpoint (high-confidence exploit attempt)
-       15 — Upload endpoint returned 2xx (webshell deployed — incident response required)
-       15 — PHP file accessed in wp-content/uploads/ NF path (webshell executing)
-       13 — 3+ upload probes from same IP in 60s (automated exploit tool)
-       15 — Webshell command parameter in uploads PHP file (active RCE)
+       0   - Base anchor (no alert; used for chaining)
+       13  - POST to Ninja Forms upload REST endpoint (high-confidence exploit attempt)
+       15  - Upload endpoint returned 2xx (webshell deployed  - incident response required)
+       15  - PHP file accessed in wp-content/uploads/ NF path (webshell executing)
+       13  - 3+ upload probes from same IP in 60s (automated exploit tool)
+       15  - Webshell command parameter in uploads PHP file (active RCE)
      ============================================================ -->
 
 <group name="initial_access,exploit_pubfacing,wordpress,ninja_forms,webshell,cve_2026_0740,">
 
   <!-- ===========================================================
-       T1190 — Exploit Public-Facing Application
-       Rules 103789–103794: Ninja Forms File Uploads RCE detection
+       T1190  - Exploit Public-Facing Application
+       Rules 103789-103794: Ninja Forms File Uploads RCE detection
        Log source: Traefik access log (JSON decoder)
        =========================================================== -->
 
@@ -56,7 +56,7 @@
        Ninja Forms File Uploads exposes file handling under /wp-json/ninja-forms/
        or the legacy /wp-json/nf-api/ namespace. All REST-based exploitation
        traffic for CVE-2026-0740 starts with one of these path prefixes.
-       Level 0: no alert — used for chaining only. -->
+       Level 0: no alert  - used for chaining only. -->
   <rule id="103789" level="0">
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">POST</field>
@@ -80,11 +80,11 @@
     <group>wordpress,ninja_forms,initial_access,exploit_pubfacing,file_upload,cve_2026_0740,</group>
   </rule>
 
-  <!-- Upload endpoint returned 2xx — PHP webshell uploaded.
+  <!-- Upload endpoint returned 2xx  - PHP webshell uploaded.
        A successful 2xx response from the Ninja Forms upload endpoint confirms
        the PHP file was accepted and written to /wp-content/uploads/.
        The webshell is now web-accessible and awaits activation.
-       Level 15: webshell deployment confirmed — incident response required. -->
+       Level 15: webshell deployment confirmed  - incident response required. -->
   <rule id="103791" level="15">
     <if_sid>103789</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
@@ -101,7 +101,7 @@
        in a ninja-forms/ or nf-uploads/ subdirectory. WordPress does not place
        executable PHP files in uploads/ by design; any PHP request here indicates
        an uploaded webshell is being executed.
-       Level 15: active webshell execution — T1505.003. -->
+       Level 15: active webshell execution  - T1505.003. -->
   <rule id="103792" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/wp-content/uploads/(?:ninja-forms/|nf-uploads/)?.*\.ph(?:p[3-8]?|tml)(?:\?|$)</field>
@@ -132,7 +132,7 @@
        Post-upload webshell activation passes OS commands via common GET/POST
        parameter names (cmd, exec, shell, system, etc.). Matches against PHP
        files in any wp-content/uploads/ subdirectory including Ninja Forms paths.
-       Level 15: T1059.004 — active command execution via uploaded webshell. -->
+       Level 15: T1059.004  - active command execution via uploaded webshell. -->
   <rule id="103794" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/wp-content/uploads/.*\.ph(?:p[3-8]?|tml).*(?:cmd=|command=|exec=|shell=|c=|run=|system=|pass=|passwd=)</field>

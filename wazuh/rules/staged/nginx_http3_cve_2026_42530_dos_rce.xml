@@ -3,7 +3,7 @@
      MITRE ATT&CK: T1190 (Exploit Public-Facing Application)
                    T1499.004 (Endpoint DoS: Application Exploitation)
      Rule IDs: 102913-102920
-     Severity: HIGH — CVSSv4 9.2, NGINX 1.31.0-1.31.1 affected
+     Severity: HIGH  - CVSSv4 9.2, NGINX 1.31.0-1.31.1 affected
      Author: SecOps Engineer (Purple Team)
      Date: 2026-06-20
 
@@ -43,7 +43,7 @@
     <group>cve_2026_42530,nginx_crash,dos,high,</group>
   </rule>
 
-  <!-- NGINX worker crash frequency — repeated crashes = active exploitation -->
+  <!-- NGINX worker crash frequency  - repeated crashes = active exploitation -->
   <rule id="102915" level="13" frequency="3" timeframe="120">
     <if_matched_sid>102914</if_matched_sid>
     <same_field>hostname</same_field>

@@ -15,7 +15,7 @@
        transport config (command/args/env) in POST body to:
          /mcp-rest/test/connection
          /mcp-rest/test/tools/list
-       The server executes this as a subprocess — OS command injection.
+       The server executes this as a subprocess  - OS command injection.
        LLM provider API keys (OpenAI, Anthropic, Azure), cloud credentials,
        and CI/CD tokens stored by the proxy are exposed to the attacker.
 
@@ -39,7 +39,7 @@
        Rules 102100-102104
        =========================================================== -->
 
-  <!-- POST to /mcp-rest/test/connection — RCE injection vector -->
+  <!-- POST to /mcp-rest/test/connection  - RCE injection vector -->
   <rule id="102100" level="13">
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">POST</field>
@@ -51,7 +51,7 @@
     <group>litellm,mcp_rce,initial_access,exploit_pubfacing,cve_2026_42271,cisa_kev,</group>
   </rule>
 
-  <!-- POST to /mcp-rest/test/tools/list — alternate RCE injection vector -->
+  <!-- POST to /mcp-rest/test/tools/list  - alternate RCE injection vector -->
   <rule id="102101" level="13">
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">POST</field>
@@ -63,7 +63,7 @@
     <group>litellm,mcp_rce,initial_access,exploit_pubfacing,cve_2026_42271,cisa_kev,</group>
   </rule>
 
-  <!-- Successful response (2xx) from MCP test endpoint — exploitation succeeded -->
+  <!-- Successful response (2xx) from MCP test endpoint  - exploitation succeeded -->
   <rule id="102102" level="15">
     <if_sid>102100</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
@@ -74,7 +74,7 @@
     <group>litellm,mcp_rce,initial_access,exploit_pubfacing,cve_2026_42271,cisa_kev,rce_success,</group>
   </rule>
 
-  <!-- Successful response (2xx) from tools/list endpoint — exploitation succeeded -->
+  <!-- Successful response (2xx) from tools/list endpoint  - exploitation succeeded -->
   <rule id="102103" level="15">
     <if_sid>102101</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
@@ -85,7 +85,7 @@
     <group>litellm,mcp_rce,initial_access,exploit_pubfacing,cve_2026_42271,cisa_kev,rce_success,</group>
   </rule>
 
-  <!-- Any HTTP method against /mcp-rest/ prefix — reconnaissance / scanning -->
+  <!-- Any HTTP method against /mcp-rest/ prefix  - reconnaissance / scanning -->
   <rule id="102104" level="10">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">^/mcp-rest/</field>
@@ -101,7 +101,7 @@
        Rules 102105-102108
        =========================================================== -->
 
-  <!-- 3+ MCP probe attempts from same IP in 60s — automated scanner -->
+  <!-- 3+ MCP probe attempts from same IP in 60s  - automated scanner -->
   <rule id="102105" level="13" frequency="3" timeframe="60">
     <if_matched_sid>102104</if_matched_sid>
     <same_field>ClientHost</same_field>
@@ -113,7 +113,7 @@
     <group>litellm,mcp_rce,initial_access,exploit_pubfacing,cve_2026_42271,scanner,</group>
   </rule>
 
-  <!-- 3+ MCP probe attempts against the same host from different IPs — distributed attack -->
+  <!-- 3+ MCP probe attempts against the same host from different IPs  - distributed attack -->
   <rule id="102106" level="13" frequency="3" timeframe="120">
     <if_matched_sid>102104</if_matched_sid>
     <same_field>RequestHost</same_field>
@@ -151,7 +151,7 @@
        Rules 102109-102112
        =========================================================== -->
 
-  <!-- POST to /key/generate or /key/info after MCP probe — attacker enumerating
+  <!-- POST to /key/generate or /key/info after MCP probe  - attacker enumerating
        LiteLLM virtual keys / API keys post-exploit (T1552)                   -->
   <rule id="102109" level="12">
     <decoded_as>json</decoded_as>
@@ -163,7 +163,7 @@
     <group>litellm,credential_access,api_key_harvest,cve_2026_42271,</group>
   </rule>
 
-  <!-- POST to /health or /config after MCP test probe — attacker fingerprinting
+  <!-- POST to /health or /config after MCP test probe  - attacker fingerprinting
        LiteLLM deployment and connected providers (T1082)                      -->
   <rule id="102110" level="10">
     <decoded_as>json</decoded_as>
@@ -189,7 +189,7 @@
     <group>litellm,mcp_rce,credential_access,cve_2026_42271,cisa_kev,high_confidence,</group>
   </rule>
 
-  <!-- GET to /mcp-rest endpoints (non-POST) — may indicate scanning tool
+  <!-- GET to /mcp-rest endpoints (non-POST)  - may indicate scanning tool
        probing LiteLLM presence before attempting POST-based RCE             -->
   <rule id="102112" level="9">
     <decoded_as>json</decoded_as>

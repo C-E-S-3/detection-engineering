@@ -1,18 +1,18 @@
 <!-- ============================================================
-     Threat Intelligence Detection Rules — 2026-06-24 Batch 4
+     Threat Intelligence Detection Rules  - 2026-06-24 Batch 4
      Sources:
-       - Prinz Eugen: Go-based ransomware (ROOTBOY) — BleepingComputer/ThreatDown 2026-06-20
+       - Prinz Eugen: Go-based ransomware (ROOTBOY)  - BleepingComputer/ThreatDown 2026-06-20
          File ext: .prinzeugen; dropper: servertool.exe; via RDP; no ransom note
-       - CryptoBandits: USB LNK worm + Tor crypto clipper — Microsoft 2026-06-17
+       - CryptoBandits: USB LNK worm + Tor crypto clipper  - Microsoft 2026-06-17
          ugate.exe Tor proxy; WScript from C:\Users\Public\Documents\[5char]\
-       - WhatsApp VBScript / ManageEngine RMM — Kaspersky Securelist 2026-06-22
+       - WhatsApp VBScript / ManageEngine RMM  - Kaspersky Securelist 2026-06-22
          Chinese-linked actor; VBScript via WhatsApp; UAC bypass; RMM backdoor
          C2: 202.61.160[.]201 (ValleyRAT/Gh0st RAT infra overlap)
-       - QUIETVAULT: AI-assisted credential stealer — M-Trends 2026
+       - QUIETVAULT: AI-assisted credential stealer  - M-Trends 2026
          Ollama/LLM CLI spawns shell; accesses .ssh/.aws/credential paths
-       - GreatXML: WinRE BitLocker bypass PoC — Nightmare Eclipse 2026-06-22
+       - GreatXML: WinRE BitLocker bypass PoC  - Nightmare Eclipse 2026-06-22
          Physical access; WinRE answer file spawns SYSTEM cmd.exe; no CVE yet
-       - BRICKSTORM: In-memory network appliance backdoor — UNC6201/UNC5807
+       - BRICKSTORM: In-memory network appliance backdoor  - UNC6201/UNC5807
          Targets Ivanti/Fortinet/Cisco edge devices; syslog shell pattern detection
 
      Rule IDs: 103496-103540
@@ -70,7 +70,7 @@
     <group>ransomware,prinz_eugen,impact,high_fidelity,</group>
   </rule>
 
-  <!-- servertool.exe — known Prinz Eugen dropper binary name -->
+  <!-- servertool.exe  - known Prinz Eugen dropper binary name -->
   <rule id="103498" level="14">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\servertool\.exe$</field>
@@ -82,7 +82,7 @@
     <group>ransomware,prinz_eugen,impact,</group>
   </rule>
 
-  <!-- servertool.exe process self-deletion (T1070.004 — binary deletes itself after encryption) -->
+  <!-- servertool.exe process self-deletion (T1070.004  - binary deletes itself after encryption) -->
   <rule id="103499" level="13">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(cmd\.exe\s+/c\s+del|del\s+/[fqs]+)\s+.*servertool\.exe</field>
@@ -94,7 +94,7 @@
     <group>ransomware,prinz_eugen,defense_evasion,</group>
   </rule>
 
-  <!-- Mass process termination — Prinz Eugen kills processes holding file handles -->
+  <!-- Mass process termination  - Prinz Eugen kills processes holding file handles -->
   <rule id="103500" level="13">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(taskkill\s+/f\s+(/im\s+\S+\s+){3,}|net\s+stop\s+.+&amp;&amp;\s*net\s+stop)</field>
@@ -106,7 +106,7 @@
     <group>ransomware,impact,service_stop,</group>
   </rule>
 
-  <!-- Multiple .prinzeugen files created in short burst — active encryption in progress -->
+  <!-- Multiple .prinzeugen files created in short burst  - active encryption in progress -->
   <rule id="103501" level="15" frequency="10" timeframe="60">
     <if_matched_sid>103497</if_matched_sid>
     <same_field>agent.name</same_field>
@@ -142,7 +142,7 @@
 
 
 
-  <!-- ugate.exe — renamed Tor binary; high-confidence IOC -->
+  <!-- ugate.exe  - renamed Tor binary; high-confidence IOC -->
   <rule id="103503" level="14">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\ugate\.exe$</field>
@@ -167,7 +167,7 @@
     <group>cryptobandits,execution,initial_access,</group>
   </rule>
 
-  <!-- WScript/CScript parent is Explorer — indicates USB LNK shortcut opened by user -->
+  <!-- WScript/CScript parent is Explorer  - indicates USB LNK shortcut opened by user -->
   <rule id="103505" level="12">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(wscript|cscript)\.exe$</field>
@@ -181,7 +181,7 @@
     <group>cryptobandits,execution,initial_access,</group>
   </rule>
 
-  <!-- schtasks created by scripting engine — CryptoBandits persistence via scheduled task -->
+  <!-- schtasks created by scripting engine  - CryptoBandits persistence via scheduled task -->
   <rule id="103506" level="13">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\schtasks\.exe$</field>
@@ -195,7 +195,7 @@
     <group>cryptobandits,persistence,scheduled_task,</group>
   </rule>
 
-  <!-- PowerShell Add-MpPreference ExclusionPath for Public\Documents — Defender exclusion -->
+  <!-- PowerShell Add-MpPreference ExclusionPath for Public\Documents  - Defender exclusion -->
   <rule id="103507" level="14">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\powershell\.exe$</field>
@@ -222,7 +222,7 @@
     <group>cryptobandits,execution,</group>
   </rule>
 
-  <!-- Correlation: ugate.exe + schtasks creation within 60s — high confidence CryptoBandits -->
+  <!-- Correlation: ugate.exe + schtasks creation within 60s  - high confidence CryptoBandits -->
   <rule id="103509" level="15" frequency="2" timeframe="60">
     <if_matched_sid>103503,103506</if_matched_sid>
     <same_field>agent.name</same_field>
@@ -248,7 +248,7 @@
     <group>usb_worm,initial_access,</group>
   </rule>
 
-  <!-- SOCKS5 on localhost:9050 — Tor proxy configured by ugate.exe -->
+  <!-- SOCKS5 on localhost:9050  - Tor proxy configured by ugate.exe -->
   <rule id="103511" level="13">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\ugate\.exe$</field>
@@ -287,7 +287,7 @@
     <group>whatsapp_vbscript,execution,</group>
   </rule>
 
-  <!-- VBScript with financial document keywords in filename — lure indicator -->
+  <!-- VBScript with financial document keywords in filename  - lure indicator -->
   <rule id="103513" level="13">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(wscript|cscript)\.exe$</field>
@@ -362,7 +362,7 @@
     <group>whatsapp_vbscript,ingress_tool_transfer,</group>
   </rule>
 
-  <!-- Correlation: VBScript execution + UAC bypass registry within 120s — high confidence -->
+  <!-- Correlation: VBScript execution + UAC bypass registry within 120s  - high confidence -->
   <rule id="103519" level="15" frequency="2" timeframe="120">
     <if_matched_sid>103512,103514</if_matched_sid>
     <same_field>agent.name</same_field>
@@ -397,7 +397,7 @@
     <group>quietvault,ai_tool,</group>
   </rule>
 
-  <!-- AI CLI spawning shell/cmd/powershell — lateral pivot to credential access -->
+  <!-- AI CLI spawning shell/cmd/powershell  - lateral pivot to credential access -->
   <rule id="103521" level="13">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(ollama|ollama\.exe|llm\.exe|gpt4all|lmstudio|koboldcpp|llamafile|jan\.exe|msty\.exe)$</field>
@@ -500,7 +500,7 @@
     <group>greatxml,winre_bypass,defense_evasion,high_fidelity,</group>
   </rule>
 
-  <!-- reagentc.exe executed — WinRE management; legitimate use rare outside IT -->
+  <!-- reagentc.exe executed  - WinRE management; legitimate use rare outside IT -->
   <rule id="103528" level="12">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\reagentc\.exe$</field>
@@ -511,7 +511,7 @@
     <group>greatxml,winre_bypass,</group>
   </rule>
 
-  <!-- reagentc.exe with disable/setimage/enable arguments — explicit WinRE manipulation -->
+  <!-- reagentc.exe with disable/setimage/enable arguments  - explicit WinRE manipulation -->
   <rule id="103529" level="13">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\reagentc\.exe$</field>
@@ -578,7 +578,7 @@
     <group>brickstorm,network_appliance,</group>
   </rule>
 
-  <!-- Shell commands from network device syslog — curl/wget HTTP download -->
+  <!-- Shell commands from network device syslog  - curl/wget HTTP download -->
   <rule id="103534" level="14">
     <if_sid>103533</if_sid>
     <match type="pcre2">(?i)(curl\s+.*(http|ftp)|wget\s+.*http|python[23]?\s+-c.*urllib|python[23]?\s+-c.*requests\.get)</match>
@@ -590,7 +590,7 @@
     <group>brickstorm,ingress_tool_transfer,network_appliance,</group>
   </rule>
 
-  <!-- /tmp/ execution or mkfifo from network device — classic implant pattern -->
+  <!-- /tmp/ execution or mkfifo from network device  - classic implant pattern -->
   <rule id="103535" level="14">
     <if_sid>103533</if_sid>
     <match type="pcre2">(?i)(/tmp/[a-zA-Z0-9_\-\.]+\s+[&amp;|;]|mkfifo\s+/tmp/|/tmp/\S+\s+-[a-z])</match>
@@ -603,7 +603,7 @@
     <group>brickstorm,network_appliance,execution,</group>
   </rule>
 
-  <!-- chmod +x on /tmp/ file — making implant executable after drop -->
+  <!-- chmod +x on /tmp/ file  - making implant executable after drop -->
   <rule id="103536" level="13">
     <if_sid>103533</if_sid>
     <match type="pcre2">(?i)(chmod\s+[0-7]*[x+][x0-7]*\s+/tmp/|chmod\s+\+x\s+/tmp/)</match>
@@ -614,7 +614,7 @@
     <group>brickstorm,network_appliance,defense_evasion,</group>
   </rule>
 
-  <!-- bash -i or exec fd redirection — reverse shell from network device -->
+  <!-- bash -i or exec fd redirection  - reverse shell from network device -->
   <rule id="103537" level="15">
     <if_sid>103533</if_sid>
     <match type="pcre2">(?i)(bash\s+-i\s+&gt;&amp;|exec\s+[0-9]+&lt;&gt;/dev/tcp|bash\s+-c\s+.*[0-9]{1,3}\.[0-9]{1,3}|nc\s+-e\s+/bin/(bash|sh)|python.*pty\.spawn)</match>
@@ -626,7 +626,7 @@
     <group>brickstorm,network_appliance,command_and_control,high_fidelity,</group>
   </rule>
 
-  <!-- Perl/Python one-liner in network device syslog — implant secondary payload -->
+  <!-- Perl/Python one-liner in network device syslog  - implant secondary payload -->
   <rule id="103538" level="13">
     <if_sid>103533</if_sid>
     <match type="pcre2">(?i)(perl\s+-e\s+'[^']*socket|python[23]?\s+-c\s+'[^']*socket|python[23]?\s+-c\s+'[^']*subprocess)</match>
@@ -638,7 +638,7 @@
     <group>brickstorm,network_appliance,command_and_control,</group>
   </rule>
 
-  <!-- Packet capture command from network device — BRICKSTORM credential sniffing (T1040) -->
+  <!-- Packet capture command from network device  - BRICKSTORM credential sniffing (T1040) -->
   <rule id="103539" level="13">
     <if_sid>103533</if_sid>
     <match type="pcre2">(?i)(tcpdump\s+.*-w\s+/tmp/|tshark\s+.*-w\s+/tmp/|dumpcap\s+.*-w\s+/tmp/|tcpdump\s+.*port\s+(21|23|25|80|110|143|389|636))</match>

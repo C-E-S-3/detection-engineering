@@ -1,10 +1,10 @@
 <!-- ============================================================
-     Threat Intelligence Detection Rules — 2026-06-24 Batch 5
+     Threat Intelligence Detection Rules  - 2026-06-24 Batch 5
      Sources:
-       - AryStinger: D-Link/NAS router botnet — XLab Qianxin June 2026
+       - AryStinger: D-Link/NAS router botnet  - XLab Qianxin June 2026
          C2: eixfi.ajb8.com / 107.150.106.14; CVE-2013-3307, CVE-2016-5681
          Converts infected devices into SOCKS5 proxies / scanning nodes
-       - Icarus (ShinyHunters/UNC6240): Klue OAuth → Salesforce CRM breach
+       - Icarus (ShinyHunters/UNC6240): Klue OAuth -> Salesforce CRM breach
          4 attacker IPs; Python-urllib automation; bulk CRM exfiltration
          Victims: Huntress, Recorded Future, Tanium, Jamf, and hundreds more
 
@@ -28,17 +28,17 @@
 
 <!-- ============================================================
      SECTION 1: AryStinger Botnet IOC Detection
-     XLab Qianxin June 2026 — 4,000+ D-Link/NAS compromised devices
+     XLab Qianxin June 2026  - 4,000+ D-Link/NAS compromised devices
      C2: eixfi.ajb8.com / 107.150.106.14
      CVEs: CVE-2013-3307 (D-Link DIR-850L), CVE-2016-5681 (DIR-818LW),
-           CVE-2025-11837 (NAS devices — Go variant)
+           CVE-2025-11837 (NAS devices  - Go variant)
      TTPs: T1190, T1601, T1090, T1071.001, T1565, T1040
      Rules: 103541-103549
      ============================================================ -->
 
 <group name="threat_intel,ioc_network,arystinger,botnet,icarus,klue_breach,">
 
-  <!-- AryStinger primary propagation IP — firewall block/allow log -->
+  <!-- AryStinger primary propagation IP  - firewall block/allow log -->
   <rule id="103541" level="14">
     <if_group>firewall</if_group>
     <field name="data.dest_ip">^107\.150\.106\.14$</field>
@@ -97,7 +97,7 @@
     <group>ioc_c2,arystinger,botnet,suricata,</group>
   </rule>
 
-  <!-- dropbear SSH server unexpectedly executed on Linux host — AryStinger persistence -->
+  <!-- dropbear SSH server unexpectedly executed on Linux host  - AryStinger persistence -->
   <rule id="103546" level="13">
     <if_group>auditd,</if_group>
     <field name="audit.exe" type="pcre2">(?i)(dropbear|dropbearmulti)$</field>
@@ -109,7 +109,7 @@
     <group>persistence,arystinger,botnet,dropbear,network_device,</group>
   </rule>
 
-  <!-- gs-netcat execution — alternative AryStinger persistence channel -->
+  <!-- gs-netcat execution  - alternative AryStinger persistence channel -->
   <rule id="103547" level="13">
     <if_group>auditd,</if_group>
     <field name="audit.exe" type="pcre2">(?i)gs-netcat$</field>
@@ -162,7 +162,7 @@
 
 
 
-  <!-- Icarus attacker IP #1 — observed in Salesforce RestApi audit logs -->
+  <!-- Icarus attacker IP #1  - observed in Salesforce RestApi audit logs -->
   <rule id="103550" level="14">
     <if_group>firewall</if_group>
     <field name="data.src_ip">^138\.226\.246\.94$</field>
@@ -219,7 +219,7 @@
     <group>ioc_c2,icarus,klue_breach,suricata,shinyhunters,</group>
   </rule>
 
-  <!-- Python-urllib user-agent in web/proxy logs — Icarus exfiltration TTP -->
+  <!-- Python-urllib user-agent in web/proxy logs  - Icarus exfiltration TTP -->
   <rule id="103555" level="11">
     <if_group>web,nginx,apache,traefik,</if_group>
     <field name="data.http_user_agent" type="pcre2">(?i)Python-urllib/3\.(1[2-9]|[2-9]\d)</field>
@@ -231,7 +231,7 @@
     <group>icarus,klue_breach,web_automation,python,data_exfiltration,</group>
   </rule>
 
-  <!-- High-volume API requests from single IP in short window — Icarus exfil pattern -->
+  <!-- High-volume API requests from single IP in short window  - Icarus exfil pattern -->
   <rule id="103556" level="12" frequency="200" timeframe="900">
     <if_matched_group>web,nginx,apache,traefik,</if_matched_group>
     <same_source_ip />

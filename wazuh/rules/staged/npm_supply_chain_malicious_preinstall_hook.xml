@@ -25,9 +25,9 @@
 
      IOC hashes (SHA256):
        a742de963f14a92d24ebcbc7b44ac867e23a20d31d1b0094a13a4f83287f4e60
-         dist/setup.js — malicious preinstall hook (all 5 affected versions)
+         dist/setup.js  - malicious preinstall hook (all 5 affected versions)
        a41a523ef9517aab37ed6eea0ec881821bdcb7aefcb5c5f603adc7907f868c86
-         dist/intro.js — secondary loader stage
+         dist/intro.js  - secondary loader stage
        fbbcf4d8f98168f78f5c0c47a9ae56d59ec8ac84a7c9ca6b797fedfb8d62d2bd
          Linux ELF Rust infostealer payload
        b7ca95d1b23c8e67416a25cedf741de0917c2096bbc9d24649eea7853d054903
@@ -65,11 +65,11 @@
 <group name="supply_chain,npm,initial_access,execution,persistence,windows,linux,jscrambler,">
 
   <!-- ===========================================================
-       Windows — node.exe spawning schtasks.exe (T1053.005, T1195.002)
+       Windows  - node.exe spawning schtasks.exe (T1053.005, T1195.002)
        The jscrambler Windows infostealer establishes persistence by spawning
        schtasks.exe as a direct child of node.exe/node. npm install has NO
        legitimate reason to create a scheduled task. This is near-certain
-       malicious activity — the infostealer is establishing logon persistence.
+       malicious activity  - the infostealer is establishing logon persistence.
        =========================================================== -->
   <rule id="103850" level="14">
     <if_sid>61603</if_sid>
@@ -85,7 +85,7 @@
   </rule>
 
   <!-- ===========================================================
-       Windows — node.exe spawning high-risk LOLBins (T1105, T1195.002)
+       Windows  - node.exe spawning high-risk LOLBins (T1105, T1195.002)
        npm preinstall hooks that download or execute secondary payloads will
        spawn certutil.exe, bitsadmin.exe, mshta.exe, wscript.exe, or cscript.exe.
        None of these have legitimate use cases in an npm install lifecycle.
@@ -104,9 +104,9 @@
   </rule>
 
   <!-- ===========================================================
-       Windows — node.exe spawning PowerShell or reg.exe (T1195.002)
+       Windows  - node.exe spawning PowerShell or reg.exe (T1195.002)
        PowerShell or registry manipulation from an npm install context is
-       highly suspicious — common pattern for dropper hooks that adjust
+       highly suspicious  - common pattern for dropper hooks that adjust
        persistence (registry Run keys) or download secondary stages.
        =========================================================== -->
   <rule id="103852" level="13">
@@ -122,7 +122,7 @@
   </rule>
 
   <!-- ===========================================================
-       Windows — node.exe spawning cmd.exe without node-gyp indicators (T1195.002)
+       Windows  - node.exe spawning cmd.exe without node-gyp indicators (T1195.002)
        cmd.exe is spawned by legitimate node-gyp native builds, but only when
        the command line contains "node_gyp" or "python" with "msbuild". Any
        other cmd.exe child of node.exe is suspicious, likely a dropper shell.
@@ -144,7 +144,7 @@
        FIM: jscrambler dist/setup.js IOC hash detected (T1195.002)
        Wazuh syscheck SHA256 hash match for the known malicious preinstall
        hook script from the jscrambler supply chain attack. Fires on any
-       filesystem path — catches renamed/relocated copies.
+       filesystem path  - catches renamed/relocated copies.
        =========================================================== -->
   <rule id="103854" level="15">
     <if_sid>550,553,554,593</if_sid>

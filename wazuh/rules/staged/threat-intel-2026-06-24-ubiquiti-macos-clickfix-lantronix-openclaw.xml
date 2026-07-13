@@ -1,5 +1,5 @@
 <!-- ============================================================
-     Threat Intelligence Detection Rules — 2026-06-24 Batch 5
+     Threat Intelligence Detection Rules  - 2026-06-24 Batch 5
      Sources:
        - CVE-2026-34908/34909/34910: Ubiquiti UniFi OS triple CVE chain
          Added CISA KEV June 23, 2026; 3-day remediation deadline June 26, 2026
@@ -8,7 +8,7 @@
          CVE-2026-34910: OS command injection (RCE via exposed API post-traverse)
          Affected: Dream Machine, Dream Machine Pro, Dream Router,
                    Cloud Key, UniFi Network Server (all < OS 4.1.13)
-         Chained in the wild: access bypass → path traversal → command injection
+         Chained in the wild: access bypass -> path traversal -> command injection
          Management ports: 443 (HTTPS), 8080 (HTTP inform), 8443 (HTTPS UI)
        - macOS ClickFix Terminal DMG Execution (AMOS delivery, June 2026)
          Attack: fake CAPTCHA page socially engineers victim to paste
@@ -41,14 +41,14 @@
 
 
 <!-- ==============================================================
-     SECTION 1: CVE-2026-34908/34909/34910 — Ubiquiti UniFi OS Exploitation
+     SECTION 1: CVE-2026-34908/34909/34910  - Ubiquiti UniFi OS Exploitation
      T1190 (Exploit Public-Facing Application) / T1059.004 (Unix Shell)
-     CISA KEV — active exploitation as of June 23, 2026
+     CISA KEV  - active exploitation as of June 23, 2026
 
      Attack chain:
-       1) CVE-2026-34908 — bypass access control gate on management API
-       2) CVE-2026-34909 — traverse path to read /etc/passwd, SSH keys, tokens
-       3) CVE-2026-34910 — inject OS command via now-authenticated API endpoint
+       1) CVE-2026-34908  - bypass access control gate on management API
+       2) CVE-2026-34909  - traverse path to read /etc/passwd, SSH keys, tokens
+       3) CVE-2026-34910  - inject OS command via now-authenticated API endpoint
 
      Detection approach:
        - Suricata IDS: alert on path traversal patterns in HTTP to mgmt ports
@@ -66,7 +66,7 @@
 <group name="threat_intel_2026_06_24,initial_access,exploit_pubfacing,ubiquiti_unifi,execution,macos_clickfix,ot_device,supply_chain,">
 
   <!-- ================================================================
-       Rule 103558 — Suricata: path traversal attempt to UniFi management port
+       Rule 103558  - Suricata: path traversal attempt to UniFi management port
        Suricata signature matches http.uri containing ../ or %2F..%2F
        targeting destination ports 8080 or 8443 (UniFi management).
        Level 12: active CISA KEV; path traversal to IoT appliance is high signal.
@@ -83,7 +83,7 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103559 — Suricata: generic path traversal to UniFi mgmt ports (8080/8443)
+       Rule 103559  - Suricata: generic path traversal to UniFi mgmt ports (8080/8443)
        When a Suricata HTTP alert fires on ports 8080 or 8443 with traversal
        patterns in the signature but no explicit UniFi metadata tag yet.
        Broader catch for custom Suricata rulesets that may not yet carry metadata.
@@ -101,11 +101,11 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103560 — Suricata: OS command injection in POST to UniFi management
+       Rule 103560  - Suricata: OS command injection in POST to UniFi management
        CVE-2026-34910 delivers OS commands via POST body parameters.
        Suricata alerts on semicolons, backticks, $() command substitution,
        and pipe metacharacters URL-encoded or raw in POST request bodies.
-       Level 13: command injection is highest severity — direct RCE indicator.
+       Level 13: command injection is highest severity  - direct RCE indicator.
        ================================================================ -->
   <rule id="103560" level="13">
     <if_sid>86601</if_sid>
@@ -120,7 +120,7 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103561 — Suricata: CVE-2026-34908 access control bypass probe
+       Rule 103561  - Suricata: CVE-2026-34908 access control bypass probe
        Access control bypass (CVE-2026-34908) typically appears as requests
        to restricted API endpoints returning 200 that should return 401/403.
        Signature alerts on access-control-bypass or specific API paths exposed.
@@ -137,7 +137,7 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103562 — Rapid probe burst targeting UniFi management ports
+       Rule 103562  - Rapid probe burst targeting UniFi management ports
        Automated exploitation tools (Nuclei, Metasploit modules) send
        rapid sequential requests to test all three CVEs in the chain.
        20+ Suricata alerts from the same source IP in 60 seconds against
@@ -155,7 +155,7 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103563 — Correlated chain: path traversal then command injection
+       Rule 103563  - Correlated chain: path traversal then command injection
        The CVE-2026-34908/34909/34910 chain almost always sees path traversal
        (read credentials/tokens) followed by command injection from the same
        source IP within minutes. This correlation rule fires on that sequence.
@@ -177,9 +177,9 @@
 
 
 <!-- ==============================================================
-     SECTION 2: macOS ClickFix Terminal DMG Execution — AMOS Delivery
+     SECTION 2: macOS ClickFix Terminal DMG Execution  - AMOS Delivery
      T1204.002 (User Execution: Malicious File) / T1059.004 (Unix Shell)
-     Unit 42 June 23, 2026 — AMOS stealer via hdiutil -quiet -nobrowse
+     Unit 42 June 23, 2026  - AMOS stealer via hdiutil -quiet -nobrowse
 
      Detection approach:
        - macOS endpoint agent (Wazuh): process exec events via macOS audit
@@ -194,7 +194,7 @@
      ============================================================== -->
 
   <!-- ================================================================
-       Rule 103564 — macOS: hdiutil attach with -quiet flag from shell parent
+       Rule 103564  - macOS: hdiutil attach with -quiet flag from shell parent
        hdiutil attach is used legitimately by CI/CD pipelines but almost
        never invoked interactively from bash/zsh/sh/Terminal with -quiet.
        -quiet flag suppresses the normal Finder disk-mounted notification.
@@ -214,7 +214,7 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103565 — macOS: hdiutil attach with -nobrowse flag from shell parent
+       Rule 103565  - macOS: hdiutil attach with -nobrowse flag from shell parent
        -nobrowse prevents the mounted DMG from appearing in Finder's sidebar.
        Combined with -quiet this hides the disk mount completely from the user.
        Level 11: same confidence tier as 103564 for single-flag detection.
@@ -233,7 +233,7 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103566 — macOS: hdiutil attach with BOTH -quiet AND -nobrowse
+       Rule 103566  - macOS: hdiutil attach with BOTH -quiet AND -nobrowse
        Both suppression flags together is the exact ClickFix pattern documented
        by Unit 42. No legitimate interactive use case combines these two flags
        from a shell parent. This is the highest-confidence single-event rule.
@@ -251,7 +251,7 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103567 — macOS: curl downloading .dmg or .pkg file from shell parent
+       Rule 103567  - macOS: curl downloading .dmg or .pkg file from shell parent
        The ClickFix Terminal paste command typically includes a curl one-liner
        that fetches a .dmg or .pkg payload. Silent flags (-s/-L/-O/no-progress)
        are used to download without progress bars and follow redirects.
@@ -271,7 +271,7 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103568 — macOS: process execution from /Volumes/ path
+       Rule 103568  - macOS: process execution from /Volumes/ path
        After hdiutil attach mounts the DMG, the malicious binary is executed
        directly from the /Volumes/<dmg-name>/ path. Legitimate apps are installed
        to /Applications/ not run directly from /Volumes/.
@@ -289,8 +289,8 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103569 — Network IOC: AMOS C2 domain svs-verificationdate[.]beer
-       IOC reported by Unit 42, June 23, 2026 — active AMOS C2 infrastructure.
+       Rule 103569  - Network IOC: AMOS C2 domain svs-verificationdate[.]beer
+       IOC reported by Unit 42, June 23, 2026  - active AMOS C2 infrastructure.
        Matches Suricata DNS or TLS SNI alerts for this domain.
        Also covers shared C2 infrastructure used by ClawHavoc campaign.
        Level 14: confirmed active C2 domain from published threat intel.
@@ -307,7 +307,7 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103570 — Network IOC: AMOS/ClawHavoc C2 IP 91.92.242.30
+       Rule 103570  - Network IOC: AMOS/ClawHavoc C2 IP 91.92.242.30
        IP shared between AMOS ClickFix campaign and OpenClaw ClawHavoc supply
        chain attack. Any connection to this IP is high-confidence C2 traffic.
        Matches Suricata alerts on destination IP.
@@ -324,7 +324,7 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103571 — Network IOC: hgodpcx.ajb8[.]com secondary C2 domain
+       Rule 103571  - Network IOC: hgodpcx.ajb8[.]com secondary C2 domain
        Secondary AMOS C2 domain from Unit 42 June 23, 2026 IOC set.
        Level 14: confirmed threat intel IOC.
        ================================================================ -->
@@ -340,9 +340,9 @@
 
 
 <!-- ==============================================================
-     SECTION 3: CVE-2025-67038 — Lantronix EDS5000 OS Command Injection
+     SECTION 3: CVE-2025-67038  - Lantronix EDS5000 OS Command Injection
      T1190 (Exploit Public-Facing Application)
-     CISA KEV — June 23, 2026; 3-day remediation deadline June 26, 2026
+     CISA KEV  - June 23, 2026; 3-day remediation deadline June 26, 2026
 
      Lantronix EDS5000 is an OT/IoT device server used in industrial and
      enterprise environments to connect serial devices over IP. The vulnerability
@@ -356,11 +356,11 @@
      ============================================================== -->
 
   <!-- ================================================================
-       Rule 103572 — Suricata: CVE-2025-67038 exploitation attempt
+       Rule 103572  - Suricata: CVE-2025-67038 exploitation attempt
        Matches Suricata IDS alerts for the Lantronix EDS5000 command injection.
        Either explicit CVE match in signature or command injection patterns
        in HTTP POST to port 80/443/8080 from non-internal source.
-       Level 13: OT device RCE — high severity, CISA KEV active exploitation.
+       Level 13: OT device RCE  - high severity, CISA KEV active exploitation.
        ================================================================ -->
   <rule id="103572" level="13">
     <if_sid>86601</if_sid>
@@ -373,7 +373,7 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103573 — HTTP POST with command injection metacharacters to OT ports
+       Rule 103573  - HTTP POST with command injection metacharacters to OT ports
        Broad catch for OT management web interface command injection attempts
        when specific Suricata signatures for Lantronix are not yet available.
        OT management ports: 80, 8080 (HTTP) targeting non-server host types.
@@ -391,7 +391,7 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103574 — Rapid probing against port 80/8080 OT management (scan phase)
+       Rule 103574  - Rapid probing against port 80/8080 OT management (scan phase)
        Before exploiting, attackers typically identify the target with a port
        scan or banner grab. 10+ alerts from same source to port 80/8080 in
        60 seconds targeting non-standard host types is anomalous.
@@ -409,7 +409,7 @@
 
 
 <!-- ==============================================================
-     SECTION 4: CVE-2026-25253 — OpenClaw ClawHub AI Supply Chain (ClawHavoc)
+     SECTION 4: CVE-2026-25253  - OpenClaw ClawHub AI Supply Chain (ClawHavoc)
      T1195.002 (Supply Chain Compromise: Software Supply Chain) / T1190
      Unit 42 June 23, 2026
 
@@ -425,10 +425,10 @@
      ============================================================== -->
 
   <!-- ================================================================
-       Rule 103575 — Suricata: CVE-2026-25253 OpenClaw exploitation probe
+       Rule 103575  - Suricata: CVE-2026-25253 OpenClaw exploitation probe
        Matches Suricata alerts identifying exploitation of the OpenClaw
        ClawHub RCE. Covers both the CVE identifier and ClawHavoc campaign name.
-       Level 13: 1-click RCE via AI skill marketplace — high severity.
+       Level 13: 1-click RCE via AI skill marketplace  - high severity.
        ================================================================ -->
   <rule id="103575" level="13">
     <if_sid>86601</if_sid>
@@ -442,7 +442,7 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103576 — Suspicious AI marketplace skill installation from external source
+       Rule 103576  - Suspicious AI marketplace skill installation from external source
        Wazuh HTTP log: POST to /api/skills/install or /marketplace/install
        endpoints with a non-trusted source domain in the payload.
        ClawHavoc bypasses normal marketplace signing by hosting malicious
@@ -462,7 +462,7 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103577 — Successful skill install returning 200 from suspicious API
+       Rule 103577  - Successful skill install returning 200 from suspicious API
        If the marketplace install API returns 200 OK after 103576 fires, the
        potentially malicious skill was accepted. This is a post-installation
        confirmation that a response/investigation is warranted immediately.
@@ -479,7 +479,7 @@
   </rule>
 
   <!-- ================================================================
-       Rule 103578 — Process spawned by AI assistant/agent after skill install
+       Rule 103578  - Process spawned by AI assistant/agent after skill install
        Post-exploitation: ClawHavoc payload is executed by the OpenClaw runtime
        process shortly after a malicious skill is installed. If a new process
        with an unexpected binary path is spawned by the OpenClaw agent process,

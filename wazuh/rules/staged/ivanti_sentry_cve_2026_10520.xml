@@ -34,7 +34,7 @@
 
   <!-- ===========================================================
        T1190 - Exploit Public-Facing Application
-       Ivanti Sentry MICS API — CVE-2026-10520 / CVE-2026-10523
+       Ivanti Sentry MICS API  - CVE-2026-10520 / CVE-2026-10523
        Rule IDs: 101800-101810
        =========================================================== -->
 
@@ -48,7 +48,7 @@
     <group>ivanti_sentry,mics_api,</group>
   </rule>
 
-  <!-- MICS API accessed — anomalous unless MICS admin is expected    -->
+  <!-- MICS API accessed  - anomalous unless MICS admin is expected    -->
   <rule id="101801" level="11">
     <if_sid>101800</if_sid>
     <description>Ivanti Sentry MICS API endpoint $(RequestPath) accessed via $(RequestMethod) from $(ClientHost) - anomalous MICS management API access (T1190)</description>
@@ -58,11 +58,11 @@
     <group>ivanti_sentry,mics_api,initial_access,</group>
   </rule>
 
-  <!-- POST to MICS API returning 200 or 500 — actionable execution   -->
+  <!-- POST to MICS API returning 200 or 500  - actionable execution   -->
   <!-- HTTP 200 = command accepted; HTTP 500 = server-side execution   -->
   <!-- error (may still indicate successful exploitation with side     -->
   <!-- effects or blind RCE). HTTP 405 (method not allowed) is NOT     -->
-  <!-- matched here — that response indicates probing without success. -->
+  <!-- matched here  - that response indicates probing without success. -->
   <rule id="101802" level="12">
     <if_sid>101800</if_sid>
     <field name="RequestMethod">POST</field>
@@ -100,7 +100,7 @@
     <group>ivanti_sentry,cve_2026_10520,initial_access,</group>
   </rule>
 
-  <!-- CVE-2026-10523: auth bypass — POST to admin/user-management API-->
+  <!-- CVE-2026-10523: auth bypass  - POST to admin/user-management API-->
   <!-- that should require authentication returning 200/201            -->
   <rule id="101805" level="12">
     <decoded_as>json</decoded_as>
@@ -158,7 +158,7 @@
     <group>ivanti_sentry,mics_api,exploit_probe,</group>
   </rule>
 
-  <!-- MICS config backup/restore endpoints — can be abused to        -->
+  <!-- MICS config backup/restore endpoints  - can be abused to        -->
   <!-- exfiltrate config containing hashed credentials or to inject   -->
   <!-- malicious config blobs                                          -->
   <rule id="101810" level="12">

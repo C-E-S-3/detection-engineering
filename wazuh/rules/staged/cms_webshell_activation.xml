@@ -1,12 +1,12 @@
 <!-- ============================================================
-     ACSC CMS Campaign — Generic CMS Webshell Activation Patterns
+     ACSC CMS Campaign  - Generic CMS Webshell Activation Patterns
      MITRE ATT&amp;CK:
-       T1505.003 — Server Software Component: Web Shell
-       T1059.004 — Command and Scripting Interpreter: Unix Shell
-       T1190     — Exploit Public-Facing Application
-     Rule IDs: 103812–103820
+       T1505.003  - Server Software Component: Web Shell
+       T1059.004  - Command and Scripting Interpreter: Unix Shell
+       T1190      - Exploit Public-Facing Application
+     Rule IDs: 103812-103820
      ACSC CMS Campaign Advisory: 2026-07-11
-     Author: SecOps Engineer (Purple Team) — ESKA-457
+     Author: SecOps Engineer (Purple Team)  - ESKA-457
      Date: 2026-07-12
 
      Purpose:
@@ -16,7 +16,7 @@
 
        These rules complement the CVE-specific detections (103789-103811)
        and detect webshell activity that does not match a specific CVE
-       signature — including shells dropped by unpatched CVEs not yet
+       signature  - including shells dropped by unpatched CVEs not yet
        covered by named rules, or by exploits where the initial access
        vector is unknown.
 
@@ -24,7 +24,7 @@
          1. Exploit public-facing CMS plugin/component (T1190)
          2. Upload or write a PHP webshell to a web-accessible path
          3. Activate the webshell via HTTP GET/POST with command parameters
-            (T1505.003 → T1059.004)
+            (T1505.003 -> T1059.004)
 
        These rules detect steps 2 and 3 generically.
 
@@ -36,22 +36,22 @@
            ClientHost
 
      Severity rationale:
-       14 — PHP file in WordPress uploads path (PHP should not exist there)
-       15 — Webshell cmd params in any CMS upload/media path (active RCE)
-       15 — Known webshell filename in CMS upload directory (high-confidence)
-       13 — POST to PHP file in CMS upload/media path (webshell activation)
-       14 — PHP file in Laravel public/storage path (anomalous by design)
-       14 — PHP file in Craft CMS web-accessible asset path (anomalous by design)
-       13 — 5+ PHP-in-uploads requests from same IP in 60s (path discovery scan)
-       12 — POST to WordPress admin-ajax.php with PHP filename indicator (upload)
-       15 — Webshell cmd params in CMS plugin/theme upload path (active RCE)
+       14  - PHP file in WordPress uploads path (PHP should not exist there)
+       15  - Webshell cmd params in any CMS upload/media path (active RCE)
+       15  - Known webshell filename in CMS upload directory (high-confidence)
+       13  - POST to PHP file in CMS upload/media path (webshell activation)
+       14  - PHP file in Laravel public/storage path (anomalous by design)
+       14  - PHP file in Craft CMS web-accessible asset path (anomalous by design)
+       13  - 5+ PHP-in-uploads requests from same IP in 60s (path discovery scan)
+       12  - POST to WordPress admin-ajax.php with PHP filename indicator (upload)
+       15  - Webshell cmd params in CMS plugin/theme upload path (active RCE)
      ============================================================ -->
 
 <group name="initial_access,exploit_pubfacing,webshell,cms,acsc_cms_campaign,">
 
   <!-- ===========================================================
-       T1505.003 — Web Shell / T1059.004 — Unix Shell
-       Rules 103812–103820: Generic CMS webshell activation detection
+       T1505.003  - Web Shell / T1059.004  - Unix Shell
+       Rules 103812-103820: Generic CMS webshell activation detection
        Log source: Traefik access log (JSON decoder)
        =========================================================== -->
 
@@ -61,7 +61,7 @@
        and indicates a webshell uploaded via a WordPress plugin file upload
        vulnerability (CVE-2026-0740, CVE-2026-1357, CVE-2026-3844, and others).
        Also used as the base anchor for the rapid-probe frequency rule (103820).
-       Level 14: high-confidence webshell — PHP must not exist in WP uploads. -->
+       Level 14: high-confidence webshell  - PHP must not exist in WP uploads. -->
   <rule id="103812" level="14">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/wp-content/uploads/.*\.ph(?:p[3-8]?|tml)(?:\?|$)</field>
@@ -80,7 +80,7 @@
          Laravel:   /storage/
          Generic:   /files/
        Matches common webshell command parameter names in the request URL.
-       Level 15: active webshell command execution — T1059.004. -->
+       Level 15: active webshell command execution  - T1059.004. -->
   <rule id="103813" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/(?:wp-content/uploads|media|images|uploads|assets|files|storage)/.*\.ph(?:p[3-8]?|tml).*(?:cmd=|command=|exec=|shell=|c=|run=|system=|pass=|passwd=)</field>
@@ -98,7 +98,7 @@
        by Orb), alfa (Alfa Shell), indoxploit, shellbot. Also covers generic
        descriptive names (shell.php, cmd.php, backdoor.php, webshell.php)
        and obfuscated/encoded shell names (base64-shell, eval-base64).
-       Level 15: known webshell filename — near-certain malicious activity. -->
+       Level 15: known webshell filename  - near-certain malicious activity. -->
   <rule id="103814" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/(?:wp-content/uploads|media|images|uploads|assets|files|storage)/.*(?:c99|r57|b374k|wso|alfa|indoxploit|shellbot|webshell|backdoor|shell\.|cmd\.|hack\.|passthru|eval-base64|base64-shell).*\.ph(?:p[3-8]?|tml)</field>
@@ -113,9 +113,9 @@
        Attackers POST to an already-uploaded webshell to pass command
        parameters via POST body (invisible in Traefik logs) rather than
        GET parameters. A POST to a .php file in any CMS upload/media
-       directory is strongly anomalous — these directories do not serve
+       directory is strongly anomalous  - these directories do not serve
        PHP applications under normal operation.
-       Level 13: POST to PHP in upload/media directory — active webshell use. -->
+       Level 13: POST to PHP in upload/media directory  - active webshell use. -->
   <rule id="103815" level="13">
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">POST</field>
@@ -131,7 +131,7 @@
   <!-- PHP file accessed in Laravel public/storage directory.
        Laravel stores user uploads in storage/app/public/ which is symlinked
        to public/storage/ via `php artisan storage:link`. Executable PHP files
-       do not belong in these directories by design — their presence indicates
+       do not belong in these directories by design  - their presence indicates
        a file-overwrite or upload exploitation (e.g. CVE-2026-31843 pay-uz or
        other Laravel plugin vulnerabilities in the ACSC campaign).
        Level 14: PHP in Laravel storage is anomalous by framework design. -->
@@ -187,7 +187,7 @@
        file upload CVEs (Ninja Forms, WPvivid, and other ACSC campaign targets).
        When the PHP filename appears in the query string (not just the POST body),
        it indicates a direct PHP filename reference in the upload request.
-       Level 12: suspicious WP AJAX upload — correlate with upload path alerts. -->
+       Level 12: suspicious WP AJAX upload  - correlate with upload path alerts. -->
   <rule id="103819" level="12">
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">POST</field>
@@ -205,7 +205,7 @@
        like /wp-content/plugins/{name}/upload/, /content/themes/{name}/upload/,
        and /components/{name}/. Designed as a catch-all for ACSC campaign
        webshells in non-standard CMS directory locations.
-       Level 15: active webshell command execution — T1059.004. -->
+       Level 15: active webshell command execution  - T1059.004. -->
   <rule id="103820" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/(?:wp-content/(?:plugins|themes)/[^/]+/(?:upload|temp|cache)|components/[^/]+|attachments)/.*\.ph(?:p[3-8]?|tml).*(?:cmd=|command=|exec=|shell=|c=|run=|system=)</field>

@@ -1,14 +1,14 @@
 <!-- ============================================================
-     Craft CMS — Unauthenticated Code Injection RCE
-     CVE-2025-32432 — CVSS 10.0 CRITICAL
+     Craft CMS  - Unauthenticated Code Injection RCE
+     CVE-2025-32432  - CVSS 10.0 CRITICAL
      MITRE ATT&amp;CK:
-       T1190     — Exploit Public-Facing Application
-       T1505.003 — Server Software Component: Web Shell
-       T1059.004 — Command and Scripting Interpreter: Unix Shell
-     Rule IDs: 103806–103811
-     CISA KEV: Yes — added to Known Exploited Vulnerabilities catalog
+       T1190      - Exploit Public-Facing Application
+       T1505.003  - Server Software Component: Web Shell
+       T1059.004  - Command and Scripting Interpreter: Unix Shell
+     Rule IDs: 103806-103811
+     CISA KEV: Yes  - added to Known Exploited Vulnerabilities catalog
      ACSC CMS Campaign Advisory: 2026-07-11
-     Author: SecOps Engineer (Purple Team) — ESKA-457
+     Author: SecOps Engineer (Purple Team)  - ESKA-457
      Date: 2026-07-12
      References:
        - https://nvd.nist.gov/vuln/detail/CVE-2025-32432
@@ -43,20 +43,20 @@
            ClientHost
 
      Severity rationale:
-       0  — Base anchor (no alert; used for chaining)
-       13 — POST to conditions/render endpoint (high-confidence CISA KEV exploit)
-       15 — conditions/render returned 2xx (Twig SSTI executed — RCE achieved)
-       12 — conditions/render returned 5xx (SSTI attempted; server error from evaluation)
-       13 — 3+ conditions/render probes from same IP in 60s (automated scanner)
-       15 — Craft-specific PHP file in web-accessible assets path (webshell dropped)
-       15 — SSTI parameter in Craft CMS request (Twig injection pattern in URL)
+       0   - Base anchor (no alert; used for chaining)
+       13  - POST to conditions/render endpoint (high-confidence CISA KEV exploit)
+       15  - conditions/render returned 2xx (Twig SSTI executed  - RCE achieved)
+       12  - conditions/render returned 5xx (SSTI attempted; server error from evaluation)
+       13  - 3+ conditions/render probes from same IP in 60s (automated scanner)
+       15  - Craft-specific PHP file in web-accessible assets path (webshell dropped)
+       15  - SSTI parameter in Craft CMS request (Twig injection pattern in URL)
      ============================================================ -->
 
 <group name="initial_access,exploit_pubfacing,craftcms,ssti,webshell,cve_2025_32432,cisa_kev,">
 
   <!-- ===========================================================
-       T1190 — Exploit Public-Facing Application
-       Rules 103806–103811: Craft CMS CVE-2025-32432 RCE detection
+       T1190  - Exploit Public-Facing Application
+       Rules 103806-103811: Craft CMS CVE-2025-32432 RCE detection
        Log source: Traefik access log (JSON decoder)
        =========================================================== -->
 
@@ -66,7 +66,7 @@
          /index.php?action=conditions/render  (standard Craft front controller)
          /actions/conditions/render           (Craft pretty-URL routing)
        Both forms are covered by the pcre2 pattern below.
-       Level 0: no alert — used for chaining only. -->
+       Level 0: no alert  - used for chaining only. -->
   <rule id="103806" level="0">
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">POST</field>
@@ -75,7 +75,7 @@
     <group>craftcms,initial_access,cve_2025_32432,</group>
   </rule>
 
-  <!-- POST to conditions/render — unauthenticated Twig SSTI exploit.
+  <!-- POST to conditions/render  - unauthenticated Twig SSTI exploit.
        Any POST to the conditions/render endpoint is suspicious because this
        endpoint is not intended for direct client access. The ACSC campaign
        actively exploits this endpoint with Twig SSTI payloads to achieve
@@ -90,11 +90,11 @@
     <group>craftcms,initial_access,exploit_pubfacing,ssti,cve_2025_32432,cisa_kev,</group>
   </rule>
 
-  <!-- conditions/render returned 2xx — Twig SSTI executed, RCE achieved.
+  <!-- conditions/render returned 2xx  - Twig SSTI executed, RCE achieved.
        A successful 2xx response from conditions/render indicates the injected
        Twig template was evaluated. If the SSTI payload executed a system command,
        RCE has been achieved and the response body contains command output.
-       Level 15: confirmed RCE — immediate incident response required. -->
+       Level 15: confirmed RCE  - immediate incident response required. -->
   <rule id="103808" level="15">
     <if_sid>103806</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
@@ -105,12 +105,12 @@
     <group>craftcms,initial_access,exploit_pubfacing,ssti,rce_success,cve_2025_32432,cisa_kev,critical,</group>
   </rule>
 
-  <!-- conditions/render returned 5xx — SSTI attempted, template eval error.
+  <!-- conditions/render returned 5xx  - SSTI attempted, template eval error.
        A 5xx error from conditions/render following a POST indicates the
        Twig template injection was attempted but caused a server-side error
        during evaluation. May indicate a probe or a partially-constructed
        payload. Combined with rule 103806, confirms active exploitation.
-       Level 12: SSTI attempted — investigate the source IP immediately. -->
+       Level 12: SSTI attempted  - investigate the source IP immediately. -->
   <rule id="103809" level="12">
     <if_sid>103806</if_sid>
     <field name="DownstreamStatus" type="pcre2">^5\d{2}$</field>
@@ -142,7 +142,7 @@
        may be used to write PHP files to asset paths via eval or file-write
        functions. A PHP file request in these paths indicates post-exploitation
        webshell deployment after RCE.
-       Level 15: T1505.003 — webshell dropped via code injection. -->
+       Level 15: T1505.003  - webshell dropped via code injection. -->
   <rule id="103811" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/(?:web/uploads|web/assets|uploads|cpresources)/.*\.ph(?:p[3-8]?|tml)(?:\?|$)</field>

@@ -131,7 +131,7 @@
   <rule id="103846" level="15" frequency="20" timeframe="60">
     <if_matched_sid>103845</if_matched_sid>
     <same_field>win.eventdata.computer</same_field>
-    <description>GodDamn Ransomware: MASS ENCRYPTION — 20+ .God8Damn files in 60s on $(win.eventdata.computer) -- CRITICAL: isolate host immediately (T1486)</description>
+    <description>GodDamn Ransomware: MASS ENCRYPTION  - 20+ .God8Damn files in 60s on $(win.eventdata.computer) -- CRITICAL: isolate host immediately (T1486)</description>
     <mitre>
       <id>T1486</id>
     </mitre>
