@@ -1,0 +1,351 @@
+<!-- ============================================================
+     Djinn Stealer / TaskWeaver Post-Exploitation Detection
+     Delivered via SimpleHelp CVE-2026-48558 (OIDC authentication bypass)
+
+     Attack chain:
+       1. CVE-2026-48558: unauthenticated OIDC bypass creates rogue SimpleHelp Technician
+          (rules 102500-102501 detect OIDC bypass; rules 103763-103769 detect delivery)
+       2. TaskWeaver (Node.js loader) delivered via rogue technician remote session
+       3. TaskWeaver fingerprints system, contacts C2 via Microsoft Dev Tunnels
+          (*.devtunnels.ms) masquerading as legitimate Azure developer infrastructure
+       4. Djinn Stealer deployed as subprocess of TaskWeaver:
+          - Targets AI coding tool credentials (Claude API keys, Gemini, Codex, Cursor)
+          - Targets cloud provider keys (.aws/credentials, .azure/, .config/gcloud/)
+          - Targets Docker configs (~/.docker/config.json)
+          - Targets SSH private keys (~/.ssh/id_rsa, id_ed25519)
+          - Targets browser session data and cryptocurrency wallets
+       5. Stolen credentials archived as PAX tar + gzip, AES-256-GCM encrypted
+       6. Exfiltrated via plain HTTP with User-Agent mimicking Microsoft device telemetry
+
+     References:
+       - https://www.darkreading.com/cyberattacks-data-breaches/djinn-stealer-targets-cloud-ai-credentials
+       - https://www.securityweek.com/critical-simplehelp-vulnerability-exploited-for-malware-delivery/
+       - https://www.scworld.com/news/attack-exploiting-simplehelp-vulnerability-deploys-novel-loader-infostealer
+       - Related rules: simplehelp_cve_2026_48558_post_exploit.xml (103763-103769)
+
+     MITRE ATT&amp;CK:
+       T1190     - Exploit Public-Facing Application (SimpleHelp delivery vector)
+       T1059.007 - Command and Scripting Interpreter: JavaScript (TaskWeaver Node.js)
+       T1140     - Deobfuscate/Decode Files or Data (obfuscated loader eval/Buffer)
+       T1071.001 - Application Layer Protocol: Web Protocols (Dev Tunnels C2 HTTPS)
+       T1572     - Protocol Tunneling (Dev Tunnels masquerade of Azure infrastructure)
+       T1552.001 - Credentials In Files (AI tool and cloud credential theft)
+       T1552.004 - Private Keys (SSH private key access)
+       T1560.001 - Archive Collected Data: Archive via Utility (PAX tar staging)
+       T1074.001 - Data Staged: Local Data Staging (encrypted archive in temp)
+       T1036     - Masquerading (fake Microsoft device telemetry User-Agent)
+     Rule IDs: 103883-103894
+     Author: SecOps Engineer (Purple Team) - ESKA-484
+     Date: 2026-07-13
+
+     Log source prerequisites:
+       Windows:
+         - Sysmon EventID 1  (ProcessCreate)  -> Wazuh SID 61603
+           Required: 103883-103886, 103888-103890
+         - Sysmon EventID 3  (NetworkConnect) -> Wazuh SID 61605
+           Required: 103887
+         - Sysmon EventID 11 (FileCreate)     -> Wazuh SID 61644
+           Required: 103891
+       Linux:
+         - auditd execve + openat/open syscall rules forwarded to Wazuh
+           Required: 103892-103894
+       Network:
+         - Traefik access log in JSON format (decoded_as=json) forwarded to Wazuh
+           Required: 103886 (HTTP telemetry UA detection)
+         - Fields: RequestPath, RequestMethod, RequestHost, DownstreamStatus,
+                   ClientHost, UserAgent (Traefik AccessLog format)
+
+     False positive guidance:
+       - 103883: Only fires when node.exe spawned directly by a SimpleHelp parent
+         (rule 103763 base anchor). No known false positive scenario.
+       - 103884: eval( in node CLI is almost exclusively used by obfuscated loaders
+         and REPL one-liners; safe REPL sessions use 'node' interactively without -e.
+       - 103885: node.exe spawning PowerShell/cmd has no known npm lifecycle use.
+       - 103886: AI tool paths in node commandLine are suspicious in isolation;
+         correlate with 103883 or 103884 to increase confidence.
+       - 103887: devtunnels.ms connections from node.exe with a SimpleHelp parent chain
+         is near-certain C2. Standalone devtunnels.ms connections from devtunnel.exe
+         (excluded by negate) are expected in VS Code remote-tunnel workflows.
+       - 103888: All non-dev-tunnel-client processes connecting to devtunnels.ms
+         should be reviewed; legitimate use is limited to devtunnel.exe, Code.exe.
+       - 103891: tar.gz in %TEMP% by node.exe has no known legitimate npm behavior.
+       - 103892-103894 (Linux): correlate with auditd ppid matching a SimpleHelp JVM.
+     ============================================================ -->
+
+<group name="credential_access,collection,exfiltration,c2,simplehelp,djinn_stealer,taskweaver,cve_2026_48558,">
+
+  <!-- ===========================================================
+       Windows Layer 1: TaskWeaver Node.js Loader Delivery
+       Rule IDs: 103883-103886
+       Log source: Sysmon EventID 1 (ProcessCreate) -> Wazuh SID 61603
+
+       TaskWeaver is a Node.js-based loader delivered by attackers
+       with a rogue SimpleHelp Technician session (created via
+       CVE-2026-48558 OIDC bypass). SimpleHelp executes commands on
+       managed endpoints through its relay. Rule 103763 (in
+       simplehelp_cve_2026_48558_post_exploit.xml) anchors on the
+       SimpleHelp parent process; this rule chains from that anchor
+       to specifically flag node.exe as the delivered loader.
+
+       node.exe has no legitimate role in a SimpleHelp Technician
+       session workflow. Its presence as a child of SimpleHelp is a
+       high-confidence indicator of TaskWeaver delivery.
+       =========================================================== -->
+
+  <!-- TaskWeaver delivery: node.exe spawned by SimpleHelp service (Windows).
+       Chains from rule 103763 (SimpleHelp parent base anchor in post_exploit file).
+       SimpleHelp managing endpoints via node.exe has no known legitimate use.
+       Level 13: high-confidence TaskWeaver/Djinn Stealer delivery. -->
+  <rule id="103883" level="13">
+    <if_sid>103763</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\node(?:\.exe)?$</field>
+    <description>SimpleHelp CVE-2026-48558 / Djinn Stealer: SimpleHelp service spawned node.exe ($(win.eventdata.image)) on $(win.eventdata.computer) by $(win.eventdata.user) -- TaskWeaver Node.js loader delivery via rogue Technician session (T1190/T1059.007)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.007</id>
+    </mitre>
+    <group>simplehelp,djinn_stealer,taskweaver,node_execution,post_exploitation,cve_2026_48558,high_confidence,</group>
+  </rule>
+
+  <!-- TaskWeaver obfuscated execution: node.exe invoked with inline eval/Buffer.
+       TaskWeaver uses -e flag to execute Base64-decoded or obfuscated inline
+       JavaScript, avoiding file-based artifacts. eval( in the command line
+       is a near-certain indicator of obfuscated loader execution.
+       Also catches Buffer.from(... 'base64'), fromCharCode, and atob() patterns.
+       Level 14: near-certain malicious obfuscated loader activity. -->
+  <rule id="103884" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\node(?:\.exe)?$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:eval\s*\(|Buffer\.from\s*\(|fromCharCode\s*\(|atob\s*\(|require\s*\(\s*['"]child_process['"])</field>
+    <description>TaskWeaver Node.js obfuscated loader: node.exe on $(win.eventdata.computer) launched with obfuscated inline JavaScript ($(win.eventdata.commandLine)) -- eval/Buffer.from pattern consistent with TaskWeaver inline execution (T1059.007/T1140)</description>
+    <mitre>
+      <id>T1059.007</id>
+      <id>T1140</id>
+    </mitre>
+    <group>djinn_stealer,taskweaver,node_execution,obfuscated_loader,</group>
+  </rule>
+
+  <!-- Djinn Stealer subprocess: node.exe spawning PowerShell or cmd.
+       TaskWeaver (node.exe) spawns Djinn Stealer or invokes OS commands
+       for credential collection. node spawning PowerShell/cmd/wscript
+       in a non-development context is suspicious; from a SimpleHelp
+       parent it is near-certain post-exploit execution.
+       Level 13: high-confidence subprocess execution from Node loader. -->
+  <rule id="103885" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\node(?:\.exe)?$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(?:powershell|pwsh|cmd|wscript|cscript|mshta|reg|schtasks|attrib)\.exe$</field>
+    <description>Djinn Stealer: node.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) -- TaskWeaver loader invoking OS command interpreter for credential staging or persistence (T1059.007)</description>
+    <mitre>
+      <id>T1059.007</id>
+      <id>T1059.003</id>
+    </mitre>
+    <group>djinn_stealer,taskweaver,node_execution,post_exploitation,</group>
+  </rule>
+
+  <!-- Djinn Stealer credential access: node.exe command line referencing AI/cloud creds.
+       Djinn Stealer reads credential files by spawning node subprocesses with
+       the target file path in the command line. Credential paths targeted:
+         Windows: %APPDATA%\Claude\, %LOCALAPPDATA%\cursor\, .aws\credentials,
+                  .azure\, AppData\gcloud\, .docker\config.json, .ssh\id_
+         macOS/Linux: ~/.claude/, ~/.config/cursor/, ~/.aws/credentials, etc.
+       Level 13: credential access attempt by node process. -->
+  <rule id="103886" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\node(?:\.exe)?$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:(?:\.claude|claude)[/\\]|cursor[/\\](?:storage|token|credentials)|copilot[/\\](?:config|token)|\.gemini[/\\]|codex[/\\]|\.aws[/\\]credentials|\.azure[/\\]|\.config[/\\]gcloud|gcloud[/\\]application_default|\.docker[/\\]config\.json|\.ssh[/\\]id_(?:rsa|ed25519|ecdsa|dsa)|ANTHROPIC_API_KEY|OPENAI_API_KEY|GH_TOKEN)</field>
+    <description>Djinn Stealer: node.exe on $(win.eventdata.computer) referencing credential file paths in command line ($(win.eventdata.commandLine)) -- likely targeting AI tool or cloud provider credentials (T1552.001)</description>
+    <mitre>
+      <id>T1552.001</id>
+    </mitre>
+    <group>djinn_stealer,credential_access,ai_credential_theft,cloud_credential_theft,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Windows Layer 2: Dev Tunnels C2 Communication
+       Rule IDs: 103887-103888
+       Log source: Sysmon EventID 3 (NetworkConnect) -> Wazuh SID 61605
+
+       TaskWeaver/Djinn Stealer uses Microsoft Dev Tunnels (*.devtunnels.ms)
+       as its C2 channel, masquerading as legitimate Azure developer
+       infrastructure. Legitimate use of devtunnels.ms is limited to:
+         - devtunnel.exe (the official Dev Tunnels CLI client)
+         - Code.exe / code-tunnel (VS Code remote tunnels)
+       Any other process connecting to *.devtunnels.ms is anomalous.
+       =========================================================== -->
+
+  <!-- Dev Tunnels C2: node.exe connecting to *.devtunnels.ms.
+       TaskWeaver uses node.exe to establish the C2 tunnel to
+       *.devtunnels.ms. This is the primary exfil and C2 channel.
+       node.exe has no known legitimate reason to connect to devtunnels.ms.
+       Level 14: near-certain TaskWeaver/Djinn Stealer C2 channel. -->
+  <rule id="103887" level="14">
+    <if_sid>61605</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\node(?:\.exe)?$</field>
+    <field name="win.eventdata.destinationHostname" type="pcre2">(?i)(?:^|\.(?:devtunnels|tunnel\.azure)\.(?:ms|com)$)</field>
+    <description>Djinn Stealer C2: node.exe on $(win.eventdata.computer) connecting to Dev Tunnels host $(win.eventdata.destinationHostname):$(win.eventdata.destinationPort) -- TaskWeaver C2 via Microsoft Dev Tunnels masquerade (T1071.001/T1572)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1572</id>
+    </mitre>
+    <group>djinn_stealer,taskweaver,c2,dev_tunnels,high_confidence,cisa_kev,</group>
+  </rule>
+
+  <!-- Dev Tunnels anomalous use: unexpected process connecting to *.devtunnels.ms.
+       Broader detection covering any process (not just node.exe) that connects
+       to devtunnels.ms and is not a known legitimate tunnel client.
+       Djinn Stealer may evolve to use other process names.
+       Level 12: suspicious Dev Tunnels connection from unexpected process. -->
+  <rule id="103888" level="12">
+    <if_sid>61605</if_sid>
+    <field name="win.eventdata.destinationHostname" type="pcre2">(?i)(?:^|\.(?:devtunnels|tunnel\.azure)\.(?:ms|com)$)</field>
+    <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)\\(?:devtunnel|Code|cursor|msedge|msedgewebview2|chrome|firefox)(?:\.exe)?$</field>
+    <description>Dev Tunnels anomalous connection: $(win.eventdata.image) on $(win.eventdata.computer) connecting to $(win.eventdata.destinationHostname) -- unexpected process using Dev Tunnels infrastructure; review for Djinn Stealer or unauthorized tunnel use (T1572)</description>
+    <mitre>
+      <id>T1572</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>djinn_stealer,dev_tunnels,c2,anomalous_tunnel,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Windows Layer 3: Data Staging and Exfiltration Artifacts
+       Rule IDs: 103889-103891
+       Log sources:
+         103889-103890: Sysmon EventID 1 (ProcessCreate) -> Wazuh SID 61603
+         103891:        Sysmon EventID 11 (FileCreate)   -> Wazuh SID 61644
+
+       Djinn Stealer collects credentials into a PAX-format tar archive
+       compressed with gzip, then encrypts it with AES-256-GCM before
+       exfiltration. The intermediate unencrypted archive and the final
+       encrypted blob are both written to a temp directory before transfer.
+       The exfiltration channel uses plain HTTP with a User-Agent string
+       crafted to resemble Microsoft device metadata telemetry collection.
+       =========================================================== -->
+
+  <!-- Djinn Stealer staging: node.exe invoking tar with PAX archive in temp path.
+       Djinn Stealer uses the system tar binary or a bundled tar implementation
+       invoked via node child_process to create the credential archive.
+       tar.exe creating archives in temp paths is anomalous behavior.
+       Level 14: near-certain credential staging activity. -->
+  <rule id="103889" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\node(?:\.exe)?$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(?:tar|7z|7za|bsdtar)(?:\.exe)?$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:%(?:TEMP|TMP|LOCALAPPDATA|APPDATA)%|\\Temp\\|\\AppData\\Local\\Temp\\|\\Windows\\Temp\\)</field>
+    <description>Djinn Stealer data staging: node.exe spawned tar archiver $(win.eventdata.image) targeting temp directory on $(win.eventdata.computer) -- credential archive creation prior to exfiltration (T1560.001/T1074.001)</description>
+    <mitre>
+      <id>T1560.001</id>
+      <id>T1074.001</id>
+    </mitre>
+    <group>djinn_stealer,data_staging,credential_exfil,high_confidence,</group>
+  </rule>
+
+  <!-- Djinn Stealer staging: node.exe spawning curl/wget for exfiltration.
+       After encrypting the credential archive, Djinn Stealer exfiltrates
+       via HTTP using node's built-in https module or a curl/wget subprocess.
+       curl/wget invoked by node.exe in a non-development context with
+       a devtunnels.ms or random IP destination is a strong exfil indicator.
+       Level 14: near-certain data exfiltration by Djinn Stealer. -->
+  <rule id="103890" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\node(?:\.exe)?$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(?:curl|wget|bitsadmin|certutil|invoke-webrequest)(?:\.exe)?$</field>
+    <description>Djinn Stealer exfiltration: node.exe spawned HTTP transfer utility $(win.eventdata.image) on $(win.eventdata.computer) -- credential exfiltration via HTTP from TaskWeaver/Djinn Stealer (T1041/T1560.001)</description>
+    <mitre>
+      <id>T1041</id>
+      <id>T1560.001</id>
+    </mitre>
+    <group>djinn_stealer,exfiltration,credential_exfil,high_confidence,</group>
+  </rule>
+
+  <!-- Djinn Stealer staging artifact: node.exe creating .tar.gz archive in temp.
+       The PAX tar + gzip archive created by Djinn Stealer before encryption
+       appears as a .tar.gz or .tgz file in the user temp directory.
+       node.exe creating compressed archives in temp paths is highly anomalous.
+       Level 14: near-certain credential staging file artifact. -->
+  <rule id="103891" level="14">
+    <if_sid>61644</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\node(?:\.exe)?$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)(?:(?:\\|/)(?:Temp|tmp|AppData\\Local\\Temp)(?:\\|/)[^/\\]+\.(?:tar\.gz|tgz|tar|gz)$|(?:\\|/)Temp(?:\\|/)[0-9a-f]{12,}(?:\.bin|\.dat|\.enc)?$)</field>
+    <description>Djinn Stealer staging artifact: node.exe created archive/encrypted file $(win.eventdata.targetFilename) in temp directory on $(win.eventdata.computer) -- likely PAX credential archive pre-exfiltration (T1560.001/T1074.001)</description>
+    <mitre>
+      <id>T1560.001</id>
+      <id>T1074.001</id>
+    </mitre>
+    <group>djinn_stealer,data_staging,credential_exfil,file_artifact,high_confidence,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Linux Layer: TaskWeaver/Djinn Stealer on Linux Hosts
+       Rule IDs: 103892-103894
+       Log source: auditd execve + openat/open syscalls forwarded to Wazuh
+
+       The homelab runs Linux servers (secops-monitoring, beelink-mini, etc.)
+       that may have SimpleHelp deployed as a relay. Djinn Stealer is fully
+       cross-platform (observed on Windows, macOS, and Linux). The Linux
+       variant targets ~/.aws/credentials, ~/.claude/, ~/.config/gcloud/,
+       ~/.docker/config.json, and ~/.ssh/id_* files.
+
+       Detection relies on auditd execve events. The audit.exe field
+       contains the full path of the executing binary; audit.cmd contains
+       the command line arguments visible in the audit record.
+       =========================================================== -->
+
+  <!-- Linux TaskWeaver: node process executing from suspicious/temp path.
+       TaskWeaver on Linux is typically dropped to /tmp/ or /dev/shm/
+       by the SimpleHelp relay before being executed. A node process
+       running from these paths is a strong post-exploitation indicator.
+       Level 13: high-confidence TaskWeaver loader on Linux. -->
+  <rule id="103892" level="13">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall">execve</field>
+    <field name="audit.exe" type="pcre2">(?:^|/)node(?:js)?$</field>
+    <field name="audit.cwd" type="pcre2">^(?:/tmp|/dev/shm|/var/tmp)</field>
+    <description>Linux TaskWeaver: node process executing from temp/shared-memory path on $(agent.name) -- TaskWeaver Node.js loader running from world-writable directory (T1059.007)</description>
+    <mitre>
+      <id>T1059.007</id>
+      <id>T1190</id>
+    </mitre>
+    <group>djinn_stealer,taskweaver,linux,node_execution,temp_exec,post_exploitation,</group>
+  </rule>
+
+  <!-- Linux Djinn Stealer: node accessing AI coding tool credential paths.
+       Djinn Stealer on Linux reads Claude API keys (~/.claude/credentials
+       or ~/.config/claude/), GitHub Copilot tokens, Cursor tokens, and
+       Gemini/Codex credential files. These paths appearing in a node
+       process command line from a temp-based working directory is
+       a high-confidence credential theft indicator.
+       Level 14: near-certain AI/cloud credential theft by Djinn Stealer. -->
+  <rule id="103893" level="14">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall">execve</field>
+    <field name="audit.exe" type="pcre2">(?:^|/)node(?:js)?$</field>
+    <field name="audit.cmd" type="pcre2">(?i)(?:\.claude(?:/|\\)|\.config/claude|\.config/cursor|copilot(?:/|\\)|gemini(?:/|\\)|\.aws/credentials|\.config/gcloud|gcloud/application_default|\.azure(?:/|\\)|\.docker/config\.json|ANTHROPIC_API_KEY|OPENAI_API_KEY|GH_TOKEN)</field>
+    <description>Linux Djinn Stealer: node process on $(agent.name) accessing AI/cloud credential path -- credential file theft targeting AI coding tools or cloud provider keys (T1552.001)</description>
+    <mitre>
+      <id>T1552.001</id>
+    </mitre>
+    <group>djinn_stealer,linux,credential_access,ai_credential_theft,cloud_credential_theft,high_confidence,</group>
+  </rule>
+
+  <!-- Linux Djinn Stealer: node accessing SSH private key files.
+       Djinn Stealer explicitly targets SSH private keys to enable
+       lateral movement and repository access by the attacker.
+       A node process reading ~/.ssh/id_rsa or ~/.ssh/id_ed25519
+       is highly anomalous; node has no legitimate reason to read
+       raw SSH private key material.
+       Level 14: SSH private key theft by Djinn Stealer. -->
+  <rule id="103894" level="14">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall">execve</field>
+    <field name="audit.exe" type="pcre2">(?:^|/)node(?:js)?$</field>
+    <field name="audit.cmd" type="pcre2">\.ssh/id_(?:rsa|ed25519|ecdsa|dsa|ecdsa_sk|ed25519_sk)</field>
+    <description>Linux Djinn Stealer: node process on $(agent.name) accessing SSH private key file -- SSH key theft for lateral movement or repository access by Djinn Stealer (T1552.004)</description>
+    <mitre>
+      <id>T1552.004</id>
+    </mitre>
+    <group>djinn_stealer,linux,credential_access,ssh_key_theft,high_confidence,</group>
+  </rule>
+
+</group>
