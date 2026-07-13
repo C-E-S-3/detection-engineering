@@ -1,0 +1,114 @@
+<!-- ===========================================================
+     Cisco IOS HTTP/HTTPS Management Interface CSRF
+     CVE-2008-4128 (Cisco IOS)
+     MITRE ATT&CK:
+       T1566.002 - Phishing: Spearphishing Link (CSRF delivery)
+       T1098     - Account Manipulation (config change)
+       T1562.004 - Impair Defenses: Disable or Modify System Firewall
+       T1556     - Modify Authentication Process
+     Rule IDs: 103895-103900
+     CISA KEV: Added 2026-07-13, Federal Deadline 2026-07-16
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-13
+
+     Vulnerability Summary:
+       CVE-2008-4128: The Cisco IOS HTTP and HTTPS management interface
+       does not implement CSRF token protection. An unauthenticated
+       attacker can trick an authenticated administrator into visiting a
+       malicious web page, causing the administrator's browser to submit
+       unauthorized HTTP requests to the IOS management interface. This
+       allows arbitrary configuration changes, authentication modification,
+       or firewall rule manipulation without the administrator's knowledge.
+
+     Attack chain:
+       1. Attacker crafts a malicious web page with hidden HTTP requests
+          targeting the IOS management interface.
+       2. Attacker delivers the page link via phishing (T1566.002).
+       3. Authenticated admin visits the page; browser auto-submits
+          forged configuration requests to the IOS HTTP/HTTPS server.
+       4. IOS applies changes, logging %SYS-5-CONFIG_I with source http/<ip>.
+       5. Result: unauthorized config change, auth bypass, or ACL removal.
+
+     Log source prerequisites:
+       - Cisco IOS syslog forwarded to Wazuh via syslog (UDP/TCP 514)
+         or Wazuh agent on a syslog relay host.
+       - Wazuh Cisco IOS decoder active; events placed in group: cisco.
+       - Relevant IOS syslog facilities: %SYS, %HTTPS, %SEC_LOGIN.
+       - Sample log patterns:
+           %SYS-5-CONFIG_I: Configured from console by <user> on http/<ip>
+           %HTTPS-5-CLIENT_HOST: Client connected from <ip>
+           %SEC_LOGIN-5-LOGIN_SUCCESS: User logged in to IOS HTTP management
+     =========================================================== -->
+
+<group name="csrf,initial_access,defense_evasion,credential_access,cisco,cisco_ios,cve_2008_4128,">
+
+  <!-- Rule 103895: Configuration changed via Cisco IOS HTTP management interface -->
+  <rule id="103895" level="10">
+    <if_group>cisco</if_group>
+    <pcre2>%SYS-5-CONFIG_I.*\bon\s+https?/</pcre2>
+    <description>Cisco IOS CVE-2008-4128: device configuration changed via HTTP/HTTPS management interface - possible CSRF-triggered config change (T1098/T1562.004)</description>
+    <mitre>
+      <id>T1098</id>
+      <id>T1562.004</id>
+    </mitre>
+    <group>cisco_ios,csrf,config_change,cve_2008_4128,cisa_kev,pci_dss_11.4,nist_800_53_SI.3,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <!-- Rule 103896: Config change via HTTP from non-RFC1918 source - CSRF pivot from external IP -->
+  <rule id="103896" level="12">
+    <if_sid>103895</if_sid>
+    <pcre2>\bon\s+https?/(?!10\.|192\.168\.|172\.(?:1[6-9]|2[0-9]|3[01])\.)\d+\.\d+\.\d+\.\d+</pcre2>
+    <description>Cisco IOS CVE-2008-4128: configuration changed via HTTP from non-RFC1918 address - high-confidence CSRF pivot or unauthorized external management access (T1566.002/T1098)</description>
+    <mitre>
+      <id>T1566.002</id>
+      <id>T1098</id>
+    </mitre>
+    <group>cisco_ios,csrf,config_change,cve_2008_4128,cisa_kev,external_access,pci_dss_11.4,nist_800_53_SI.3,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <!-- Rule 103897: External client connected to Cisco IOS HTTPS management interface -->
+  <rule id="103897" level="10">
+    <if_group>cisco</if_group>
+    <match>%HTTPS-5-CLIENT_HOST</match>
+    <description>Cisco IOS CVE-2008-4128: client connected to IOS HTTPS management interface - attack surface active, monitor for subsequent config changes (T1566.002)</description>
+    <mitre>
+      <id>T1566.002</id>
+    </mitre>
+    <group>cisco_ios,csrf,https_access,cve_2008_4128,cisa_kev,pci_dss_11.4,nist_800_53_SI.3,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <!-- Rule 103898: Successful login to Cisco IOS HTTP/HTTPS management interface -->
+  <rule id="103898" level="10">
+    <if_group>cisco</if_group>
+    <match>%SEC_LOGIN-5-LOGIN_SUCCESS</match>
+    <pcre2>(?i:http)</pcre2>
+    <description>Cisco IOS CVE-2008-4128: successful authentication to IOS HTTP management interface - session now susceptible to CSRF exploitation (T1556)</description>
+    <mitre>
+      <id>T1556</id>
+    </mitre>
+    <group>cisco_ios,csrf,auth_success,cve_2008_4128,cisa_kev,pci_dss_11.4,nist_800_53_SI.3,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <!-- Rule 103899: Rapid HTTP management logins - CSRF automation or bot activity -->
+  <rule id="103899" level="12" frequency="3" timeframe="60">
+    <if_matched_sid>103898</if_matched_sid>
+    <description>Cisco IOS CVE-2008-4128: 3+ rapid HTTP management logins within 60s - CSRF loop, credential replay, or automated bot activity against IOS web interface (T1566.002/T1556)</description>
+    <mitre>
+      <id>T1566.002</id>
+      <id>T1556</id>
+    </mitre>
+    <group>cisco_ios,csrf,auth_brute,cve_2008_4128,cisa_kev,pci_dss_11.4,nist_800_53_SI.3,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <!-- Rule 103900: Rapid config changes via IOS HTTP interface - active CSRF exploitation -->
+  <rule id="103900" level="15" frequency="2" timeframe="120">
+    <if_matched_sid>103895</if_matched_sid>
+    <description>Cisco IOS CVE-2008-4128: CRITICAL - 2+ rapid configuration changes via HTTP interface within 120s - active CSRF exploitation or automated attack in progress (T1098/T1562.004)</description>
+    <mitre>
+      <id>T1098</id>
+      <id>T1562.004</id>
+    </mitre>
+    <group>cisco_ios,csrf,config_change,cve_2008_4128,cisa_kev,high_confidence,pci_dss_11.4,nist_800_53_SI.3,gdpr_IV_35.7.d,</group>
+  </rule>
+
+</group>
