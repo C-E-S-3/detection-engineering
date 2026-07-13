@@ -57,7 +57,8 @@
   <rule id="103211" level="14">
     <if_sid>100001</if_sid>
     <match>wazuh-clusterd</match>
-    <regex>subprocess|os\.system|eval\(|exec\(|compile\(|importlib|builtins</regex>
+    <!-- type="pcre2" required: OS_Regex rejects \( as OS_REGEX_BADPARENTHESIS -->
+    <regex type="pcre2">subprocess|os\.system|eval\(|exec\(|compile\(|importlib|builtins</regex>
     <description>Wazuh cluster daemon: Python code execution pattern in cluster log - high-confidence CVE-2026-25769 exploitation (T1190)</description>
     <mitre>
       <id>T1190</id>
