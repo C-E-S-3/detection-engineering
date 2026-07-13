@@ -197,6 +197,7 @@
   <rule id="103870" level="14" timeframe="300">
     <if_matched_sid>103864</if_matched_sid>
     <if_sid>103868</if_sid>
+    <same_field>agent.id</same_field>
     <description>BlueHammer CVE-2026-33825 EXPLOIT CHAIN: MsMpEng System32 write THEN GUID service install within 5 min - high-confidence BlueHammer LPE succeeded; BeigeBurrow C2 likely being staged (T1068/T1543.003); isolate host immediately</description>
     <mitre>
       <id>T1068</id>
@@ -242,6 +243,7 @@
   <rule id="103872" level="15" timeframe="600">
     <if_matched_sid>103864</if_matched_sid>
     <if_sid>103871</if_sid>
+    <same_field>agent.id</same_field>
     <description>BlueHammer CVE-2026-33825 CONFIRMED LPE: MsMpEng System32 write then Defender disabled within 10 min - BlueHammer LPE + UnDefend chain confirmed; BeigeBurrow C2 and ransomware deployment imminent (T1068/T1562.001); ISOLATE HOST IMMEDIATELY</description>
     <mitre>
       <id>T1068</id>
