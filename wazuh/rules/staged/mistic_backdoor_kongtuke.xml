@@ -29,7 +29,7 @@
        5. Mistic runs payloads in memory via BOF with no disk artifacts
        6. Self-deletion kill switch removes all trace on operator command
 
-     Key IOCs (at time of publication — no specific C2 domains/IPs disclosed):
+     Key IOCs (at time of publication  - no specific C2 domains/IPs disclosed):
        - MpExtMs.exe loading version.dll from non-standard path
        - EndpointDlp.dll loaded by MpExtMs.exe from %TEMP% or user-writable dirs
        - .NET DLL spawning fake UI credential prompt
@@ -68,7 +68,7 @@
 <group name="windows,kongtuke,mistic,malware,defense_evasion,credential_access,">
 
   <!-- ===========================================================
-       T1574.002 — DLL side-loading anchor: MpExtMs.exe base event
+       T1574.002  - DLL side-loading anchor: MpExtMs.exe base event
        Rule IDs: 103590
        MpExtMs.exe is a legitimate Microsoft Defender for Endpoint
        helper binary. KongTuke places a malicious version.dll in the
@@ -89,7 +89,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1574.002 — version.dll loaded by MpExtMs.exe from wrong path
+       T1574.002  - version.dll loaded by MpExtMs.exe from wrong path
        Rule IDs: 103591
        Sysmon Event 7 (ImageLoad): MpExtMs.exe loading version.dll
        from any path outside System32 is the core DLL sideload signal.
@@ -111,7 +111,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1574.002 — EndpointDlp.dll created/accessed outside MDATP
+       T1574.002  - EndpointDlp.dll created/accessed outside MDATP
        Rule IDs: 103592
        EndpointDlp.dll is the filename used by Mistic core implant,
        chosen to mimic Microsoft Defender for Endpoint's legitimate
@@ -131,7 +131,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1071.001 — MpExtMs.exe outbound network connection
+       T1071.001  - MpExtMs.exe outbound network connection
        Rule IDs: 103593
        MpExtMs.exe is a Microsoft Defender helper binary that does not
        initiate outbound network connections in normal operation. Any
@@ -153,7 +153,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1574.002 + T1071.001 — Composite: sideload confirmed + C2
+       T1574.002 + T1071.001  - Composite: sideload confirmed + C2
        Rule IDs: 103594
        High-fidelity correlation: DLL sideload event (103591/103592)
        followed by outbound connection from MpExtMs.exe (103593)
@@ -173,7 +173,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1056.004 — Fake credential prompt (.NET UI DLL)
+       T1056.004  - Fake credential prompt (.NET UI DLL)
        Rule IDs: 103595
        KongTuke deploys a .NET DLL alongside Mistic that renders a
        fake MFA or login window to harvest credentials. Detection:
@@ -196,7 +196,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1566.002 / T1204.001 — ClickFix Teams delivery anchor
+       T1566.002 / T1204.001  - ClickFix Teams delivery anchor
        Rule IDs: 103596
        KongTuke delivers Mistic via Teams ClickFix social engineering.
        The lure instructs the victim to copy-paste a PowerShell or
@@ -219,7 +219,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1070.004 — Mistic self-deletion (kill switch artifact)
+       T1070.004  - Mistic self-deletion (kill switch artifact)
        Rule IDs: 103597
        Mistic includes a self-deletion kill switch: on operator
        command, it deletes itself and its loader DLLs.
@@ -243,7 +243,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1574.002 — Unsigned/untrusted DLL loaded by MpExtMs.exe
+       T1574.002  - Unsigned/untrusted DLL loaded by MpExtMs.exe
        Rule IDs: 103598
        Sysmon Event 7 with Signature=false or invalid signature on
        any DLL loaded by MpExtMs.exe. The malicious version.dll
@@ -263,10 +263,10 @@
   </rule>
 
   <!-- ===========================================================
-       T1574.002 — General KongTuke/Mistic filename IOC sweep
+       T1574.002  - General KongTuke/Mistic filename IOC sweep
        Rule IDs: 103599
        FIM/Sysmon file create events for the known Mistic filenames
-       in any user-writable location. Cast wide — covers cases where
+       in any user-writable location. Cast wide  - covers cases where
        the binary name is used as a staging artifact.
        =========================================================== -->
 

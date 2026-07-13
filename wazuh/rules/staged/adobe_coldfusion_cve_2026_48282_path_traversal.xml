@@ -1,13 +1,13 @@
 <!-- ============================================================
      Adobe ColdFusion Path Traversal RCE
-     CVE-2026-48282 (APSB26-68) — CVSS 10.0 CRITICAL
+     CVE-2026-48282 (APSB26-68)  - CVSS 10.0 CRITICAL
      MITRE ATT&CK:
-       T1190       — Exploit Public-Facing Application
-       T1505.003   — Server Software Component: Web Shell
-       T1059.004   — Command and Scripting Interpreter: Unix Shell
-     Rule IDs: 103727–103732
+       T1190        - Exploit Public-Facing Application
+       T1505.003    - Server Software Component: Web Shell
+       T1059.004    - Command and Scripting Interpreter: Unix Shell
+     Rule IDs: 103727-103732
      CISA KEV: Added 2026-07-07, Federal Deadline 2026-07-10
-     Author: SecOps Engineer (Purple Team) — ESKA-411
+     Author: SecOps Engineer (Purple Team)  - ESKA-411
      Date: 2026-07-10
      References:
        - https://helpx.adobe.com/security/products/coldfusion/apsb26-68.html
@@ -18,14 +18,14 @@
        CVE-2026-48282 is a path traversal vulnerability in Adobe ColdFusion
        2023 and 2025 (CVSS 10.0) that enables unauthenticated attackers to
        read or overwrite arbitrary files. APSB26-68 also patches unrestricted
-       file upload flaws (CVE-2026-48276, CVE-2026-48283 — also CVSS 10.0)
+       file upload flaws (CVE-2026-48276, CVE-2026-48283  - also CVSS 10.0)
        enabling webshell deployment. Active exploitation was observed within
        hours of initial disclosure on 2026-07-01.
 
        Attack surface:
-         - /CFIDE/ — ColdFusion administrator and management endpoints
-         - /cf_scripts/ — Built-in script resources
-         - :8500 / :8501 — Default ColdFusion HTTP/HTTPS ports
+         - /CFIDE/  - ColdFusion administrator and management endpoints
+         - /cf_scripts/  - Built-in script resources
+         - :8500 / :8501  - Default ColdFusion HTTP/HTTPS ports
        Path traversal payloads:
          /../, ..%2f, %2e%2e/, %252e%252e%252f (double-encoded), etc.
 
@@ -37,26 +37,26 @@
            ClientHost
 
      Severity rationale:
-       0  — Base anchor (no alert)
-       10 — ColdFusion admin endpoint probed (reconnaissance, some FP)
-       13 — Path traversal sequences in ColdFusion request (high-confidence attack)
-       15 — Path traversal returned 2xx (exploitation confirmed)
-       13 — 5+ traversal probes from same IP within 60s (automated scanner)
-       15 — PHP file in ColdFusion upload path accessed (webshell execution)
+       0   - Base anchor (no alert)
+       10  - ColdFusion admin endpoint probed (reconnaissance, some FP)
+       13  - Path traversal sequences in ColdFusion request (high-confidence attack)
+       15  - Path traversal returned 2xx (exploitation confirmed)
+       13  - 5+ traversal probes from same IP within 60s (automated scanner)
+       15  - PHP file in ColdFusion upload path accessed (webshell execution)
      ============================================================ -->
 
 <group name="initial_access,exploit_pubfacing,coldfusion,webshell,cve_2026_48282,">
 
   <!-- ===========================================================
-       T1190 — Exploit Public-Facing Application
-       Rules 103727–103732: ColdFusion path traversal detection
+       T1190  - Exploit Public-Facing Application
+       Rules 103727-103732: ColdFusion path traversal detection
        Log source: Traefik access log (JSON decoder)
        =========================================================== -->
 
   <!-- Base anchor: any HTTP request reaching a ColdFusion endpoint.
        /CFIDE/ and /cf_scripts/ are the primary ColdFusion management
        and resource paths that are targeted in CVE-2026-48282 exploitation.
-       Level 0: no alert by itself — used for chaining only. -->
+       Level 0: no alert by itself  - used for chaining only. -->
   <rule id="103727" level="0">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)(?:/CFIDE/|/cf_scripts/|/CFML/|/cfide/|\.cfm\b|\.cfc\b)</field>
@@ -126,7 +126,7 @@
        CVE-2026-48276 and CVE-2026-48283 (co-patched in APSB26-68) permit
        unrestricted file uploads; a webshell is typically dropped to the
        ColdFusion web root then executed via a separate HTTP request.
-       Level 15: webshell execution — post-exploitation active access. -->
+       Level 15: webshell execution  - post-exploitation active access. -->
   <rule id="103732" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)(?:/CFIDE/|/cfide/|/cf_scripts/|/cfml/).*\.(?:php|jsp|jspx|asp|aspx|cfm\.php)</field>

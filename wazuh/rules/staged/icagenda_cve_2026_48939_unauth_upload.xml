@@ -1,13 +1,13 @@
 <!-- ============================================================
-     iCagenda for Joomla — Unrestricted File Upload RCE
-     CVE-2026-48939 — CVSS 9.8 CRITICAL
+     iCagenda for Joomla  - Unrestricted File Upload RCE
+     CVE-2026-48939  - CVSS 9.8 CRITICAL
      MITRE ATT&amp;CK:
-       T1190     — Exploit Public-Facing Application
-       T1505.003 — Server Software Component: Web Shell
-       T1059.004 — Command and Scripting Interpreter: Unix Shell
-     Rule IDs: 103757–103762
+       T1190      - Exploit Public-Facing Application
+       T1505.003  - Server Software Component: Web Shell
+       T1059.004  - Command and Scripting Interpreter: Unix Shell
+     Rule IDs: 103757-103762
      CISA KEV: Added 2026-07-10, Federal Deadline 2026-07-13
-     Author: SecOps Engineer (Purple Team) — ESKA-419
+     Author: SecOps Engineer (Purple Team)  - ESKA-419
      Date: 2026-07-10
      References:
        - https://nvd.nist.gov/vuln/detail/CVE-2026-48939
@@ -35,26 +35,26 @@
            ClientHost
 
      Severity rationale:
-       0  — Base anchor (no alert; used for chaining)
-       13 — POST to iCagenda upload endpoint (high-confidence exploit attempt)
-       15 — Upload returned 2xx (webshell uploaded successfully — incident response required)
-       15 — PHP file accessed in iCagenda media path (webshell execution)
-       13 — 3+ upload probes from same IP in 60s (automated exploit tool)
-       15 — Webshell command parameter in iCagenda media path (active execution)
+       0   - Base anchor (no alert; used for chaining)
+       13  - POST to iCagenda upload endpoint (high-confidence exploit attempt)
+       15  - Upload returned 2xx (webshell uploaded successfully  - incident response required)
+       15  - PHP file accessed in iCagenda media path (webshell execution)
+       13  - 3+ upload probes from same IP in 60s (automated exploit tool)
+       15  - Webshell command parameter in iCagenda media path (active execution)
      ============================================================ -->
 
 <group name="initial_access,exploit_pubfacing,joomla,icagenda,webshell,cve_2026_48939,">
 
   <!-- ===========================================================
-       T1190 — Exploit Public-Facing Application
-       Rules 103757–103762: iCagenda upload RCE detection
+       T1190  - Exploit Public-Facing Application
+       Rules 103757-103762: iCagenda upload RCE detection
        Log source: Traefik access log (JSON decoder)
        =========================================================== -->
 
   <!-- Base anchor: any POST to the iCagenda component.
        com_icagenda is the Joomla component identifier for iCagenda event
        manager. All exploitation traffic starts with this component name in
-       the query string. Level 0: no alert — used for chaining only. -->
+       the query string. Level 0: no alert  - used for chaining only. -->
   <rule id="103757" level="0">
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">POST</field>
@@ -80,7 +80,7 @@
   <!-- Upload to iCagenda endpoint returned 2xx.
        A successful HTTP 200/201 response to the upload endpoint indicates
        the PHP/PHTML webshell was accepted and written to the server filesystem.
-       Level 15: webshell deployment confirmed — incident response required. -->
+       Level 15: webshell deployment confirmed  - incident response required. -->
   <rule id="103759" level="15">
     <if_sid>103758</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
@@ -96,7 +96,7 @@
        Uploaded webshells land under /media/com_icagenda/ or /images/com_icagenda/
        and are directly web-accessible. A request to a .php/.phtml file in these
        paths indicates active webshell execution.
-       Level 15: active webshell execution — T1505.003. -->
+       Level 15: active webshell execution  - T1505.003. -->
   <rule id="103760" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/(?:media|images)/com_icagenda/.*\.ph(?:p[3-8]?|tml)(?:\?|$)</field>
@@ -126,7 +126,7 @@
   <!-- Webshell command execution parameter in iCagenda media path.
        Post-upload webshell execution passes shell commands via common GET/POST
        parameter names. Active command execution via an uploaded webshell.
-       Level 15: T1059.004 — active command execution. -->
+       Level 15: T1059.004  - active command execution. -->
   <rule id="103762" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/(?:media|images)/com_icagenda/.*\.ph(?:p[3-8]?|tml).*(?:cmd=|command=|exec=|shell=|c=|pass=|passwd=|run=|system=)</field>

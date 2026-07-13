@@ -20,9 +20,9 @@
 
      Detection approach:
        1. Auth failure anchor + brute-force burst (N failures from same
-          source in a short window — typical credential spray before bypass)
+          source in a short window  - typical credential spray before bypass)
        2. Auth bypass pattern (auth success after 5+ failures from same
-          source within 5 minutes — core CVE-2026-50751 signal)
+          source within 5 minutes  - core CVE-2026-50751 signal)
        3. Deprecated IKEv1/ISAKMP usage detection (affected protocol
           should be disabled per sk185033; flag any usage)
        4. IKEv1 certificate validation errors (exploit error codes from
@@ -62,12 +62,12 @@
 <group name="checkpoint,vpn,initial_access,cve_2026_50751,">
 
   <!-- ===========================================================
-       T1110 / T1190 — Auth failure anchor + brute-force burst
+       T1110 / T1190  - Auth failure anchor + brute-force burst
        Rule IDs: 101430-101431
        =========================================================== -->
 
   <!-- Base anchor: Check Point VPN authentication failure via syslog     -->
-  <!-- Level 5 (low) — used for correlation only; not a standalone alert  -->
+  <!-- Level 5 (low)  - used for correlation only; not a standalone alert  -->
   <rule id="101430" level="5">
     <program_name type="pcre2">^(vpnd|cpd|fwd|cpmad|fw)$</program_name>
     <match type="pcre2">(?i)(authentication\s+fail|auth\s+fail|login\s+fail|failed\s+to\s+authenticate|incorrect\s+(credentials|password)|invalid\s+credentials)</match>
@@ -94,7 +94,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1190 / T1078 — Authentication bypass pattern
+       T1190 / T1078  - Authentication bypass pattern
        Rule IDs: 101432
        Auth success following 5+ failures from same source within
        5 minutes is the core CVE-2026-50751 exploitation signal.
@@ -117,10 +117,10 @@
   </rule>
 
   <!-- ===========================================================
-       T1190 — Deprecated IKEv1/ISAKMP usage
+       T1190  - Deprecated IKEv1/ISAKMP usage
        Rule IDs: 101433, 101437
        IKEv1 (ISAKMP) is the deprecated protocol exploited in
-       CVE-2026-50751. Any IKEv1 negotiation log is a flag —
+       CVE-2026-50751. Any IKEv1 negotiation log is a flag  -
        this protocol should be disabled per sk185033.
        =========================================================== -->
 
@@ -148,7 +148,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1190 — IKEv1 certificate validation errors (sk185033)
+       T1190  - IKEv1 certificate validation errors (sk185033)
        Rule IDs: 101434
        Specific error codes and messages observed in logs during
        CVE-2026-50751 exploitation per Check Point advisory sk185033:
@@ -167,7 +167,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1190 / T1078 — Management API access
+       T1190 / T1078  - Management API access
        Rule IDs: 101435
        After obtaining initial access via CVE-2026-50751, attackers
        pivot to Check Point management API to expand access. Alert
@@ -187,7 +187,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1190 / T1078 — Off-hours VPN authentication
+       T1190 / T1078  - Off-hours VPN authentication
        Rule IDs: 101436
        CVE-2026-50751 exploitation campaign ran during unusual hours
        to evade detection. Flag any VPN auth success outside business

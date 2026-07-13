@@ -1,17 +1,17 @@
 <!-- ============================================================
-     Threat Intelligence Detection Rules — 2026-06-24 Batch 6
+     Threat Intelligence Detection Rules  - 2026-06-24 Batch 6
      Sources:
        - CVE-2026-25089: Fortinet FortiSandbox OS Command Injection (CVSS 9.8 Critical)
          Unauthenticated RCE via crafted JSON input to VNC start API endpoint
-         Affected: FortiSandbox 4.2.x (≤4.2.8), 4.4.x (≤4.4.8), 5.0.x (≤5.0.5)
-                   FortiSandbox Cloud 5.0.4–5.0.5, PaaS 5.0.4–5.0.5
+         Affected: FortiSandbox 4.2.x (<=4.2.8), 4.4.x (<=4.4.8), 5.0.x (<=5.0.5)
+                   FortiSandbox Cloud 5.0.4-5.0.5, PaaS 5.0.4-5.0.5
          Fortinet advisory FG-IR-26-141; not yet in CISA KEV but CVSS 9.8
          Fix: upgrade to 5.0.6+, 4.4.9+, 4.2.9+
        - FortiBleed Campaign (SOCRadar, June 24, 2026)
          Russian-speaking threat actors; 430,000+ FortiGate devices targeted since Feb 2026
-         TTPs: brute-force credential spray → custom sniffer deployment on compromised firewall
-               → harvest auth credentials from network traffic → lateral movement
-         No single CVE — exploitation of weak credentials + sniffer deployment via FortiOS CLI
+         TTPs: brute-force credential spray -> custom sniffer deployment on compromised firewall
+               -> harvest auth credentials from network traffic -> lateral movement
+         No single CVE  - exploitation of weak credentials + sniffer deployment via FortiOS CLI
        - SprySOCKS Windows/Linux Backdoor (June 16, 2026)
          China-linked; previously Linux-only; new Windows variants: WIN_DRV (kernel driver),
          WIN_PLUS (userland). Supports 30+ commands; uses driver for process/network hiding.
@@ -24,7 +24,7 @@
          OXLOADER: staged delivery via TEMP directory, obfuscated PowerShell drop.
        - NarwhalRAT / ScarCruft APT37 (June 16, 2026)
          North Korea-linked APT; spear-phishing with fake Microsoft Account security alerts.
-         Delivery: ZIP → LNK → mshta/PowerShell → NarwhalRAT DLL in AppData.
+         Delivery: ZIP -> LNK -> mshta/PowerShell -> NarwhalRAT DLL in AppData.
          MITRE: T1566.001, T1204.002, T1547.009
        - ShapedPlugin WordPress Supply Chain + Gravity SMTP CVE-2026-4020
          ShapedPlugin: backdoor in Product Slider Pro, Real Testimonials Pro, Smart Post Show Pro
@@ -55,7 +55,7 @@
 
 
 <!-- ==============================================================
-     SECTION 1: CVE-2026-25089 — Fortinet FortiSandbox OS Command Injection
+     SECTION 1: CVE-2026-25089  - Fortinet FortiSandbox OS Command Injection
      T1190 (Exploit Public-Facing Application) / T1059.004 (Unix Shell)
      CVSS 9.8 Critical; unauthenticated network-based; not yet CISA KEV
      FG-IR-26-141; VNC start-feature JSON input second-order OS injection
@@ -69,7 +69,7 @@
      ============================================================== -->
 <group name="threat_intel_2026_06_24,initial_access,exploit_pubfacing,fortisandbox,credential_access,defense_evasion,persistence,execution,supply_chain,">
 
-  <!-- Rule 103600 — Suricata: POST to FortiSandbox VNC start API with injection metacharacters
+  <!-- Rule 103600  - Suricata: POST to FortiSandbox VNC start API with injection metacharacters
        CVE-2026-25089 targets the VNC start feature at /json/api/v1/advanced-threat/start-vnc
        or similar path. Attacker sends crafted JSON with OS metacharacters in parameters.
        Level 13: unauthenticated CVSS 9.8 critical; direct RCE vector. -->
@@ -84,7 +84,7 @@
     <group>ids,suricata,command_injection,fortisandbox,cve_2026_25089,</group>
   </rule>
 
-  <!-- Rule 103601 — Suricata: generic POST to FortiSandbox management API with cmd injection chars
+  <!-- Rule 103601  - Suricata: generic POST to FortiSandbox management API with cmd injection chars
        Catches attacker POST requests to FortiSandbox JSON API endpoints containing
        OS command injection metacharacters: semicolons, pipe, backtick, $() substitution.
        Level 12: broad FortiSandbox API probe; lower confidence than explicit CVE sig. -->
@@ -99,7 +99,7 @@
     <group>ids,suricata,fortisandbox,cve_2026_25089,</group>
   </rule>
 
-  <!-- Rule 103602 — Linux auditd: shell spawned by web service process (FortiSandbox exploitation)
+  <!-- Rule 103602  - Linux auditd: shell spawned by web service process (FortiSandbox exploitation)
        CVE-2026-25089 causes the web application to spawn unexpected child processes
        (sh, bash, id, whoami, curl) via command injection in VNC JSON input.
        auditd execve events capture the spawning process; ppid of a web server
@@ -118,7 +118,7 @@
     <group>linux,auditd,exploit,webshell,fortisandbox,cve_2026_25089,</group>
   </rule>
 
-  <!-- Rule 103603 — Suricata: burst of HTTP 500 errors from FortiSandbox management
+  <!-- Rule 103603  - Suricata: burst of HTTP 500 errors from FortiSandbox management
        Exploitation probing CVE-2026-25089 often produces rapid HTTP 500 responses
        as the server errors on invalid JSON payloads during parameter fuzzing.
        20+ 500-response alerts from same source in 60s = automated exploitation.
@@ -137,14 +137,14 @@
 
 
 <!-- ==============================================================
-     SECTION 2: FortiBleed — FortiGate Credential Harvesting Campaign
+     SECTION 2: FortiBleed  - FortiGate Credential Harvesting Campaign
      T1040 (Network Sniffing) / T1078 (Valid Accounts) / T1003 (Credential Dump)
      Russian-speaking actors; 430k+ FortiGate devices targeted since Feb 2026
      SOCRadar intelligence, June 24, 2026
 
      TTPs observed:
        1. Credential spray against FortiGate SSL-VPN and admin interfaces
-       2. Successful login from new IP → deploy custom sniffer via DIAG SNIFFER
+       2. Successful login from new IP -> deploy custom sniffer via DIAG SNIFFER
        3. Sniffer captures cleartext/session credentials from passing traffic
        4. Harvested credentials used for lateral movement
 
@@ -155,7 +155,7 @@
        - Frequency: 10+ auth failures followed by single success from same IP
      ============================================================== -->
 
-  <!-- Rule 103604 — FortiGate syslog: excessive admin authentication failures
+  <!-- Rule 103604  - FortiGate syslog: excessive admin authentication failures
        FortiBleed actors perform credential spraying against FortiGate admin
        GUI (port 443/8443) and SSL-VPN. 10+ failures in 120s is spray indicator.
        Level 10: credential spray; medium severity until success is confirmed. -->
@@ -171,11 +171,11 @@
     <group>authentication,brute_force,fortigate,fortibleed,</group>
   </rule>
 
-  <!-- Rule 103605 — FortiGate syslog: DIAG SNIFFER command executed by admin
+  <!-- Rule 103605  - FortiGate syslog: DIAG SNIFFER command executed by admin
        Core FortiBleed TTP: after gaining admin access, attackers execute
        "diagnose sniffer packet" to capture network traffic and harvest credentials.
        The sniffer command appears in FortiGate event logs as subtype=system action.
-       Level 14: sniffer deployment on a firewall is highly anomalous — near-certain compromise. -->
+       Level 14: sniffer deployment on a firewall is highly anomalous  - near-certain compromise. -->
   <rule id="103605" level="14">
     <if_sid>4716,4717</if_sid>
     <field name="data.logdesc" type="pcre2">(?i)(sniffer|packet.capture|diagnose.sniffer|diag.sniffer)</field>
@@ -187,7 +187,7 @@
     <group>network_sniffing,fortigate,fortibleed,critical,</group>
   </rule>
 
-  <!-- Rule 103606 — Suricata: FortiGate sniffer keyword match in management session
+  <!-- Rule 103606  - Suricata: FortiGate sniffer keyword match in management session
        If traffic to FortiGate management ports includes "sniffer" or "packet-capture"
        in the HTTP body or CLI session stream, that is the FortiBleed sniffer deployment.
        Level 14: confirms FortiBleed network sniffing activity over management channel. -->
@@ -201,7 +201,7 @@
     <group>ids,suricata,network_sniffing,fortigate,fortibleed,</group>
   </rule>
 
-  <!-- Rule 103607 — FortiGate syslog: admin login from new/unexpected source country
+  <!-- Rule 103607  - FortiGate syslog: admin login from new/unexpected source country
        FortiBleed actors log in to compromised FortiGate from Russian-speaking regions
        or tor/VPN exit nodes after obtaining credentials via spraying.
        Level 11: new-country login is a medium-high signal of FortiBleed compromise. -->
@@ -218,10 +218,10 @@
     <group>authentication,fortigate,fortibleed,</group>
   </rule>
 
-  <!-- Rule 103608 — FortiBleed correlation: spray burst followed by admin login success
+  <!-- Rule 103608  - FortiBleed correlation: spray burst followed by admin login success
        Chained rule: if 103604 (brute force burst) fired against a FortiGate and
        then 103607 (admin login success) fires from the same source, high confidence
-       the spray succeeded — FortiBleed actor now has admin access.
+       the spray succeeded  - FortiBleed actor now has admin access.
        Level 15: successful compromise of FortiGate firewall is maximum severity. -->
   <rule id="103608" level="15" timeframe="300">
     <if_matched_sid>103604</if_matched_sid>
@@ -239,7 +239,7 @@
 
 
 <!-- ==============================================================
-     SECTION 3: SprySOCKS — China-Linked Cross-Platform Backdoor
+     SECTION 3: SprySOCKS  - China-Linked Cross-Platform Backdoor
      T1014 (Rootkit) / T1055 (Process Injection) / T1071.001 (C2 over Web)
      Previously Linux-only; June 2026 variant adds Windows kernel driver
      WIN_DRV: kernel driver for process/network concealment
@@ -252,7 +252,7 @@
        - Suricata: SprySOCKS custom C2 binary protocol patterns
      ============================================================== -->
 
-  <!-- Rule 103609 — Windows: unsigned kernel driver installation via Sysmon event 4 (SprySOCKS WIN_DRV)
+  <!-- Rule 103609  - Windows: unsigned kernel driver installation via Sysmon event 4 (SprySOCKS WIN_DRV)
        SprySOCKS WIN_DRV installs a kernel driver with no valid code-signing cert
        to conceal processes and network connections from userland tools.
        Sysmon Event 4 (ServiceControl) or Sysmon Event 1 catching sc.exe creating
@@ -271,7 +271,7 @@
     <group>windows,driver,rootkit,sprysoaks,</group>
   </rule>
 
-  <!-- Rule 103610 — Suricata: SprySOCKS C2 protocol detection
+  <!-- Rule 103610  - Suricata: SprySOCKS C2 protocol detection
        SprySOCKS uses a custom binary C2 protocol over TCP with a recognizable
        header structure. Suricata signatures match the binary magic bytes or
        connection characteristics (long-lived, beaconing interval, encrypted payload).
@@ -287,7 +287,7 @@
     <group>ids,suricata,c2,sprysoaks,china_apt,</group>
   </rule>
 
-  <!-- Rule 103611 — Linux: SprySOCKS long-lived outbound connection from system process
+  <!-- Rule 103611  - Linux: SprySOCKS long-lived outbound connection from system process
        Linux variant of SprySOCKS establishes persistent outbound TCP connections
        from processes that should not have external network access (system daemons).
        High port (>10000) outbound from init, systemd-journal, dbus, or similar daemons.
@@ -305,7 +305,7 @@
     <group>linux,network,c2,sprysoaks,china_apt,</group>
   </rule>
 
-  <!-- Rule 103612 — Windows: process with driver-level concealment characteristics
+  <!-- Rule 103612  - Windows: process with driver-level concealment characteristics
        SprySOCKS WIN_DRV hides processes by intercepting list enumeration.
        Detection: Wazuh process inventory (agent syscheck/rootcheck) flags
        discrepancy between process list from OS API and from /proc equivalent.
@@ -333,13 +333,13 @@
      CastleStealer: targets Chrome/Firefox credentials, crypto wallets, Telegram
 
      Detection approach:
-       - Windows: process chain — browser (Chrome/Edge/Firefox) download → temp execution
+       - Windows: process chain  - browser (Chrome/Edge/Firefox) download -> temp execution
        - Windows: CastleStealer credential path access (AppData\Local\Google\Chrome\User Data)
        - Windows: OXLOADER staging via multiple consecutive executable drops in TEMP
        - Suricata: OXLOADER C2 beaconing domain pattern
      ============================================================== -->
 
-  <!-- Rule 103613 — Windows: executable spawned from TEMP after browser download
+  <!-- Rule 103613  - Windows: executable spawned from TEMP after browser download
        OXLOADER is delivered via browser download (triggered by malicious Google Ad).
        The initial dropper lands in %TEMP% or %APPDATA% and immediately self-executes.
        Browser process (chrome.exe, msedge.exe, firefox.exe) is parent of TEMP executable.
@@ -357,7 +357,7 @@
     <group>windows,execution,browser,oxloader,castlestealer,</group>
   </rule>
 
-  <!-- Rule 103614 — Windows: process accessing Chrome/Firefox credential databases
+  <!-- Rule 103614  - Windows: process accessing Chrome/Firefox credential databases
        CastleStealer reads browser credential stores to harvest saved passwords.
        Accessing Login Data, Cookies, or Web Data SQLite DBs from a non-browser process
        is the primary CastleStealer credential-harvest behavioral signal.
@@ -375,7 +375,7 @@
     <group>windows,credential_access,browser,castlestealer,oxloader,</group>
   </rule>
 
-  <!-- Rule 103615 — Windows: crypto wallet path access by unknown process
+  <!-- Rule 103615  - Windows: crypto wallet path access by unknown process
        CastleStealer also targets cryptocurrency wallet files: Exodus, Electrum,
        MetaMask browser extension storage, and Telegram session files.
        Process reading wallet DB files from AppData is a CastleStealer indicator.
@@ -392,7 +392,7 @@
     <group>windows,credential_access,crypto,castlestealer,oxloader,</group>
   </rule>
 
-  <!-- Rule 103616 — Windows: multiple staged executables dropped to TEMP in rapid succession
+  <!-- Rule 103616  - Windows: multiple staged executables dropped to TEMP in rapid succession
        OXLOADER stages additional payloads (CastleStealer and other modules) by
        dropping multiple executables to TEMP/APPDATA in quick succession.
        5+ new executable file creations in TEMP within 30 seconds = OXLOADER staging.
@@ -407,7 +407,7 @@
     <group>windows,execution,oxloader,staged_payload,</group>
   </rule>
 
-  <!-- Rule 103617 — Suricata: OXLOADER/CastleStealer C2 beaconing
+  <!-- Rule 103617  - Suricata: OXLOADER/CastleStealer C2 beaconing
        OXLOADER phones home to attacker C2 after installation; CastleStealer
        exfiltrates stolen data over HTTP/HTTPS to Russian-hosted infrastructure.
        Suricata ET MALWARE rules detect REF8372 campaign C2 patterns.
@@ -427,21 +427,21 @@
 
 
 <!-- ==============================================================
-     SECTION 5: NarwhalRAT / ScarCruft APT37 — North Korea
+     SECTION 5: NarwhalRAT / ScarCruft APT37  - North Korea
      T1566.001 (Phishing: Spearphishing Attachment) / T1204.002 (User Execution: Malicious File)
      T1547.009 (Boot/Logon Autostart: Shortcut Modification)
      North Korea-linked ScarCruft group; fake Microsoft Account security alerts
-     Delivery: phishing email → ZIP → LNK → mshta.exe → PowerShell → NarwhalRAT DLL
+     Delivery: phishing email -> ZIP -> LNK -> mshta.exe -> PowerShell -> NarwhalRAT DLL
      Persistence: rundll32 launching DLL from AppData via Registry Run key
 
      Detection approach:
        - Windows: LNK file execution from ZIP extraction path (User\AppData\Downloads)
-       - Windows: mshta.exe → PowerShell download chain
+       - Windows: mshta.exe -> PowerShell download chain
        - Windows: rundll32 loading DLL from AppData with known NarwhalRAT argument
        - Windows: Registry Run key set to rundll32 AppData DLL (persistence)
      ============================================================== -->
 
-  <!-- Rule 103618 — Windows: LNK shortcut execution from ZIP extraction directory
+  <!-- Rule 103618  - Windows: LNK shortcut execution from ZIP extraction directory
        NarwhalRAT delivery: victim opens ZIP archive containing LNK file disguised
        as Microsoft Account security notification PDF/document. LNK executes mshta.exe.
        LNK file in %USERPROFILE%\Downloads\ or %TEMP%\ executed by explorer.exe.
@@ -460,12 +460,12 @@
     <group>windows,execution,phishing,narwhalrat,apt37,</group>
   </rule>
 
-  <!-- Rule 103619 — Windows: mshta.exe spawning PowerShell download (NarwhalRAT stage 2)
+  <!-- Rule 103619  - Windows: mshta.exe spawning PowerShell download (NarwhalRAT stage 2)
        After LNK executes mshta.exe, it runs an HTA script that launches PowerShell
        to download the NarwhalRAT DLL payload from attacker C2.
-       mshta.exe → powershell.exe with -enc or IEX(New-Object Net.WebClient).DownloadString
+       mshta.exe -> powershell.exe with -enc or IEX(New-Object Net.WebClient).DownloadString
        is the characteristic NarwhalRAT stage-2 chain.
-       Level 13: mshta → PowerShell download is near-certain malicious payload delivery. -->
+       Level 13: mshta -> PowerShell download is near-certain malicious payload delivery. -->
   <rule id="103619" level="13">
     <if_sid>61603</if_sid>
     <field name="win.system.eventID" type="pcre2">^1$</field>
@@ -480,7 +480,7 @@
     <group>windows,execution,phishing,narwhalrat,apt37,north_korea,</group>
   </rule>
 
-  <!-- Rule 103620 — Windows: rundll32 loading DLL from AppData (NarwhalRAT persistence)
+  <!-- Rule 103620  - Windows: rundll32 loading DLL from AppData (NarwhalRAT persistence)
        NarwhalRAT persists by writing a DLL to %APPDATA%\Roaming\[random]\ and
        configuring a Registry Run key to load it via rundll32.exe at logon.
        rundll32.exe executing a DLL from AppData\Roaming is the persistence indicator.
@@ -499,7 +499,7 @@
     <group>windows,persistence,narwhalrat,apt37,north_korea,</group>
   </rule>
 
-  <!-- Rule 103621 — Windows: Registry Run key set to rundll32 AppData DLL
+  <!-- Rule 103621  - Windows: Registry Run key set to rundll32 AppData DLL
        The persistence Registry key at HKCU\Software\Microsoft\Windows\CurrentVersion\Run
        pointing to rundll32.exe loading a DLL from AppData is written by NarwhalRAT
        as a startup persistence mechanism. Wazuh syscheck/registry monitoring detects this.
@@ -522,8 +522,8 @@
 
 <!-- ==============================================================
      SECTION 6: WordPress Supply Chain + Gravity SMTP CVE-2026-4020
-     T1195.002 (Supply Chain Compromise: Software Supply Chain) — ShapedPlugin
-     T1552 (Unsecured Credentials) — Gravity SMTP CVE-2026-4020 (CVSS 5.3)
+     T1195.002 (Supply Chain Compromise: Software Supply Chain)  - ShapedPlugin
+     T1552 (Unsecured Credentials)  - Gravity SMTP CVE-2026-4020 (CVSS 5.3)
 
      ShapedPlugin supply chain: backdoor in Product Slider Pro, Real Testimonials Pro,
      Smart Post Show Pro via Easy Digital Downloads update infrastructure (June 22, 2026).
@@ -540,7 +540,7 @@
        - PHP/Wazuh: WordPress plugin executing outbound HTTP from admin context
      ============================================================== -->
 
-  <!-- Rule 103622 — Web log: unauthenticated access to Gravity SMTP settings API
+  <!-- Rule 103622  - Web log: unauthenticated access to Gravity SMTP settings API
        CVE-2026-4020 allows any unauthenticated HTTP GET to
        /wp-json/gravitysmtp/v1/settings to return all SMTP credentials and API keys.
        Web server access logs showing 200-response to this endpoint from non-admin IPs
@@ -558,7 +558,7 @@
     <group>web,wordpress,credential_exposure,gravity_smtp,cve_2026_4020,</group>
   </rule>
 
-  <!-- Rule 103623 — Web log: scan for Gravity SMTP CVE-2026-4020 endpoint
+  <!-- Rule 103623  - Web log: scan for Gravity SMTP CVE-2026-4020 endpoint
        Attackers scanning for vulnerable Gravity SMTP installations probe
        /wp-json/gravitysmtp/v1/settings across large IP ranges, typically returning
        404 (not installed) or 200 (vulnerable). 10+ probes in 60s = scan.
@@ -573,7 +573,7 @@
     <group>web,wordpress,scan,gravity_smtp,cve_2026_4020,</group>
   </rule>
 
-  <!-- Rule 103624 — Suricata: ShapedPlugin backdoor C2 callback detection
+  <!-- Rule 103624  - Suricata: ShapedPlugin backdoor C2 callback detection
        Compromised ShapedPlugin plugins execute a PHP callback to attacker infrastructure
        when activated or when a plugin update is installed. Suricata detects the
        outbound HTTP POST from the WordPress server to the attacker C2 domain.
@@ -589,7 +589,7 @@
     <group>ids,suricata,supply_chain,wordpress,shapedplugin,c2,</group>
   </rule>
 
-  <!-- Rule 103625 — Web: WordPress plugin PHP file modified outside expected update time
+  <!-- Rule 103625  - Web: WordPress plugin PHP file modified outside expected update time
        Wazuh FIM (syscheck) monitoring WordPress plugin directories detects unexpected
        PHP file modifications. ShapedPlugin backdoor modifies plugin PHP files to add
        obfuscated callback code. File modification outside business hours / maintenance
@@ -606,7 +606,7 @@
     <group>fim,wordpress,supply_chain,shapedplugin,</group>
   </rule>
 
-  <!-- Rule 103626 — Web: WordPress unauthenticated plugin update endpoint access
+  <!-- Rule 103626  - Web: WordPress unauthenticated plugin update endpoint access
        ShapedPlugin's Easy Digital Downloads (EDD) update infrastructure was the
        delivery vector for the backdoored plugin updates. Attackers may also probe
        WordPress sites for EDD license-check endpoints to find vulnerable plugin versions.

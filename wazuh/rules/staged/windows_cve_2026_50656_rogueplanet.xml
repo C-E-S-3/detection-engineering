@@ -7,11 +7,11 @@
      Author: SecOps Engineer (Purple Team)
      Date: 2026-06-19
      References:
-       - SecurityWeek — Microsoft Working on Patch for RoguePlanet (2026-06-17)
-       - Help Net Security — RoguePlanet zero-day (2026-06-17)
-       - Hacker News — Microsoft Confirms RoguePlanet Defender Zero-Day (2026-06-17)
-       - Morphisec Blog — When Your Detector Becomes the Attack Surface
-       - Windows Forum CVE-2026-50656 — technical mitigation steps
+       - SecurityWeek  - Microsoft Working on Patch for RoguePlanet (2026-06-17)
+       - Help Net Security  - RoguePlanet zero-day (2026-06-17)
+       - Hacker News  - Microsoft Confirms RoguePlanet Defender Zero-Day (2026-06-17)
+       - Morphisec Blog  - When Your Detector Becomes the Attack Surface
+       - Windows Forum CVE-2026-50656  - technical mitigation steps
 
      Vulnerability summary:
        CVE-2026-50656 (RoguePlanet) is an unpatched zero-day in the Microsoft
@@ -33,7 +33,7 @@
        Primary indicator: MsMpEng.exe spawning a command interpreter (cmd.exe,
        powershell.exe, wscript.exe, etc.) outside its expected code paths.
        Defender normally creates child processes only for scan helper utilities
-       (MpCmdRun.exe, MpSigStub.exe) — any shell interpreter as a direct child
+       (MpCmdRun.exe, MpSigStub.exe)  - any shell interpreter as a direct child
        is highly anomalous.
 
      Severity tiers:
@@ -45,8 +45,8 @@
 <group name="privilege_escalation,windows,rogueplanet,cve_2026_50656,">
 
   <!-- ===========================================================
-       T1068 — Exploitation for Privilege Escalation
-       Rule IDs: 102810-102815 — RoguePlanet (CVE-2026-50656)
+       T1068  - Exploitation for Privilege Escalation
+       Rule IDs: 102810-102815  - RoguePlanet (CVE-2026-50656)
        =========================================================== -->
 
   <!-- Base anchor: MsMpEng.exe (Defender Malware Protection Engine) spawning
@@ -87,7 +87,7 @@
     <group>privilege_escalation,rogueplanet,windows,shell_spawn,</group>
   </rule>
 
-  <!-- MsMpEng.exe spawning shell with SYSTEM integrity level — confirmed exploitation.
+  <!-- MsMpEng.exe spawning shell with SYSTEM integrity level  - confirmed exploitation.
        The RoguePlanet PoC delivers a shell running as NT AUTHORITY\SYSTEM.
        Any shell spawned from MsMpEng.exe with System integrity is a near-certain
        confirmed exploitation of CVE-2026-50656. Initiate immediate incident response. -->
@@ -102,7 +102,7 @@
   </rule>
 
   <!-- Defender scan directory (C:\ProgramData\Microsoft\Windows Defender\Scans)
-       containing unexpected executable — potential staging for RoguePlanet payload.
+       containing unexpected executable  - potential staging for RoguePlanet payload.
        Attackers drop a malicious file into a location Defender scans automatically
        to trigger the race condition; an anomalous .exe in scan working directories
        is a pre-exploitation indicator. -->
@@ -117,7 +117,7 @@
     <group>privilege_escalation,rogueplanet,windows,file_staging,</group>
   </rule>
 
-  <!-- Symlink/junction creation in Defender scan path — core RoguePlanet technique.
+  <!-- Symlink/junction creation in Defender scan path  - core RoguePlanet technique.
        The exploit swaps a legitimate file with a symlink during Defender's scan
        to redirect Defender's file write into an attacker-controlled location.
        Detecting symlink creation in Defender-monitored paths is a pre-exploitation

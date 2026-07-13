@@ -16,9 +16,9 @@
        inject path traversal sequences (e.g. /../, %2e%2e%2f) into the
        URL, causing the server to access arbitrary files on the host
        filesystem with root-level privileges. This enables:
-         - /etc/shadow and /etc/passwd read → credential extraction
-         - Writing to /etc/cron.d/ → persistent root execution
-         - Reading configuration databases → full vManage compromise
+         - /etc/shadow and /etc/passwd read -> credential extraction
+         - Writing to /etc/cron.d/ -> persistent root execution
+         - Reading configuration databases -> full vManage compromise
 
      Log source prerequisites:
        - Traefik access log in JSON format forwarded to Wazuh

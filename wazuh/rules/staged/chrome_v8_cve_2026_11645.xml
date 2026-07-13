@@ -23,7 +23,7 @@
 
      Log source prerequisites:
        - Windows Application Event Log forwarded via Wazuh agent
-         (channel: Application, Event ID 1000 — Application Error)
+         (channel: Application, Event ID 1000  - Application Error)
          Base rule: Wazuh Windows EventLog decoder. The rules below
          use if_sid 60010; validate against your deployment's Windows
          Application channel base rule (may be 60000 or 60010
@@ -65,7 +65,7 @@
   </rule>
 
   <!-- Critical: V8 crash with access violation exception (0xc0000005) -->
-  <!-- 0xc0000005 = STATUS_ACCESS_VIOLATION — heap corruption fingerprint -->
+  <!-- 0xc0000005 = STATUS_ACCESS_VIOLATION  - heap corruption fingerprint -->
   <rule id="101421" level="13">
     <if_sid>101420</if_sid>
     <field name="win.eventdata.exceptionCode" type="pcre2">(?i)0xc0000005</field>
@@ -89,7 +89,7 @@
     <group>chrome_crash,v8_crash,exploit_client,heap_grooming,</group>
   </rule>
 
-  <!-- Medium: single chrome.exe crash (any fault module) — lower-confidence anchor -->
+  <!-- Medium: single chrome.exe crash (any fault module)  - lower-confidence anchor -->
   <!-- Promotes to 101420/101421 when v8.dll is confirmed; standalone useful for baselining -->
   <rule id="101423" level="9">
     <if_sid>60010</if_sid>
@@ -111,7 +111,7 @@
        Log source: Sysmon Event ID 1 (Process Create), if_sid 61603
        =========================================================== -->
 
-  <!-- Critical: chrome.exe spawning high-risk shells — near-certain sandbox escape -->
+  <!-- Critical: chrome.exe spawning high-risk shells  - near-certain sandbox escape -->
   <!-- Covers cmd.exe, powershell.exe, wscript.exe, cscript.exe, mshta.exe -->
   <rule id="101424" level="14">
     <if_sid>61603</if_sid>
@@ -143,7 +143,7 @@
   </rule>
 
   <!-- ===========================================================
-       Network egress from Chrome renderer — C2 beaconing indicator
+       Network egress from Chrome renderer  - C2 beaconing indicator
        Rule IDs: 101426
        Log source: Sysmon Event ID 3 (Network Connection), if_sid 61603
        =========================================================== -->

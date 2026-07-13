@@ -1,5 +1,5 @@
 <!-- ============================================================
-     Microsoft June 2026 Patch Tuesday — CVE Detection Rules
+     Microsoft June 2026 Patch Tuesday  - CVE Detection Rules
      MITRE ATT&CK:
        T1190  - Exploit Public-Facing Application
        T1566.002 - Phishing: Spearphishing Link (Exchange XSS)
@@ -10,19 +10,19 @@
      Date: 2026-06-15
 
      References:
-       CVE-2026-47291 - CVSS Critical — Windows HTTP Protocol Stack (http.sys)
+       CVE-2026-47291 - CVSS Critical  - Windows HTTP Protocol Stack (http.sys)
          integer overflow. Wormable, unauthenticated RCE via crafted HTTP
          packet to IIS/WinRM/WS-Management. Exploitation not yet observed
          but rated "More Likely" (follows CVE-2022-21907 pattern). All
          Windows hosts with IIS, WinRM, or WS-Management enabled are
          affected.
-       CVE-2026-42897 - CVSS 8.1 — Exchange Server OWA XSS, actively
+       CVE-2026-42897 - CVSS 8.1  - Exchange Server OWA XSS, actively
          exploited since before May 2026 patch. CISA KEV since 2026-05-15.
          Unauthenticated attackers send weaponized email; JavaScript
          executes in victim browser when opened in OWA.
-       CVE-2026-44815 - CVSS 9.8 — DHCP Client RCE from rogue server
+       CVE-2026-44815 - CVSS 9.8  - DHCP Client RCE from rogue server
          on local LAN; all Windows hosts requesting DHCP leases affected.
-       CVE-2026-45657 - CVSS 9.8 — Windows Kernel UAF; local escalation
+       CVE-2026-45657 - CVSS 9.8  - Windows Kernel UAF; local escalation
          to SYSTEM; used in sandbox escapes via phishing docs.
 
      Log source prerequisites:
@@ -44,7 +44,7 @@
 <group name="initial_access,exploit_pubfacing,ms_patch_tuesday_2026,">
 
   <!-- ===========================================================
-       CVE-2026-47291 — HTTP.sys Wormable RCE
+       CVE-2026-47291  - HTTP.sys Wormable RCE
        T1190 / T1595.002
        Detection via Traefik JSON access logs and Suricata IDS
        =========================================================== -->
@@ -59,7 +59,7 @@
     <group>winrm,wsman,http_sys,</group>
   </rule>
 
-  <!-- WinRM/WS-Management endpoint probed — anomalous on Linux infra  -->
+  <!-- WinRM/WS-Management endpoint probed  - anomalous on Linux infra  -->
   <rule id="101901" level="11">
     <if_sid>101900</if_sid>
     <description>WinRM/WS-Management endpoint $(RequestPath) probed from $(ClientHost) - CVE-2026-47291 reconnaissance or exploitation attempt (T1190)</description>
@@ -69,7 +69,7 @@
     <group>winrm,wsman,http_sys,cve_2026_47291,initial_access,</group>
   </rule>
 
-  <!-- POST/PUT to WinRM returning 200 — potential successful exploitation -->
+  <!-- POST/PUT to WinRM returning 200  - potential successful exploitation -->
   <!-- On a Linux host Traefik will 404 or 502; 200 means the backend  -->
   <!-- accepted it, which should never happen for these paths.          -->
   <rule id="101902" level="13">
@@ -115,7 +115,7 @@
     <group>iis,http_sys,windows_scan,</group>
   </rule>
 
-  <!-- IIS path probe — indicates scanning for HTTP.sys attack surface -->
+  <!-- IIS path probe  - indicates scanning for HTTP.sys attack surface -->
   <rule id="101906" level="11">
     <if_sid>101905</if_sid>
     <description>IIS-specific path $(RequestPath) probed from $(ClientHost) - CVE-2026-47291 attack surface fingerprinting (T1595.002)</description>
@@ -139,7 +139,7 @@
 
 
   <!-- ===========================================================
-       CVE-2026-42897 — Exchange Server OWA XSS (Actively Exploited)
+       CVE-2026-42897  - Exchange Server OWA XSS (Actively Exploited)
        T1190 / T1566.002
        CISA KEV since 2026-05-15
        =========================================================== -->
@@ -152,7 +152,7 @@
     <group>exchange,owa,ews,</group>
   </rule>
 
-  <!-- OWA/EWS accessed — anomalous on this environment                -->
+  <!-- OWA/EWS accessed  - anomalous on this environment                -->
   <rule id="101909" level="11">
     <if_sid>101908</if_sid>
     <description>Exchange OWA/EWS endpoint $(RequestPath) accessed from $(ClientHost) - CVE-2026-42897 reconnaissance or XSS weaponized-email delivery (T1566.002 / T1190)</description>
@@ -176,7 +176,7 @@
     <group>exchange,owa,cve_2026_42897,xss,initial_access,</group>
   </rule>
 
-  <!-- OWA burst from single IP — scanning for CVE-2026-42897 surface  -->
+  <!-- OWA burst from single IP  - scanning for CVE-2026-42897 surface  -->
   <rule id="101911" level="13">
     <if_sid>101908</if_sid>
     <description>Exchange OWA/EWS scanning burst from $(ClientHost): 8+ requests in 60s - automated CVE-2026-42897 exploitation tooling (T1190)</description>

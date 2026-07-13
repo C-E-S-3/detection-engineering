@@ -1,14 +1,14 @@
 <!-- ============================================================
      JoomShaper SP Page Builder Unrestricted File Upload RCE
-     CVE-2026-48908 — CVSS 9.8 CRITICAL
+     CVE-2026-48908  - CVSS 9.8 CRITICAL
      MITRE ATT&CK:
-       T1190       — Exploit Public-Facing Application
-       T1505.003   — Server Software Component: Web Shell
-       T1136.001   — Create Account: Local Account (rogue Joomla admin)
-       T1070.006   — Indicator Removal: Timestomp (webshell evasion)
-     Rule IDs: 103733–103738
+       T1190        - Exploit Public-Facing Application
+       T1505.003    - Server Software Component: Web Shell
+       T1136.001    - Create Account: Local Account (rogue Joomla admin)
+       T1070.006    - Indicator Removal: Timestomp (webshell evasion)
+     Rule IDs: 103733-103738
      CISA KEV: Added 2026-07-07, Federal Deadline 2026-07-10
-     Author: SecOps Engineer (Purple Team) — ESKA-411
+     Author: SecOps Engineer (Purple Team)  - ESKA-411
      Date: 2026-07-10
      References:
        - https://nvd.nist.gov/vuln/detail/CVE-2026-48908
@@ -38,26 +38,26 @@
            ClientHost
 
      Severity rationale:
-       0  — Base anchor (no alert)
-       13 — POST to SP Page Builder upload endpoint (high-confidence exploit attempt)
-       15 — Upload returned 2xx (webshell uploaded successfully)
-       15 — PHP file accessed in SP Page Builder media path (webshell execution)
-       13 — 3+ upload probes from same IP in 60s (automated exploit tool)
-       15 — Webshell command parameter in SP Page Builder media path (active execution)
+       0   - Base anchor (no alert)
+       13  - POST to SP Page Builder upload endpoint (high-confidence exploit attempt)
+       15  - Upload returned 2xx (webshell uploaded successfully)
+       15  - PHP file accessed in SP Page Builder media path (webshell execution)
+       13  - 3+ upload probes from same IP in 60s (automated exploit tool)
+       15  - Webshell command parameter in SP Page Builder media path (active execution)
      ============================================================ -->
 
 <group name="initial_access,exploit_pubfacing,joomla,sppagebuilder,webshell,cve_2026_48908,">
 
   <!-- ===========================================================
-       T1190 — Exploit Public-Facing Application
-       Rules 103733–103738: SP Page Builder upload RCE detection
+       T1190  - Exploit Public-Facing Application
+       Rules 103733-103738: SP Page Builder upload RCE detection
        Log source: Traefik access log (JSON decoder)
        =========================================================== -->
 
   <!-- Base anchor: any POST to the SP Page Builder component.
        com_sppagebuilder is the Joomla component identifier for JoomShaper
        SP Page Builder. All exploitation traffic starts with this component
-       name in the query string. Level 0: no alert — used for chaining. -->
+       name in the query string. Level 0: no alert  - used for chaining. -->
   <rule id="103733" level="0">
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">POST</field>
@@ -68,7 +68,7 @@
 
   <!-- POST to the SP Page Builder uploadCustomIcon task.
        This is the exact endpoint vulnerable to CVE-2026-48908.
-       Unauthenticated access is possible — no session or token required.
+       Unauthenticated access is possible  - no session or token required.
        Level 13: direct exploitation attempt targeting a CISA KEV endpoint. -->
   <rule id="103734" level="13">
     <if_sid>103733</if_sid>
@@ -98,7 +98,7 @@
   <!-- PHP file accessed under the SP Page Builder media/iconfont directory.
        Documented webshell drop location: /media/com_sppagebuilder/assets/iconfont/<uid>/fonts/
        An HTTP GET/POST to a .php file in this path indicates webshell execution.
-       Level 15: active webshell execution — T1505.003. -->
+       Level 15: active webshell execution  - T1505.003. -->
   <rule id="103736" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/media/com_sppagebuilder/.*\.php(?:\?|$)</field>
@@ -128,7 +128,7 @@
   <!-- Webshell command execution parameter in SP Page Builder media path.
        Post-upload webshell execution typically passes shell commands via
        common GET/POST parameter names (cmd, exec, c, shell, pass).
-       Level 15: active command execution via uploaded webshell — T1059.004. -->
+       Level 15: active command execution via uploaded webshell  - T1059.004. -->
   <rule id="103738" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/media/com_sppagebuilder/.*\.php.*(?:cmd=|command=|exec=|shell=|c=|pass=|passwd=|run=|system=)</field>

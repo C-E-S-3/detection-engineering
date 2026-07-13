@@ -1,20 +1,20 @@
 <!-- ============================================================
-     pay-uz Laravel — Unauthenticated PHP File Overwrite RCE
-     CVE-2026-31843 — CVSS 9.8 CRITICAL
+     pay-uz Laravel  - Unauthenticated PHP File Overwrite RCE
+     CVE-2026-31843  - CVSS 9.8 CRITICAL
      MITRE ATT&amp;CK:
-       T1190     — Exploit Public-Facing Application
-       T1505.003 — Server Software Component: Web Shell
-       T1059.004 — Command and Scripting Interpreter: Unix Shell
-     Rule IDs: 103801–103805
+       T1190      - Exploit Public-Facing Application
+       T1505.003  - Server Software Component: Web Shell
+       T1059.004  - Command and Scripting Interpreter: Unix Shell
+     Rule IDs: 103801-103805
      ACSC CMS Campaign Advisory: 2026-07-11
-     Author: SecOps Engineer (Purple Team) — ESKA-457
+     Author: SecOps Engineer (Purple Team)  - ESKA-457
      Date: 2026-07-12
      References:
        - https://nvd.nist.gov/vuln/detail/CVE-2026-31843
 
      Vulnerability summary:
        CVE-2026-31843 is an unauthenticated PHP file overwrite vulnerability in
-       the pay-uz Laravel payment gateway package (version ≤2.2.24, CVSS 9.8).
+       the pay-uz Laravel payment gateway package (version <=2.2.24, CVSS 9.8).
        The pay-uz plugin exposes API endpoints (/api/payuz/ or /payuz/) without
        authentication enforcement. A vulnerable endpoint accepts arbitrary file
        path and content parameters, allowing attackers to overwrite existing PHP
@@ -42,19 +42,19 @@
        that apply regardless of whether the exploit used this CVE or another.
 
      Severity rationale:
-       0  — Base anchor (no alert; used for chaining)
-       13 — POST to pay-uz file-write endpoint (exploit attempt)
-       15 — File-write endpoint returned 2xx (PHP file overwrite confirmed)
-       15 — PHP file accessed in Laravel public/storage path (overwritten file executing)
-       15 — Webshell command parameter in Laravel public/storage PHP file (active RCE)
-       13 — 3+ rapid pay-uz API probes from same IP (automated exploit tool)
+       0   - Base anchor (no alert; used for chaining)
+       13  - POST to pay-uz file-write endpoint (exploit attempt)
+       15  - File-write endpoint returned 2xx (PHP file overwrite confirmed)
+       15  - PHP file accessed in Laravel public/storage path (overwritten file executing)
+       15  - Webshell command parameter in Laravel public/storage PHP file (active RCE)
+       13  - 3+ rapid pay-uz API probes from same IP (automated exploit tool)
      ============================================================ -->
 
 <group name="initial_access,exploit_pubfacing,laravel,payuz,webshell,cve_2026_31843,">
 
   <!-- ===========================================================
-       T1190 — Exploit Public-Facing Application
-       Rules 103801–103805: pay-uz file overwrite RCE detection
+       T1190  - Exploit Public-Facing Application
+       Rules 103801-103805: pay-uz file overwrite RCE detection
        Log source: Traefik access log (JSON decoder)
        =========================================================== -->
 
@@ -62,7 +62,7 @@
        pay-uz registers routes under /api/payuz/ or /payuz/ in Laravel
        applications. CVE-2026-31843 exploits a sub-route within this namespace
        that accepts file path/content parameters without authentication.
-       Level 0: no alert — used for chaining only. -->
+       Level 0: no alert  - used for chaining only. -->
   <rule id="103801" level="0">
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">POST</field>
@@ -73,10 +73,10 @@
 
   <!-- POST to pay-uz file-write or configuration endpoint.
        The vulnerable endpoint is a sub-route of the pay-uz namespace that
-       handles file content — typically a callback, config, or update handler.
+       handles file content  - typically a callback, config, or update handler.
        These route names are not part of the normal payment processing flow
        (payment routes use /payment, /process, /checkout).
-       Level 13: high-confidence exploit attempt — non-payment route targeted. -->
+       Level 13: high-confidence exploit attempt  - non-payment route targeted. -->
   <rule id="103802" level="13">
     <if_sid>103801</if_sid>
     <field name="RequestPath" type="pcre2">(?i)/(?:callback|notify|webhook|config|update|file|write|install|setup|upload|settings)/</field>
@@ -87,11 +87,11 @@
     <group>laravel,payuz,initial_access,exploit_pubfacing,cve_2026_31843,</group>
   </rule>
 
-  <!-- File-write endpoint returned 2xx — PHP overwrite confirmed.
+  <!-- File-write endpoint returned 2xx  - PHP overwrite confirmed.
        A 2xx response from the pay-uz file-write endpoint confirms the
        overwrite request was accepted and a PHP file was modified. Any
        subsequent request including that file path triggers RCE.
-       Level 15: file overwrite confirmed — incident response required. -->
+       Level 15: file overwrite confirmed  - incident response required. -->
   <rule id="103803" level="15">
     <if_sid>103801</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
@@ -106,9 +106,9 @@
   <!-- PHP file accessed in Laravel public/storage path.
        CVE-2026-31843 overwrites PHP files in the Laravel webroot or
        public/storage/ (symlink to storage/app/public/). A request to a
-       PHP file in these directories is anomalous — Laravel does not place
+       PHP file in these directories is anomalous  - Laravel does not place
        executable PHP files in public/storage/ by design.
-       Level 15: T1505.003 — overwritten PHP file executing. -->
+       Level 15: T1505.003  - overwritten PHP file executing. -->
   <rule id="103804" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/(?:public/storage|storage/app/public|public/payuz)/.*\.ph(?:p[3-8]?|tml)(?:\?|$)</field>
@@ -123,7 +123,7 @@
   <!-- Webshell command parameter in Laravel public/storage PHP file.
        After overwriting a PHP file with a webshell, the attacker activates
        it by sending OS command parameters to the overwritten file's URL.
-       Level 15: T1059.004 — active command execution via overwritten file. -->
+       Level 15: T1059.004  - active command execution via overwritten file. -->
   <rule id="103805" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/(?:public|storage)/.*\.ph(?:p[3-8]?|tml).*(?:cmd=|command=|exec=|shell=|c=|run=|system=|pass=|passwd=)</field>

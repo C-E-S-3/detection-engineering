@@ -9,7 +9,7 @@
      Author: SecOps Engineer
      Date: 2026-06-24
      CVE: CVE-2026-20230
-     CVSS: 8.6 (HIGH) — AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:N
+     CVSS: 8.6 (HIGH)  - AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:N
 
      Vulnerability summary:
        Server-side request forgery (SSRF) in Cisco Unified Communications
@@ -27,7 +27,7 @@
 
      Detection approach:
        1. HTTP request to WebDialer endpoint from external source (anchor)
-       2. SSRF payload patterns — internal IP references in WebDialer requests
+       2. SSRF payload patterns  - internal IP references in WebDialer requests
        3. Burst of WebDialer probes (scanner / exploit framework fingerprint)
        4. File write events from Tomcat/UCM service user (post-SSRF file write)
        5. Unusual process spawn from Tomcat parent (post-exploitation RCE)
@@ -58,7 +58,7 @@
 <group name="cisco,cucm,ssrf,initial_access,cve_2026_20230,">
 
   <!-- ===========================================================
-       T1190 — WebDialer HTTP request anchor
+       T1190  - WebDialer HTTP request anchor
        Rule IDs: 103579
        Matches any HTTP request to the Cisco UCM WebDialer endpoint.
        Level 5 anchor used for correlation; not a standalone alert.
@@ -76,7 +76,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1190 — SSRF payload in WebDialer request
+       T1190  - SSRF payload in WebDialer request
        Rule IDs: 103580
        SSRF exploitation crafts HTTP request parameters containing
        internal IP addresses, localhost, or metadata service addresses.
@@ -96,7 +96,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1190 — SSRF payload in request body/parameters (syslog variant)
+       T1190  - SSRF payload in request body/parameters (syslog variant)
        Rule IDs: 103581
        For environments where UCM logs appear via syslog rather than
        web-log decoder. Matches SSRF-indicative content in any
@@ -114,7 +114,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1190 — WebDialer probe burst (scanner/exploit framework)
+       T1190  - WebDialer probe burst (scanner/exploit framework)
        Rule IDs: 103582
        Automated exploit tools and scanners generate high-frequency
        requests to the WebDialer endpoint during reconnaissance and
@@ -134,7 +134,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1190 / T1105 — File write from Tomcat/UCM service user
+       T1190 / T1105  - File write from Tomcat/UCM service user
        Rule IDs: 103583
        Post-SSRF exploitation of CVE-2026-20230 allows an attacker
        to write files to the system. Auditd will show file creation
@@ -156,7 +156,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1059.004 / T1190 — Unusual process spawn from Tomcat parent
+       T1059.004 / T1190  - Unusual process spawn from Tomcat parent
        Rule IDs: 103584
        Following file write exploitation, attackers execute the dropped
        payload. Process execution with Tomcat (java) as parent process
@@ -177,7 +177,7 @@
   </rule>
 
   <!-- ===========================================================
-       T1083 — File/directory discovery after WebDialer auth bypass
+       T1083  - File/directory discovery after WebDialer auth bypass
        Rule IDs: 103585
        Attackers performing reconnaissance after gaining access via
        SSRF will enumerate directories. Path traversal sequences or
@@ -197,11 +197,11 @@
   </rule>
 
   <!-- ===========================================================
-       T1190 / T1105 — Correlated: probe burst + file write (5-min window)
+       T1190 / T1105  - Correlated: probe burst + file write (5-min window)
        Rule IDs: 103586
        High-fidelity composite signal: WebDialer scan burst followed by
        a file write from the UCM service user within 5 minutes indicates
-       a complete exploit chain — reconnaissance, SSRF delivery, payload
+       a complete exploit chain  - reconnaissance, SSRF delivery, payload
        drop. This is a critical priority incident.
        =========================================================== -->
 

@@ -1,20 +1,20 @@
 <!-- ============================================================
-     WPvivid Backup — Predictable Encryption Bypass Arbitrary PHP Upload RCE
-     CVE-2026-1357 — CVSS 9.8 CRITICAL
+     WPvivid Backup  - Predictable Encryption Bypass Arbitrary PHP Upload RCE
+     CVE-2026-1357  - CVSS 9.8 CRITICAL
      MITRE ATT&amp;CK:
-       T1190     — Exploit Public-Facing Application
-       T1505.003 — Server Software Component: Web Shell
-       T1059.004 — Command and Scripting Interpreter: Unix Shell
-     Rule IDs: 103795–103800
+       T1190      - Exploit Public-Facing Application
+       T1505.003  - Server Software Component: Web Shell
+       T1059.004  - Command and Scripting Interpreter: Unix Shell
+     Rule IDs: 103795-103800
      ACSC CMS Campaign Advisory: 2026-07-11
-     Author: SecOps Engineer (Purple Team) — ESKA-457
+     Author: SecOps Engineer (Purple Team)  - ESKA-457
      Date: 2026-07-12
      References:
        - https://nvd.nist.gov/vuln/detail/CVE-2026-1357
 
      Vulnerability summary:
        CVE-2026-1357 is a predictable encryption key bypass vulnerability in the
-       WPvivid Backup Plugin for WordPress (version ≤0.9.123, CVSS 9.8). WPvivid
+       WPvivid Backup Plugin for WordPress (version <=0.9.123, CVSS 9.8). WPvivid
        uses a static/predictable key when packaging backup archives for transport.
        Attackers exploit this predictability to craft a malicious backup archive
        containing arbitrary PHP files encrypted with the known key, then POST it
@@ -34,26 +34,26 @@
            ClientHost
 
      Severity rationale:
-       0  — Base anchor (no alert; used for chaining)
-       13 — POST to WPvivid backup restore/upload REST endpoint (exploit attempt)
-       15 — Restore endpoint returned 2xx (PHP file extracted to webroot)
-       15 — PHP file accessed in WPvivid backup storage path (webshell executing)
-       13 — 3+ rapid backup probes from same IP in 60s (automated exploit tool)
-       15 — Webshell command parameter in WPvivid storage PHP file (active RCE)
+       0   - Base anchor (no alert; used for chaining)
+       13  - POST to WPvivid backup restore/upload REST endpoint (exploit attempt)
+       15  - Restore endpoint returned 2xx (PHP file extracted to webroot)
+       15  - PHP file accessed in WPvivid backup storage path (webshell executing)
+       13  - 3+ rapid backup probes from same IP in 60s (automated exploit tool)
+       15  - Webshell command parameter in WPvivid storage PHP file (active RCE)
      ============================================================ -->
 
 <group name="initial_access,exploit_pubfacing,wordpress,wpvivid,webshell,cve_2026_1357,">
 
   <!-- ===========================================================
-       T1190 — Exploit Public-Facing Application
-       Rules 103795–103800: WPvivid Backup bypass RCE detection
+       T1190  - Exploit Public-Facing Application
+       Rules 103795-103800: WPvivid Backup bypass RCE detection
        Log source: Traefik access log (JSON decoder)
        =========================================================== -->
 
   <!-- Base anchor: POST to WPvivid REST API namespace.
        WPvivid exposes backup and restore functionality under /wp-json/wpvivid/.
        All REST-based exploitation traffic for CVE-2026-1357 targets this
-       path prefix. Level 0: no alert — used for chaining only. -->
+       path prefix. Level 0: no alert  - used for chaining only. -->
   <rule id="103795" level="0">
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">POST</field>
@@ -78,11 +78,11 @@
     <group>wordpress,wpvivid,initial_access,exploit_pubfacing,file_upload,cve_2026_1357,</group>
   </rule>
 
-  <!-- Restore endpoint returned 2xx — PHP files extracted.
+  <!-- Restore endpoint returned 2xx  - PHP files extracted.
        A successful 2xx response to the WPvivid backup restore endpoint confirms
        the malicious archive was accepted and its PHP files extracted to the
        WordPress filesystem. The webshell is now web-accessible.
-       Level 15: webshell deployment confirmed — incident response required. -->
+       Level 15: webshell deployment confirmed  - incident response required. -->
   <rule id="103797" level="15">
     <if_sid>103795</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
@@ -99,7 +99,7 @@
        or /wp-content/uploads/wpvivid/. WordPress does not place executable
        PHP files in backup storage directories; any such request indicates
        an extracted webshell is being executed.
-       Level 15: active webshell execution — T1505.003. -->
+       Level 15: active webshell execution  - T1505.003. -->
   <rule id="103798" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/wp-content/uploads/wpvivid[^/]*/.*\.ph(?:p[3-8]?|tml)(?:\?|$)</field>
@@ -129,7 +129,7 @@
   <!-- Webshell command parameter in WPvivid backup storage PHP file.
        After extraction, attackers activate the webshell by sending
        OS command parameters via GET/POST to the extracted PHP file.
-       Level 15: T1059.004 — active command execution via extracted webshell. -->
+       Level 15: T1059.004  - active command execution via extracted webshell. -->
   <rule id="103800" level="15">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/wp-content/uploads/wpvivid[^/]*/.*\.ph(?:p[3-8]?|tml).*(?:cmd=|command=|exec=|shell=|c=|run=|system=|pass=|passwd=)</field>

@@ -1,5 +1,5 @@
 <!-- ============================================================
-     Threat Intelligence Detection Rules — 2026-06-24 Batch 7
+     Threat Intelligence Detection Rules  - 2026-06-24 Batch 7
      Sources:
        - CVE-2026-41089: Windows Netlogon Stack-Based Buffer Overflow RCE (CVSS 9.8 Critical)
          0-click unauthenticated RCE on domain controllers; actively exploited June 2026
@@ -45,7 +45,7 @@
 
 
 <!-- ==============================================================
-     SECTION 1: CVE-2026-41089 — Windows Netlogon Stack-Based Buffer Overflow RCE
+     SECTION 1: CVE-2026-41089  - Windows Netlogon Stack-Based Buffer Overflow RCE
      T1210 (Exploitation of Remote Services) / T1190 (Exploit Public-Facing Application)
      CVSS 9.8 Critical; 0-click unauthenticated; actively exploited since June 2026
      Affects all Windows Server versions; patch: KB5058386 family (May 2026 Patch Tuesday)
@@ -60,7 +60,7 @@
      ============================================================== -->
 <group name="threat_intel_2026_06_24,windows,netlogon,supply_chain,android,mobile,network,arista,">
 
-  <!-- Rule 103627 — Anchor: Netlogon channel establishment failure (Event ID 5805)
+  <!-- Rule 103627  - Anchor: Netlogon channel establishment failure (Event ID 5805)
        Event 5805 fires when a machine fails to establish a Netlogon secure channel.
        Exploitation sends malformed RPC requests that cause channel negotiation failures.
        Level 10: single event is noisy; used as correlation base for rules 103629-103631. -->
@@ -75,7 +75,7 @@
     <group>netlogon,channel_failure,dc_attack,</group>
   </rule>
 
-  <!-- Rule 103628 — Netlogon RPC error events (5827/5828/5829/5830/5831)
+  <!-- Rule 103628  - Netlogon RPC error events (5827/5828/5829/5830/5831)
        These events indicate Netlogon refused a secure channel request due to security
        policy or protocol violation; a burst of these is consistent with CVE-2026-41089
        exploit tooling probing for a vulnerable domain controller.
@@ -91,7 +91,7 @@
     <group>netlogon,channel_error,dc_attack,</group>
   </rule>
 
-  <!-- Rule 103629 — lsass.exe crash with netlogon.DLL as fault module
+  <!-- Rule 103629  - lsass.exe crash with netlogon.DLL as fault module
        A successful CVE-2026-41089 exploit triggers a stack overflow in lsass.exe via
        the Netlogon RPC path. Application Event ID 1000 records the crash with
        win.eventdata.faultModuleName = netlogon.DLL.
@@ -110,7 +110,7 @@
     <group>netlogon,lsass_crash,cve_2026_41089,critical_dc_event,</group>
   </rule>
 
-  <!-- Rule 103630 — Netlogon service stopped (System event ID 7036)
+  <!-- Rule 103630  - Netlogon service stopped (System event ID 7036)
        After a successful overflow, the Netlogon service may stop or restart.
        System Event ID 7036 records service state changes.
        Level 12: unexpected Netlogon stop mid-day warrants investigation. -->
@@ -128,7 +128,7 @@
     <group>netlogon,service_restart,dc_attack,</group>
   </rule>
 
-  <!-- Rule 103631 — Correlation: Netlogon channel failure burst (≥5 in 120s) from same source
+  <!-- Rule 103631  - Correlation: Netlogon channel failure burst (>=5 in 120s) from same source
        CVE-2026-41089 exploit tooling typically sends rapid RPC probes before triggering
        the overflow. Five 5805 errors from a single machine within 2 minutes is a strong
        pre-exploitation probe indicator.
@@ -144,7 +144,7 @@
     <group>netlogon,channel_failure,cve_2026_41089,exploit_burst,correlation,</group>
   </rule>
 
-  <!-- Rule 103632 — Post-compromise: domain computer account modification after Netlogon anomaly
+  <!-- Rule 103632  - Post-compromise: domain computer account modification after Netlogon anomaly
        After gaining SYSTEM on a DC via CVE-2026-41089, attackers frequently modify
        computer account attributes (4742) or create new privileged accounts (4720).
        This rule flags 4742 (computer account changed) as a post-exploitation pivot signal.
@@ -160,7 +160,7 @@
     <group>netlogon,post_exploitation,domain_controller,account_manipulation,</group>
   </rule>
 
-  <!-- Rule 103633 — Suricata: malformed Netlogon RPC traffic signature
+  <!-- Rule 103633  - Suricata: malformed Netlogon RPC traffic signature
        IDS engines may detect oversized or malformed DCE-RPC Netlogon calls
        as anomalous. Catches CVE-2026-41089 network-layer exploitation attempts.
        Level 13: direct IDS match on Netlogon exploit traffic. -->
@@ -179,7 +179,7 @@
 
 
 <!-- ==============================================================
-     SECTION 2: Cordyceps — CI/CD GitHub Actions Supply Chain Vulnerability
+     SECTION 2: Cordyceps  - CI/CD GitHub Actions Supply Chain Vulnerability
      T1195.001 (Supply Chain Compromise: Software Supply Chain)
      T1552.004 (Unsecured Credentials: Private Keys)
      T1059.004 (Command and Scripting Interpreter: Unix Shell)
@@ -193,10 +193,10 @@
        - File creation: .github/workflows/*.yml modification by external fork contributor
        - Secrets exfiltration: outbound HTTPS from CI runner to non-GitHub endpoints
          carrying Authorization headers or CI_* environment variable values
-       - Agent: GitHub Enterprise audit log via webhook → Wazuh custom decoder
+       - Agent: GitHub Enterprise audit log via webhook -> Wazuh custom decoder
      ============================================================== -->
 
-  <!-- Rule 103634 — CI/CD workflow triggered by forked PR with write-secrets permission
+  <!-- Rule 103634  - CI/CD workflow triggered by forked PR with write-secrets permission
        The core Cordyceps pattern: a workflow file grants write permission to pull_request
        events from forks; an external contributor's PR comment triggers privileged execution.
        Detection via GitHub audit log events forwarded to Wazuh via webhook.
@@ -213,7 +213,7 @@
     <group>cicd,cordyceps,github_actions,fork_pr_trigger,</group>
   </rule>
 
-  <!-- Rule 103635 — GitHub audit: workflow has write token scope from pull_request_target
+  <!-- Rule 103635  - GitHub audit: workflow has write token scope from pull_request_target
        The critical misconfiguration: pull_request_target grants the triggering PR access
        to repository write scope and secrets. This is the most common Cordyceps pattern.
        Level 13: write scope granted to untrusted fork code; immediate review needed. -->
@@ -230,7 +230,7 @@
     <group>cicd,cordyceps,github_actions,pull_request_target,secret_access,</group>
   </rule>
 
-  <!-- Rule 103636 — CI runner spawning unexpected exfiltration-style process
+  <!-- Rule 103636  - CI runner spawning unexpected exfiltration-style process
        After hijacking a workflow, attackers run commands in the CI environment to
        exfiltrate secrets (curl with authorization headers, env variable dumps, etc.).
        Sysmon/auditd process events from GitHub-hosted or self-hosted runners.
@@ -247,7 +247,7 @@
     <group>cicd,cordyceps,credential_exfiltration,ci_runner,</group>
   </rule>
 
-  <!-- Rule 103637 — GitHub audit: unexpected secrets access event in workflow
+  <!-- Rule 103637  - GitHub audit: unexpected secrets access event in workflow
        GitHub audit log records when a workflow accesses organization or repo secrets.
        An external fork PR triggering secret access is a clear Cordyceps exploitation signal.
        Level 13: secrets accessed by workflow triggered from external contributor. -->
@@ -263,7 +263,7 @@
     <group>cicd,cordyceps,secret_access,github_audit,</group>
   </rule>
 
-  <!-- Rule 103638 — .github/workflows/*.yml modified by external contributor PR
+  <!-- Rule 103638  - .github/workflows/*.yml modified by external contributor PR
        Cordyceps attackers may submit PRs that modify workflow files directly to
        insert malicious steps. This rules flags workflow YAML file changes in external PRs.
        Level 11: workflow file modification by untrusted contributor requires review. -->
@@ -283,8 +283,8 @@
 
 
 <!-- ==============================================================
-     SECTION 3: CVE-2025-48595 — Android Framework Integer Overflow LPE
-     T1404 (Exploit OS Vulnerabilities) — Android local privilege escalation
+     SECTION 3: CVE-2025-48595  - Android Framework Integer Overflow LPE
+     T1404 (Exploit OS Vulnerabilities)  - Android local privilege escalation
      CISA KEV added June 2, 2026; CVSS High; Android 14/15/16
      Targeted exploitation consistent with commercial spyware / nation-state
      Fixed: Android June 2026 Security Update (patch level 2026-06-05 or later)
@@ -298,10 +298,10 @@
        - Wazuh agent on MDM log forwarder: device out-of-compliance event
      ============================================================== -->
 
-  <!-- Rule 103639 — MDM: Android device reporting patch level below CVE-2025-48595 fix
+  <!-- Rule 103639  - MDM: Android device reporting patch level below CVE-2025-48595 fix
        MDM platforms forward compliance events to SIEM. Devices below Android 2026-06-05
        patch level remain vulnerable. This rule alerts on vulnerable enrolled devices.
-       Level 10: informational — vulnerable device inventory; use for patch prioritization. -->
+       Level 10: informational  - vulnerable device inventory; use for patch prioritization. -->
   <rule id="103639" level="10">
     <decoded_as>json</decoded_as>
     <field name="mdm.platform" type="pcre2">(?i)android</field>
@@ -314,7 +314,7 @@
     <group>android,mdm,cve_2025_48595,patch_compliance,</group>
   </rule>
 
-  <!-- Rule 103640 — Android enterprise log: non-system app gaining elevated UID
+  <!-- Rule 103640  - Android enterprise log: non-system app gaining elevated UID
        CVE-2025-48595 exploitation causes a normal app (UID >= 10000) to gain
        system or root UID (UID < 1000). Android enterprise/work-profile audit logs
        forwarded via MDM may capture this anomalous UID escalation.
@@ -331,7 +331,7 @@
     <group>android,privilege_escalation,cve_2025_48595,uid_escalation,</group>
   </rule>
 
-  <!-- Rule 103641 — Suricata: known Android spyware C2 IOC for CVE-2025-48595 exploiters
+  <!-- Rule 103641  - Suricata: known Android spyware C2 IOC for CVE-2025-48595 exploiters
        Limited targeted exploitation pattern consistent with commercial spyware (Pegasus-like)
        operators who weaponize Android LPE CVEs. Matches known spyware C2 network patterns.
        Level 12: device communicating with known mobile spyware infrastructure. -->
@@ -349,7 +349,7 @@
 
 
 <!-- ==============================================================
-     SECTION 4: CVE-2026-7473 — Arista EOS Incomplete Tunnel Decapsulation
+     SECTION 4: CVE-2026-7473  - Arista EOS Incomplete Tunnel Decapsulation
      T1572 (Protocol Tunneling) / T1205 (Traffic Signaling)
      CISA KEV added June 9, 2026; CVSS 6.9; NO PATCH PLANNED (mitigation via ACL only)
      Affected: Arista 7020R, 7280R/R2, 7500R/R2 (VXLAN/GRE/decap-group configurations)
@@ -366,7 +366,7 @@
        - Network flow: excessive VXLAN/GRE packets from unexpected source ranges
      ============================================================== -->
 
-  <!-- Rule 103642 — Suricata: unexpected VXLAN traffic to non-configured VTEP
+  <!-- Rule 103642  - Suricata: unexpected VXLAN traffic to non-configured VTEP
        CVE-2026-7473 allows sending VXLAN to an Arista IP configured only for GRE.
        Unexpected VXLAN (UDP/4789) destined for known Arista device IPs may indicate
        active exploitation of this misconfiguration bypass.
@@ -382,11 +382,11 @@
     <group>ids,suricata,arista,cve_2026_7473,tunnel_inject,</group>
   </rule>
 
-  <!-- Rule 103643 — Arista syslog: ACL hit on unexpected tunnel protocol
+  <!-- Rule 103643  - Arista syslog: ACL hit on unexpected tunnel protocol
        If ACL mitigation is applied per Arista advisory 0137, the ACL will generate
        syslog messages when it blocks unexpected tunnel traffic. This rule catches
        those ACL hits as evidence of active CVE-2026-7473 exploitation attempts.
-       Level 12: ACL blocking unexpected tunnel protocol — active probe detected. -->
+       Level 12: ACL blocking unexpected tunnel protocol  - active probe detected. -->
   <rule id="103643" level="12">
     <field name="arista.syslog.facility" type="pcre2">(?i)(SECURITY|ACL|ACLMGR|IPACL)</field>
     <field name="arista.syslog.message" type="pcre2">(?i)(tunnel.*denied|decap.*acl.*drop|unexpected.*tunnel.*protocol|vxlan.*denied|gre.*denied)</field>
@@ -397,7 +397,7 @@
     <group>arista,cve_2026_7473,acl_block,tunnel_inject,</group>
   </rule>
 
-  <!-- Rule 103644 — Network flow: high-rate VXLAN/GRE from non-datacenter source
+  <!-- Rule 103644  - Network flow: high-rate VXLAN/GRE from non-datacenter source
        An attacker exploiting CVE-2026-7473 to inject traffic at scale would generate
        high volumes of tunnel-protocol packets from an unexpected source range.
        Catches scanning/lateral movement via tunnel injection.
@@ -413,7 +413,7 @@
     <group>ids,suricata,arista,cve_2026_7473,tunnel_scan,network_scan,</group>
   </rule>
 
-  <!-- Rule 103645 — Arista syslog: unexpected inner payload forwarded post-decapsulation
+  <!-- Rule 103645  - Arista syslog: unexpected inner payload forwarded post-decapsulation
        When CVE-2026-7473 succeeds, the switch silently forwards the inner payload.
        Arista may log abnormal forwarding events or TCAM exceptions for unrecognized
        traffic types that bypass configured filters.
