@@ -90,7 +90,7 @@
     <group>litespeed,cpanel,symlink_privesc,privilege_escalation,cve_2026_54420,cisa_kev,exploit_success,</group>
   </rule>
 
-  <!-- SSH authorized_keys modified in root home -- post-exploitation persistence -->
+  <!-- SSH authorized_keys modified in root home - post-exploitation persistence -->
   <rule id="102304" level="15">
     <if_sid>100600</if_sid>
     <field name="audit.file.name" type="pcre2">/root/\.ssh/authorized_keys</field>
@@ -103,7 +103,7 @@
     <group>litespeed,cpanel,symlink_privesc,privilege_escalation,cve_2026_54420,cisa_kev,persistence,ssh_key_injection,</group>
   </rule>
 
-  <!-- Cron entry written by LiteSpeed process -- root cron persistence -->
+  <!-- Cron entry written by LiteSpeed process - root cron persistence -->
   <rule id="102305" level="15">
     <if_sid>100600</if_sid>
     <field name="audit.file.name" type="pcre2">/etc/cron\.(d/|daily/|hourly/|weekly/|monthly/)</field>
@@ -133,7 +133,7 @@
     <group>litespeed,cpanel,privilege_escalation,cve_2026_54420,root_session,</group>
   </rule>
 
-  <!-- LiteSpeed process spawning an interactive shell -- command execution as root -->
+  <!-- LiteSpeed process spawning an interactive shell - command execution as root -->
   <rule id="102307" level="15">
     <if_sid>100600</if_sid>
     <field name="audit.exe" type="pcre2">(?i)/(lshttpd|lsphp|lswrap|lsws)</field>
@@ -150,7 +150,7 @@
        Rules 102310-102312
        =========================================================== -->
 
-  <!-- Multiple symlink creations in docroot within 60s -- scripted exploitation -->
+  <!-- Multiple symlink creations in docroot within 60s - scripted exploitation -->
   <rule id="102310" level="14" frequency="3" timeframe="60">
     <if_matched_sid>102301</if_matched_sid>
     <description>LiteSpeed CVE-2026-54420: 3+ symlinks created in web document root within 60s -- automated symlink attack (T1068)</description>
@@ -161,7 +161,7 @@
     <group>litespeed,cpanel,symlink_privesc,privilege_escalation,cve_2026_54420,cisa_kev,scanner,</group>
   </rule>
 
-  <!-- Symlink placement followed by config reload within 5 minutes -- exploitation sequence -->
+  <!-- Symlink placement followed by config reload within 5 minutes - exploitation sequence -->
   <rule id="102311" level="15" frequency="2" timeframe="300">
     <if_matched_sid>102300,102302</if_matched_sid>
     <description>LiteSpeed CVE-2026-54420: symlink-to-privpath followed by config reload within 5 min -- full exploitation sequence detected (T1068)</description>
@@ -172,7 +172,7 @@
     <group>litespeed,cpanel,symlink_privesc,privilege_escalation,cve_2026_54420,cisa_kev,high_confidence,</group>
   </rule>
 
-  <!-- Symlink chain: place + reload + root session -- three-stage exploit confirmed -->
+  <!-- Symlink chain: place + reload + root session - three-stage exploit confirmed -->
   <rule id="102312" level="15" frequency="3" timeframe="600">
     <if_matched_sid>102300,102302,102306</if_matched_sid>
     <description>LiteSpeed CVE-2026-54420 full kill chain: symlink placed -> config reload -> root session opened within 10 min -- CONFIRMED exploitation (T1068/T1078.003)</description>
