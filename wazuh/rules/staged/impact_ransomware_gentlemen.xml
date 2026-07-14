@@ -106,10 +106,8 @@
   </rule>
 
   <!-- Frequency rule: 10+ .umc16h files in 60 seconds = mass encryption underway -->
-  <rule id="103835" level="15">
+  <rule id="103835" level="15" frequency="10" timeframe="60">
     <if_matched_sid>103832</if_matched_sid>
-    <frequency>10</frequency>
-    <timeframe>60</timeframe>
     <same_field>agent.name</same_field>
     <description>Gentlemen Ransomware: Mass file encryption in progress -- 10+ .umc16h files created in 60s (T1486)</description>
     <options>no_full_log</options>
