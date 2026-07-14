@@ -1,0 +1,179 @@
+<!-- ============================================================
+     GigaWiper (BLUERABBIT) Destructive Backdoor Detection Rules
+     MITRE ATT&CK Techniques:
+       T1561.002  - Disk Wipe: Disk Structure Wipe
+       T1486      - Data Encrypted for Impact (Crucio fake ransomware)
+       T1561.001  - Disk Wipe: Disk Content Wipe (FlockWiper)
+       T1529      - System Shutdown/Reboot
+       T1053.005  - Scheduled Task/Job: Scheduled Task (OneDrive Update masquerade)
+       T1036.004  - Masquerading: Masquerade Task or Service
+       T1571      - Non-Standard Port (RabbitMQ 5544, Redis 7542 C2)
+       T1113      - Screen Capture
+     Rule IDs: 103901-103907
+     Author: SecOps Engineer
+     Date: 2026-07-14
+
+     Threat Actor: Unknown; attributed to likely Iran-nexus by Google GTIG / Binary Defense
+     References:
+       - Microsoft Security Blog (2026-07-09): GigaWiper anatomy of a destructive backdoor
+       - CISA Advisory AA23-335A (Crucio ransomware)
+
+     Threat Summary:
+       GigaWiper (BLUERABBIT) is a Golang-based Windows backdoor combining:
+         - Crucio: fake ransomware with .candy extension backed by AES wipe (unrecoverable)
+         - FlockWiper: multi-pass disk content wipe
+         - Physical disk structure wipe (IOCTL_DISK_CREATE_DISK + randomized overwrite)
+         - VNC-like remote control and screen capture
+       C2 uses RabbitMQ AMQP on non-standard port 5544 and Redis on port 7542.
+       A RabbitMQ fanout exchange enables simultaneous wipe commands to all infected hosts.
+       Persistence via scheduled task named "OneDrive Update" at 1-minute intervals.
+
+     Confirmed C2 IPs:
+       185.182.193.21  (GigaWiper C2)
+       212.8.248.104   (GigaWiper C2)
+
+     Confirmed SHA256 hashes (GigaWiper binaries):
+       38353f95fff270f4e3a9d7add8c64666020dd668ce66e15969a736ec48cadc59
+       479ae5fd7274439ddfa27bc03298ebfdfc5ff17f6412acccf74d4dbd90d94218
+       4d0b62d3162d4be391e3ba1e191dad28e5e5d5b161cfdef60eeb4361a92d8413
+       6e65483764d7c25523a5bbef5be99eb42349eef39d5517c46b3a4af262a80ceb
+       80d83eb01f28c87a61b51f1f83805e63a791905f019bd3b87f10a10f66efab1e
+       874bcb1c3d050a5b5b333a2198f504fcb27927c2abdd43b07440188a380c52d5
+       9eaa577c8ba71646928c1c34c3145536b0498f65f26060a6ba00744bcef57644
+       a8b09fd4f7ff2f298b45ca602992f44b3c2ac3746bcdb182c59ab2a20c690954
+
+     Log source prerequisites:
+       - Firewall/network logs processed via the 103000 anchor (if_sid 103000)
+         Required for C2 port (103901, 103902) and direct IP (103903, 103904) detections
+       - Sysmon EventID 1 (ProcessCreate) -> Wazuh SID 61603
+         Required for schtasks masquerade (103905)
+       - Wazuh FIM (syscheck) with SHA256 hash checking enabled
+         Required for binary IOC hash match (103906)
+       - Sysmon EventID 11 (FileCreate) -> Wazuh SID 61644
+         Required for .candy extension detection (103907)
+
+     Severity tiers:
+       14 - Behavioral C2 port indicator (non-standard AMQP/Redis ports)
+       14 - Suspicious schtasks creating OneDrive Update / MINUTE recurrence
+       15 - Direct IOC match: known C2 IPs, binary SHA256 hashes, .candy mass encryption
+     ============================================================ -->
+
+<group name="threat_intel,impact,windows,gigawiper,bluerabbit,destructive_wiper,">
+
+  <!-- ===========================================================
+       Firewall: outbound TCP to port 5544 (RabbitMQ AMQP non-standard C2)
+       GigaWiper uses RabbitMQ on port 5544 (not the standard 5672) for C2.
+       A fanout exchange propagates simultaneous disk-wipe commands to all hosts.
+       Requires firewall logs processed via the threat_intel_ioc_network anchor
+       (if_sid 103000). Whitelist known server-to-server RabbitMQ traffic.
+       =========================================================== -->
+  <rule id="103901" level="14">
+    <if_sid>103000</if_sid>
+    <dstport>5544</dstport>
+    <protocol>tcp</protocol>
+    <description>GigaWiper BLUERABBIT: outbound TCP to non-standard RabbitMQ AMQP port 5544 from $(agent.name) -- possible GigaWiper C2 fanout channel; legitimate RabbitMQ uses port 5672 (T1571)</description>
+    <mitre>
+      <id>T1571</id>
+      <id>T1561.002</id>
+    </mitre>
+    <group>ioc_c2,non_standard_port,gigawiper,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Firewall: outbound TCP to port 7542 (Redis non-standard C2)
+       GigaWiper uses Redis on port 7542 (not the standard 6379) for C2.
+       =========================================================== -->
+  <rule id="103902" level="14">
+    <if_sid>103000</if_sid>
+    <dstport>7542</dstport>
+    <protocol>tcp</protocol>
+    <description>GigaWiper BLUERABBIT: outbound TCP to non-standard Redis port 7542 from $(agent.name) -- possible GigaWiper secondary C2 channel; legitimate Redis uses port 6379 (T1571)</description>
+    <mitre>
+      <id>T1571</id>
+      <id>T1561.002</id>
+    </mitre>
+    <group>ioc_c2,non_standard_port,gigawiper,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Firewall: direct connection to confirmed GigaWiper C2 IP 185.182.193.21
+       Confirmed C2 IP from Microsoft and Google GTIG attribution.
+       =========================================================== -->
+  <rule id="103903" level="15">
+    <if_sid>103000</if_sid>
+    <dstip>185.182.193.21</dstip>
+    <description>GigaWiper BLUERABBIT: direct connection to confirmed C2 IP 185.182.193.21 from $(agent.name) -- CRITICAL: confirmed GigaWiper C2 node (T1071.001, T1561.002)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1561.002</id>
+    </mitre>
+    <group>ioc_match,ioc_c2,gigawiper,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Firewall: direct connection to confirmed GigaWiper C2 IP 212.8.248.104
+       =========================================================== -->
+  <rule id="103904" level="15">
+    <if_sid>103000</if_sid>
+    <dstip>212.8.248.104</dstip>
+    <description>GigaWiper BLUERABBIT: direct connection to confirmed C2 IP 212.8.248.104 from $(agent.name) -- CRITICAL: confirmed GigaWiper C2 node (T1071.001, T1561.002)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1561.002</id>
+    </mitre>
+    <group>ioc_match,ioc_c2,gigawiper,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Sysmon EventID 1 (61603): schtasks.exe creating "OneDrive Update" /sc MINUTE
+       GigaWiper persists via a scheduled task named exactly "OneDrive Update"
+       running at one-minute intervals. This name is not used by any Microsoft product.
+       The /sc MINUTE flag distinguishes this from legitimate OneDrive tasks.
+       =========================================================== -->
+  <rule id="103905" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\schtasks\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)/tn\s+"?OneDrive\s+Update"?.*(/sc\s+MINUTE|/sc\s+minute)</field>
+    <description>GigaWiper BLUERABBIT: schtasks.exe creating "OneDrive Update" task at MINUTE interval on $(win.eventdata.computer) -- GigaWiper persistence masquerading as Microsoft OneDrive (T1053.005, T1036.004)</description>
+    <mitre>
+      <id>T1053.005</id>
+      <id>T1036.004</id>
+    </mitre>
+    <group>persistence,masquerading,gigawiper,</group>
+  </rule>
+
+  <!-- ===========================================================
+       FIM / SHA256: GigaWiper binary IOC hash match
+       Wazuh syscheck with SHA256 enabled detects the 8 confirmed GigaWiper
+       binary hashes regardless of filename, covering the loader, Crucio,
+       FlockWiper, and screen capture module.
+       =========================================================== -->
+  <rule id="103906" level="15">
+    <if_sid>550,553,554,593</if_sid>
+    <match type="pcre2">38353f95fff270f4e3a9d7add8c64666020dd668ce66e15969a736ec48cadc59|479ae5fd7274439ddfa27bc03298ebfdfc5ff17f6412acccf74d4dbd90d94218|4d0b62d3162d4be391e3ba1e191dad28e5e5d5b161cfdef60eeb4361a92d8413|6e65483764d7c25523a5bbef5be99eb42349eef39d5517c46b3a4af262a80ceb|80d83eb01f28c87a61b51f1f83805e63a791905f019bd3b87f10a10f66efab1e|874bcb1c3d050a5b5b333a2198f504fcb27927c2abdd43b07440188a380c52d5|9eaa577c8ba71646928c1c34c3145536b0498f65f26060a6ba00744bcef57644|a8b09fd4f7ff2f298b45ca602992f44b3c2ac3746bcdb182c59ab2a20c690954</match>
+    <description>GigaWiper BLUERABBIT: confirmed SHA256 IOC hash detected by FIM on $(agent.name) -- GigaWiper/Crucio/FlockWiper binary on disk (T1561.002, T1486)</description>
+    <mitre>
+      <id>T1561.002</id>
+      <id>T1486</id>
+    </mitre>
+    <group>ioc_match,ioc_hash,gigawiper,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Sysmon EventID 11 (61644): Crucio .candy extension file created (T1486)
+       Crucio (GigaWiper fake ransomware) appends .candy to files before
+       performing unrecoverable AES wipe. Files cannot be recovered even if
+       ransom is paid. Any .candy creation warrants immediate host isolation.
+       =========================================================== -->
+  <rule id="103907" level="15">
+    <if_sid>61644</if_sid>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.candy$</field>
+    <description>GigaWiper BLUERABBIT (Crucio): .candy extension file created on $(win.eventdata.computer) -- Crucio fake-ransomware encrypting files; AES wipe is UNRECOVERABLE; isolate host immediately (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+      <id>T1561.001</id>
+    </mitre>
+    <group>ransomware,gigawiper,crucio,file_encryption,critical,</group>
+  </rule>
+
+</group>

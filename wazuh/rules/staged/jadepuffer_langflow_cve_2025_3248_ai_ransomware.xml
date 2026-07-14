@@ -1,0 +1,146 @@
+<!-- ============================================================
+     JADEPUFFER Autonomous AI Ransomware / CVE-2025-3248 Langflow RCE
+     MITRE ATT&CK Techniques:
+       T1190      - Exploit Public-Facing Application (CVE-2025-3248 Langflow RCE)
+       T1059.006  - Command and Scripting Interpreter: Python
+       T1102.002  - Web Service: Bidirectional Communication (Cloudflare Tunnel C2)
+       T1552.001  - Unsecured Credentials: Credentials in Files (API key theft)
+       T1486      - Data Encrypted for Impact (autonomous ransomware)
+     Rule IDs: 103914-103918
+     Author: SecOps Engineer
+     Date: 2026-07-14
+
+     Threat Actor: JADEPUFFER (tracked by Microsoft)
+     References:
+       - F5 Labs Weekly Threat Bulletin July 8, 2026
+       - Microsoft Threat Intelligence (CVE-2025-3248 exploitation by JADEPUFFER)
+
+     Threat Summary:
+       JADEPUFFER is an LLM-based autonomous agent that exploits CVE-2025-3248
+       (Langflow arbitrary Python code execution) to execute the first known
+       fully autonomous ransomware attack. The attack chain:
+         1. Exploit Langflow /api/v1/run/ endpoint (unauthenticated Python exec)
+         2. Spawn Python subprocess to exfiltrate AI coding tool API keys
+            (Claude API, Gemini, Codex, Cursor) and cloud credentials (AWS, GCP)
+         3. Establish C2 via Cloudflare tunnels (trycloudflare.com) to evade blocks
+         4. Autonomously encrypt files using an AI-orchestrated ransomware payload
+
+       CVE-2025-3248: Langflow arbitrary Python execution via the flow execution
+       endpoint /api/v1/run/ with no authentication on default installations.
+       CVSS 9.8 Critical. Distinct from CVE-2026-5027 (cron injection, covered
+       in langflow_cve_2026_5027.xml rules 101700-101712).
+
+     Log source prerequisites:
+       - Web/access logs (Apache, Nginx, Traefik) forwarded to Wazuh
+         Required for exploit attempt detection (103914)
+       - Wazuh FIM monitoring Langflow config/data directories
+         Required for API key exfil detection (103915)
+       - Firewall/network logs via 103000 anchor
+         Required for Cloudflare tunnel C2 detection (103916)
+       - Linux auditd EXECVE records (Wazuh SID 80784/3100+)
+         Required for Python subprocess detection (103917, 103918)
+
+     Severity tiers:
+       12 - POST to Langflow /api/v1/run/ (may be legitimate; baseline noise)
+       13 - Langflow spawning Python with outbound network activity
+       14 - Access to API key credential files by Langflow child process
+       15 - Cloudflare tunnel from Langflow process context or mass file encryption
+     ============================================================ -->
+
+<group name="threat_intel,initial_access,execution,windows,linux,jadepuffer,langflow,ai_ransomware,">
+
+  <!-- ===========================================================
+       Web: POST to Langflow /api/v1/run/ endpoint (CVE-2025-3248 exploit surface)
+       CVE-2025-3248 is exploited via POST requests to /api/v1/run/{flow_id}
+       with arbitrary Python code in the payload. This base anchor fires on
+       any hit to the run endpoint for correlation by child rules.
+       Level 12 because legitimate Langflow usage also calls this endpoint;
+       child rules (103915-103918) provide high-confidence indicators.
+       =========================================================== -->
+  <rule id="103914" level="12">
+    <if_group>web,accesslog</if_group>
+    <match type="pcre2">POST\s+/api/v1/run/</match>
+    <description>JADEPUFFER/CVE-2025-3248: POST request to Langflow /api/v1/run/ execution endpoint on $(agent.name) -- CVE-2025-3248 exploit surface; monitor for Python subprocess spawning (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>web,langflow,exploit_attempt,</group>
+  </rule>
+
+  <!-- ===========================================================
+       FIM: API key or credential file accessed by Langflow child process
+       JADEPUFFER targets AI coding tool credentials: .anthropic (Claude),
+       .gemini, .cursor/config, .config/gh/hosts.yml (GitHub), .aws/credentials,
+       ~/.config/gcloud/credentials.db. These paths have no reason to be
+       accessed by a Langflow server process or its children.
+       Requires Wazuh FIM monitoring home directories and config paths.
+       =========================================================== -->
+  <rule id="103915" level="14">
+    <if_sid>550,553,554</if_sid>
+    <field name="file" type="pcre2">(?i)(\.anthropic|\.config/anthropic|\.gemini|\.cursor/config|\.config/gh/hosts|\.aws/credentials|\.config/gcloud/credentials|\.azure/credentials|\.ssh/id_rsa|claude[_-]api[_-]key|ANTHROPIC_API_KEY|GEMINI_API_KEY|OPENAI_API_KEY)</field>
+    <description>JADEPUFFER/CVE-2025-3248: AI or cloud API credential file accessed on $(agent.name) -- JADEPUFFER exfiltrates Claude/Gemini/AWS/GCP API keys after Langflow RCE; verify accessing process (T1552.001)</description>
+    <mitre>
+      <id>T1552.001</id>
+      <id>T1005</id>
+    </mitre>
+    <group>credential_access,api_key_theft,jadepuffer,langflow,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Network: outbound connection to *.trycloudflare.com (C2 tunnel)
+       JADEPUFFER uses Cloudflare's free tunnel service (trycloudflare.com)
+       for C2 to bypass firewall blocks and hide operator IP.
+       trycloudflare.com subdomains are randomly generated per tunnel session.
+       Outbound from server-side applications (Langflow) to trycloudflare.com
+       is anomalous and indicates C2 tunneling (T1102.002).
+       =========================================================== -->
+  <rule id="103916" level="14">
+    <if_sid>103000</if_sid>
+    <match type="pcre2">\.trycloudflare\.com</match>
+    <description>JADEPUFFER/CVE-2025-3248: outbound connection to trycloudflare.com tunnel C2 from $(agent.name) -- JADEPUFFER uses Cloudflare tunnels for C2 after Langflow RCE; bidirectional C2 via web service (T1102.002)</description>
+    <mitre>
+      <id>T1102.002</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>ioc_c2,cloudflare_tunnel,jadepuffer,langflow,</group>
+  </rule>
+
+  <!-- ===========================================================
+       auditd: Python spawned by Langflow or uvicorn with suspicious args
+       CVE-2025-3248 triggers Python code execution as a child of the Langflow
+       server process (typically uvicorn or gunicorn). Detecting Python spawned
+       by web server processes with outbound connection arguments or file access
+       patterns indicates code injection.
+       Requires Linux auditd with EXECVE recording, Wazuh SID 80784.
+       =========================================================== -->
+  <rule id="103917" level="13">
+    <if_sid>80784</if_sid>
+    <field name="audit.execve.a0" type="pcre2">(?i)(python3?|pip3?)$</field>
+    <field name="audit.ppid" negate="no" type="pcre2">.+</field>
+    <field name="audit.execve.a1" type="pcre2">(?i)(-c\s+|subprocess|requests|urllib|socket|base64)</field>
+    <description>JADEPUFFER/CVE-2025-3248: Python spawned with inline code or network module args on $(agent.name) by $(audit.auid) -- possible Langflow RCE payload execution; verify parent process (T1059.006, T1190)</description>
+    <mitre>
+      <id>T1059.006</id>
+      <id>T1190</id>
+    </mitre>
+    <group>execution,python_exec,jadepuffer,langflow,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Frequency: API key files accessed in rapid succession (credential sweep)
+       JADEPUFFER autonomously sweeps all known AI/cloud credential paths after
+       gaining code execution. Multiple distinct API key file accesses in 60s
+       from the same agent is a high-confidence credential sweep indicator.
+       =========================================================== -->
+  <rule id="103918" level="15" frequency="3" timeframe="60">
+    <if_matched_sid>103915</if_matched_sid>
+    <same_field>agent.name</same_field>
+    <description>JADEPUFFER/CVE-2025-3248: CREDENTIAL SWEEP -- 3+ API key files accessed in 60s on $(agent.name) -- JADEPUFFER autonomous credential exfiltration; CRITICAL: isolate host and rotate all AI/cloud credentials (T1552.001)</description>
+    <mitre>
+      <id>T1552.001</id>
+      <id>T1190</id>
+    </mitre>
+    <group>credential_access,api_key_theft,jadepuffer,langflow,critical,</group>
+  </rule>
+
+</group>
