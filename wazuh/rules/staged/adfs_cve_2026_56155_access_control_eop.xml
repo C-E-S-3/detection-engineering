@@ -1,0 +1,348 @@
+<!-- ============================================================
+     Microsoft ADFS Insufficient Access Control EoP Detection Rules
+     CVE-2026-56155 (CWE-1220: Insufficient Granularity of Access Control)
+     Affected: Microsoft Active Directory Federation Services (ADFS)
+     MITRE ATT&amp;CK:
+       T1068   - Exploitation for Privilege Escalation (TA0004)
+       T1484.002 - Domain Policy Modification: Domain Trust Modification
+       T1078.002 - Valid Accounts: Domain Accounts
+       T1550.001 - Use Alternate Authentication Material: Application Access Token
+       T1059.001 - Command and Scripting Interpreter: PowerShell
+     CISA KEV: Added 2026-07-14, Federal Deadline 2026-07-28
+     Rule IDs: 103945-103954
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-14
+
+     Vulnerability Summary:
+
+     CVE-2026-56155 - ADFS Insufficient Granularity of Access Control:
+       Microsoft Active Directory Federation Services contains a flaw in
+       access control granularity (CWE-1220) that allows an authorized
+       attacker with existing network access to the ADFS environment to
+       elevate privileges locally. The vulnerability affects ADFS relying
+       party trust access control enforcement, allowing an attacker to
+       obtain tokens for relying parties they are not authorized to
+       access, or to modify ADFS configuration to expand their own
+       access scope.
+
+       This differs from the DPAPI key extraction technique covered in
+       adfs_machine_dpapi_signing_key_extraction (that detection targets
+       golden SAML via DPAPI masterkey extraction). CVE-2026-56155 targets
+       the ADFS access control evaluation logic directly.
+
+     Detection Approach:
+
+     Section 1 - PowerShell ADFS cmdlet abuse (rules 103945-103949):
+       Monitors Sysmon Event 1 (process create) for PowerShell processes
+       invoking ADFS administrative cmdlets. The ADFS PowerShell module
+       provides commands for modifying Relying Party Trusts, certificate
+       configuration, claims provider trusts, and global authentication
+       policy. An attacker exploiting CVE-2026-56155 will often use these
+       cmdlets to expand access control scope or add a rogue relying party.
+       Anchor rule 103945 chains to high-severity child rules (103946-103949)
+       that detect specific categories of privileged ADFS modification.
+
+     Section 2 - Windows Security Event lateral movement (rules 103950-103952):
+       Windows Security Events 4648 and 4624 capture explicit credential
+       use and network logons involving ADFS service accounts. Post-exploit
+       lateral movement via CVE-2026-56155 often involves using the
+       elevated ADFS token to authenticate as the ADFS service or to
+       pivot to additional systems using the acquired privileges.
+       Rule 103952 catches the ADFS service host (Microsoft.IdentityServer.
+       ServiceHost.exe) spawning unexpected administrative child processes.
+
+     Section 3 - ADFS admin log and scripted-access pattern (rules 103953-103954):
+       Rule 103953 monitors the ADFS admin event log channel for Relying
+       Party Trust modification events. Rule 103954 fires when the same
+       user executes five or more ADFS PowerShell cmdlets within 120
+       seconds, indicating scripted enumeration or automated exploitation.
+
+     Log Source Prerequisites:
+       Sysmon layer: Sysmon Event 1 (process create) forwarded to Wazuh.
+         Fields: win.eventdata.image, win.eventdata.commandLine,
+         win.eventdata.user, win.eventdata.parentImage.
+       Security log: Windows Security Event Log forwarded to Wazuh.
+         Fields: win.system.eventID, win.eventdata.logonType,
+         win.eventdata.targetUserName, win.eventdata.ipAddress.
+       ADFS admin log: Microsoft-Windows-ADFS/Admin event channel
+         forwarded via Windows agent or syslog.
+
+     Severity Tiers:
+       103945 (7)   - Anchor: PowerShell with ADFS module reference
+       103946 (14)  - High: Relying Party Trust add/modify/remove
+       103947 (14)  - High: ADFS certificate or token-signing key change
+       103948 (12)  - Medium-High: Claims provider trust modification
+       103949 (13)  - High: ADFS global auth policy change
+       103950 (13)  - High: Explicit credentials to ADFS service (4648)
+       103951 (10)  - Medium: Network logon to ADFS service account (4624)
+       103952 (13)  - High: ADFS service host spawns admin tool (4688)
+       103953 (12)  - Medium-High: ADFS admin log RPT modification event
+       103954 (14)  - High: Rapid ADFS cmdlet burst by same user
+
+     False Positive Guidance:
+       103945/103946: Legitimate ADFS administrators may invoke RPT cmdlets
+         during planned federation changes; correlate with change ticket
+         windows and expected admin accounts.
+       103947: Certificate rollover scripts run during scheduled PKI
+         maintenance; compare event time against scheduled cert rotation
+         tasks before escalating.
+       103948: Claims transform policies may be updated during SSO
+         onboarding of new applications; baseline known-good operators.
+       103950: Service account explicit credential events may appear during
+         ADFS proxy or WAP certificate renewal; confirm source host.
+       103951: ADFS health checks may produce type-3 logons; baseline
+         known monitoring source IPs and suppress if confirmed benign.
+       103952: ADFS service host spawning child processes has no benign
+         explanation outside of patching scenarios; treat as high-confidence.
+       103954: Planned ADFS configuration scripts run by authorized admins
+         will trigger this rule; verify operator identity and change ticket.
+     ============================================================ -->
+
+<group name="privilege_escalation,adfs,cisa_kev,cve_2026_56155,access_control_bypass,">
+
+  <!-- ===========================================================
+       SECTION 1: PowerShell-based ADFS administration detection
+       Sysmon Event 1 (parent SID 61603)
+       Rule IDs: 103945-103949
+
+       The ADFS PowerShell module (ADFS module, loaded via Import-Module ADFS
+       or auto-loaded on ADFS servers) exposes cmdlets for every aspect of
+       ADFS configuration. Exploitation of CVE-2026-56155 may use these
+       cmdlets to modify access control scope (RPTs, claims transforms) or
+       to query ADFS state prior to targeted token-forging.
+
+       Rule 103945 is a level-7 anchor that matches any PowerShell or
+       pwsh process with ADFS-related string in the command line. Child
+       rules 103946-103949 chain from it via if_sid and fire at higher
+       severity when specific privileged cmdlet classes are detected.
+       =========================================================== -->
+
+  <!-- Base anchor: PowerShell process with ADFS module or cmdlet reference.
+       Fires at level 7 to create a visible correlation event; high-severity
+       child rules 103946-103949 chain from this SID when destructive ADFS
+       cmdlets are present. Covers both powershell.exe and pwsh.exe (PS7+).
+       Matches any commandLine containing recognisable ADFS noun stems so
+       that unknown cmdlets from future ADFS module versions are captured. -->
+  <rule id="103945" level="7">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(?:powershell|pwsh)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:Adfs(?:Relying|Claims|Certificate|Properties|Endpoint|Web|Global|Farm|Auth|NativeClient|ServerApp|WebApi)|Import-Module\s+ADFS|Get-Adfs(?:Relying|Claims|Certificate|Properties)|adfs\.psm1)</field>
+    <description>Microsoft ADFS: PowerShell process $(win.eventdata.image) invoked ADFS module or cmdlet on $(agent.name) by $(win.eventdata.user) -- CVE-2026-56155 access control bypass investigation anchor; child rules will alert on specific privileged operations (T1068/T1484.002)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1484.002</id>
+    </mitre>
+    <group>adfs_ps_anchor,</group>
+  </rule>
+
+  <!-- HIGH: ADFS Relying Party Trust add, modify, or remove.
+       Relying Party Trusts define which applications can receive ADFS
+       tokens and what claims they receive. Modification of an RPT is the
+       most direct path to exploiting CVE-2026-56155: an attacker can
+       add a rogue RPT for their controlled application, relax issuance
+       authorisation rules, or modify claim transformation to include
+       elevated group memberships. Add and Remove operations are equally
+       significant; removing a trust can serve as cover for re-adding
+       it with weakened access controls. -->
+  <rule id="103946" level="14">
+    <if_sid>103945</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:Add-AdfsRelyingPartyTrust|Set-AdfsRelyingPartyTrust|Remove-AdfsRelyingPartyTrust|Enable-AdfsRelyingPartyTrust|Disable-AdfsRelyingPartyTrust|Update-AdfsRelyingPartyTrust)</field>
+    <description>Microsoft ADFS CVE-2026-56155 EoP: Relying Party Trust modified via PowerShell on $(agent.name) by $(win.eventdata.user) [$(win.eventdata.commandLine)] -- unauthorised RPT changes alter token issuance access controls enabling privilege escalation; immediate investigation required (T1484.002/T1068)</description>
+    <mitre>
+      <id>T1484.002</id>
+      <id>T1068</id>
+    </mitre>
+    <group>adfs_rpt_modification,cve_2026_56155,high_confidence,</group>
+  </rule>
+
+  <!-- HIGH: ADFS certificate or token-signing key modification.
+       ADFS uses token-signing certificates to sign issued SAML assertions.
+       Modification or rotation of these certificates outside planned PKI
+       windows may indicate an attacker preparing to issue forged tokens.
+       Set-AdfsCertificate and Update-AdfsCertificate are the primary
+       cmdlets; Invoke-AdfsFarmBehaviorLevelRaise changes the farm behaviour
+       level and can affect signing algorithm enforcement. -->
+  <rule id="103947" level="14">
+    <if_sid>103945</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:Set-AdfsCertificate|Update-AdfsCertificate|Add-AdfsCertificate|Remove-AdfsCertificate|Set-AdfsAutoGeneratedSigningCertificate|Invoke-AdfsFarmBehaviorLevelRaise)</field>
+    <description>Microsoft ADFS CVE-2026-56155 EoP: ADFS certificate or token-signing key modified via PowerShell on $(agent.name) by $(win.eventdata.user) -- signing key changes outside scheduled PKI rotation can enable forged SAML assertion issuance; correlate with change management records (T1068/T1553.004)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1553.004</id>
+    </mitre>
+    <group>adfs_cert_modification,cve_2026_56155,high_confidence,</group>
+  </rule>
+
+  <!-- MEDIUM-HIGH: ADFS claims provider trust or claims transform policy modification.
+       Claims provider trusts define external identity sources that ADFS
+       trusts. Claims transform policies rewrite incoming claims before
+       token issuance. Modification of either can allow an attacker to
+       inject arbitrary group membership or role claims into issued tokens,
+       achieving effective privilege escalation within all federated
+       relying parties. -->
+  <rule id="103948" level="12">
+    <if_sid>103945</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:Add-AdfsClaimsProviderTrust|Set-AdfsClaimsProviderTrust|Remove-AdfsClaimsProviderTrust|Add-AdfsClaimsTransformPolicy|Set-AdfsClaimsTransformPolicy|Remove-AdfsClaimsTransformPolicy|Set-AdfsRelyingPartyClaimsTransformPolicy)</field>
+    <description>Microsoft ADFS CVE-2026-56155 EoP: Claims provider trust or claims transform policy modified via PowerShell on $(agent.name) by $(win.eventdata.user) -- claims manipulation allows injection of elevated group memberships into issued tokens (T1484.002/T1068)</description>
+    <mitre>
+      <id>T1484.002</id>
+      <id>T1068</id>
+    </mitre>
+    <group>adfs_claims_modification,cve_2026_56155,</group>
+  </rule>
+
+  <!-- HIGH: ADFS global authentication policy or endpoint configuration change.
+       Set-AdfsProperties controls global ADFS behaviour including token
+       lifetime, allowed protocol bindings, and endpoint enablement.
+       Set-AdfsGlobalAuthenticationPolicy controls which authentication
+       providers are active and their ordering. Set-AdfsEndpoint enables
+       or disables individual ADFS protocol endpoints. Changes to any of
+       these during CVE-2026-56155 exploitation may weaken access controls
+       globally, enable normally-disabled token issuance endpoints, or
+       extend token validity to assist in maintaining access after exploit. -->
+  <rule id="103949" level="13">
+    <if_sid>103945</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:Set-AdfsProperties|Set-AdfsGlobalAuthenticationPolicy|Set-AdfsGlobalWebContent|Set-AdfsEndpoint|Enable-AdfsEndpoint|Disable-AdfsEndpoint|Set-AdfsWebConfig|Set-AdfsAdditionalAuthenticationRule)</field>
+    <description>Microsoft ADFS CVE-2026-56155 EoP: ADFS global authentication policy or endpoint configuration modified via PowerShell on $(agent.name) by $(win.eventdata.user) -- global ADFS configuration changes can disable access controls or extend token lifetimes to sustain exploit access (T1068/T1484.002)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1484.002</id>
+    </mitre>
+    <group>adfs_global_config_modification,cve_2026_56155,</group>
+  </rule>
+
+  <!-- ===========================================================
+       SECTION 2: Windows Security Event lateral movement detection
+       Windows Security Log (parent SID 60103)
+       Rule IDs: 103950-103952
+
+       CVE-2026-56155 privilege escalation results in the attacker
+       obtaining a token granting elevated access. The next observable
+       phase is lateral movement using that elevated token. Windows
+       Security Events 4648 (explicit credential logon) and 4624 Type 3
+       (network logon) capture authentication events that may reveal the
+       ADFS service account or elevated token being used for lateral
+       movement. Rule 103952 covers the case where the ADFS service host
+       process itself spawns admin tools after successful exploitation.
+       =========================================================== -->
+
+  <!-- HIGH: Explicit credential logon (Event 4648) targeting ADFS-related service.
+       Windows Security Event 4648 fires when a process uses explicit
+       credentials different from the logged-on user identity. An attacker
+       using CVE-2026-56155 to obtain elevated ADFS tokens may use those
+       tokens or the underlying ADFS service account to authenticate
+       explicitly to downstream services. The targetServerName field in
+       4648 events naming ADFS-associated services is a reliable indicator
+       of ADFS-related lateral movement. -->
+  <rule id="103950" level="13">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4648$</field>
+    <field name="win.eventdata.targetServerName" type="pcre2">(?i)(?:adfs|federation|sts|saml|wsfed|identityserver|stsservice|adfssrv|fedservice)</field>
+    <description>Microsoft ADFS CVE-2026-56155 EoP: Explicit credential logon (Event 4648) targeting ADFS service $(win.eventdata.targetServerName) on $(agent.name) from $(win.eventdata.subjectUserName) at $(win.eventdata.ipAddress) -- ADFS service or token used for explicit-credential lateral movement following access control bypass (T1078.002/T1068)</description>
+    <mitre>
+      <id>T1078.002</id>
+      <id>T1068</id>
+    </mitre>
+    <group>adfs_lateral_movement,cve_2026_56155,</group>
+  </rule>
+
+  <!-- MEDIUM: Network logon (Event 4624 Type 3) to ADFS service account.
+       Type-3 network logons to the ADFS service account outside of
+       expected ADFS health-check or proxy renewal patterns may indicate
+       lateral movement using an elevated token obtained via CVE-2026-56155.
+       The targetUserName pattern covers common ADFS service account naming
+       conventions used in on-premises environments. Tune by adding known
+       monitoring system source IPs as suppressions after baselining. -->
+  <rule id="103951" level="10">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4624$</field>
+    <field name="win.eventdata.logonType">^3$</field>
+    <field name="win.eventdata.targetUserName" type="pcre2">(?i)(?:adfs|adfssvc|adfs_svc|adfs-svc|adfsservice|adfsfarm|sts_svc|sts-svc|fedsvc|fed_svc|svc_adfs|svc-adfs|federation)</field>
+    <description>Microsoft ADFS CVE-2026-56155 EoP: Network logon (Type 3, Event 4624) to ADFS service account $(win.eventdata.targetUserName) on $(agent.name) from $(win.eventdata.ipAddress) -- ADFS service account network authentication; correlate with simultaneous RPT modifications or PowerShell ADFS cmdlet activity (T1078.002)</description>
+    <mitre>
+      <id>T1078.002</id>
+    </mitre>
+    <group>adfs_lateral_movement,cve_2026_56155,</group>
+  </rule>
+
+  <!-- HIGH: ADFS service host spawned an unexpected administrative process (Event 4688).
+       Microsoft.IdentityServer.ServiceHost.exe is the ADFS service host
+       on Windows Server 2019 and later. It has no legitimate reason to
+       spawn command shells, scripting hosts, or administrative utilities
+       directly. A child process of this type indicates successful code
+       execution within the ADFS service context, which is a strong
+       post-exploitation signal for CVE-2026-56155. This rule provides a
+       Sysmon-free fallback using Windows process creation audit (4688);
+       in Sysmon-enabled environments, rules 103946-103949 will fire first. -->
+  <rule id="103952" level="13">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4688$</field>
+    <field name="win.eventdata.parentProcessName" type="pcre2">(?i)\\Microsoft\.IdentityServer\.ServiceHost\.exe$</field>
+    <field name="win.eventdata.newProcessName" type="pcre2">(?i)\\(?:cmd|powershell|pwsh|wscript|cscript|mshta|net|whoami|nltest|dsquery|csvde|reg|certutil|rundll32)\.exe$</field>
+    <description>Microsoft ADFS CVE-2026-56155 EoP: ADFS service host (Microsoft.IdentityServer.ServiceHost.exe) spawned administrative process $(win.eventdata.newProcessName) on $(agent.name) -- ADFS service host should not exec admin tools; confirmed post-exploitation execution in ADFS service context (T1068/T1059.001)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1059.001</id>
+    </mitre>
+    <group>adfs_unexpected_process,cve_2026_56155,high_confidence,</group>
+  </rule>
+
+  <!-- ===========================================================
+       SECTION 3: ADFS admin event log and scripted access pattern
+       Rule IDs: 103953-103954
+
+       Rule 103953 monitors the ADFS administrative event channel
+       (Microsoft-Windows-ADFS/Admin forwarded via the Windows agent)
+       for Relying Party Trust modification log entries recorded by
+       ADFS itself, independent of the PowerShell cmdlet detection layer.
+       This provides defence-in-depth against direct ADFS API calls that
+       bypass PowerShell logging.
+
+       Rule 103954 is a frequency rule that fires when five or more events
+       matching rule 103945 (ADFS PowerShell anchor) occur within 120 seconds
+       from the same user. This pattern is consistent with scripted ADFS
+       enumeration or automated exploitation tooling that iterates through
+       ADFS cmdlets to map the current access control configuration before
+       modifying it.
+       =========================================================== -->
+
+  <!-- MEDIUM-HIGH: ADFS admin event log records Relying Party Trust modification.
+       The ADFS administration event channel (Microsoft-Windows-ADFS/Admin)
+       records trust configuration changes generated by the ADFS service itself,
+       independent of the PowerShell command-line that initiated them. This
+       detection layer catches direct ADFS API calls, GUI-based changes via
+       the AD FS Management snap-in, or changes made via non-standard tooling
+       that would evade the Sysmon process-create detection in rules 103946-103949.
+       Match is against common ADFS admin log message patterns for RPT lifecycle
+       events. -->
+  <rule id="103953" level="12">
+    <program_name type="pcre2">(?i)(?:Microsoft-Windows-ADFS|ADFS|AdfsAdmin|AD FS)</program_name>
+    <match type="pcre2">(?i)(?:Relying\s+Party\s+Trust|relying_party_trust|RelyingPartyTrust).*?(?:add|creat|modif|updat|chang|remov|delet)</match>
+    <description>Microsoft ADFS CVE-2026-56155 EoP: ADFS admin event log records Relying Party Trust lifecycle change on $(agent.name) -- RPT modification alters token issuance access controls; matches CISA KEV CVE-2026-56155 exploitation pattern; correlate with PowerShell ADFS cmdlet events and operator change records (T1484.002/T1068)</description>
+    <mitre>
+      <id>T1484.002</id>
+      <id>T1068</id>
+    </mitre>
+    <group>adfs_rpt_modification,cve_2026_56155,admin_log,</group>
+  </rule>
+
+  <!-- HIGH: Rapid burst of ADFS PowerShell cmdlet executions by the same user.
+       Automated exploitation of CVE-2026-56155 typically begins with scripted
+       enumeration of the existing ADFS access control configuration followed
+       by targeted modifications. Five or more ADFS cmdlet invocations within
+       120 seconds by the same user is consistent with this pattern. Legitimate
+       bulk ADFS configuration changes should be coordinated with change
+       management; treat unexpected bursts as high-confidence exploitation
+       unless correlated with an approved change ticket. -->
+  <rule id="103954" level="14" frequency="5" timeframe="120">
+    <if_matched_sid>103945</if_matched_sid>
+    <same_field>win.eventdata.user</same_field>
+    <description>Microsoft ADFS CVE-2026-56155 EoP: Rapid ADFS PowerShell cmdlet burst by $(win.eventdata.user) on $(agent.name) -- 5 or more ADFS module invocations within 120 seconds; scripted ADFS enumeration or automated access control bypass exploitation; verify against approved change ticket (T1068/T1484.002)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1484.002</id>
+    </mitre>
+    <group>adfs_scripted_access,cve_2026_56155,high_confidence,</group>
+  </rule>
+
+</group>
