@@ -1,0 +1,154 @@
+<!-- ============================================================
+     CrashStealer macOS Keychain Credential Theft Detection Rules
+     MITRE ATT&CK Techniques:
+       T1555.001  - Credentials from Password Stores: Keychain
+       T1005      - Data from Local System
+       T1041      - Exfiltration Over C2 Channel
+       T1547.011  - Boot or Logon Autostart Execution: Plist Modification
+       T1553.002  - Subvert Trust Controls: Code Signing
+       T1036.005  - Masquerading: Match Legitimate Name or Location
+     Rule IDs: 103908-103913
+     Author: SecOps Engineer
+     Date: 2026-07-14
+
+     Threat Actor: Unknown (unattributed as of July 2026)
+     References:
+       - Jamf Threat Labs (2026-07-13): CrashStealer macOS infostealer
+       - BleepingComputer (2026-07-13): New CrashStealer macOS malware
+
+     Threat Summary:
+       CrashStealer is a native C++ macOS infostealer with notarization bypass
+       that masquerades as Apple's CrashReporter framework. Key behaviors:
+         - Delivered via PIN-gated download from werkbit[.]io
+         - Masquerades as CrashReporter (Apple framework) in filesystem paths
+         - Installs LaunchAgent plist for persistence under ~/Library/LaunchAgents/
+         - Accesses macOS Keychain and browser credentials
+         - Re-signs itself using a fraudulent Developer ID: Emil Grigorov (WWB7JA7AQV)
+         - Exfiltrates AES-GCM encrypted data to endpoint-api-v1[.]com via libcurl POST
+
+     IOC Domains:
+       werkbit.io           (delivery / PIN-gated dropper)
+       endpoint-api-v1.com  (C2 exfiltration)
+
+     Log source prerequisites:
+       - Firewall/DNS logs via 103000 anchor or syslog-based DNS monitoring
+         Required for domain IOC detections (103908, 103909)
+       - macOS Unified Log forwarded to Wazuh (via osquery or macOS agent)
+         Required for codesign and LaunchAgent detections (103910, 103911, 103912)
+       - Wazuh FIM monitoring ~/Library/LaunchAgents/ on macOS endpoints
+         Required for LaunchAgent plist detection (103913)
+
+     Severity tiers:
+       13 - codesign executing with CrashReporter or LaunchAgents path args
+       13 - LaunchAgent plist written by unexpected process
+       14 - Domain IOC match (delivery or C2)
+       15 - LaunchAgent with CrashReporter path written by non-Apple process
+     ============================================================ -->
+
+<group name="threat_intel,credential_access,macos,crashstealer,infostealer,">
+
+  <!-- ===========================================================
+       Network/DNS: connection to werkbit.io (CrashStealer delivery)
+       werkbit.io is used for PIN-gated CrashStealer dropper delivery.
+       No legitimate macOS software uses this domain.
+       Requires firewall or DNS logs via the 103000 anchor.
+       =========================================================== -->
+  <rule id="103908" level="14">
+    <if_sid>103000</if_sid>
+    <match>werkbit.io</match>
+    <description>CrashStealer macOS: connection to delivery domain werkbit.io from $(agent.name) -- CrashStealer macOS infostealer delivery; PIN-gated dropper distribution (T1190, T1555.001)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1555.001</id>
+    </mitre>
+    <group>ioc_match,ioc_domain,crashstealer,delivery,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Network/DNS: connection to endpoint-api-v1.com (CrashStealer C2 exfil)
+       endpoint-api-v1.com receives AES-GCM encrypted Keychain/credential dumps
+       via libcurl HTTP POST. Zero expected false positives.
+       =========================================================== -->
+  <rule id="103909" level="15">
+    <if_sid>103000</if_sid>
+    <match>endpoint-api-v1.com</match>
+    <description>CrashStealer macOS: connection to C2 exfiltration domain endpoint-api-v1.com from $(agent.name) -- CRITICAL: CrashStealer Keychain/credential exfiltration channel (T1041, T1555.001)</description>
+    <mitre>
+      <id>T1041</id>
+      <id>T1555.001</id>
+    </mitre>
+    <group>ioc_match,ioc_c2,crashstealer,exfiltration,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       macOS: codesign touching CrashReporter or LaunchAgents paths
+       CrashStealer re-signs itself after copying to a CrashReporter-mimicking
+       path. codesign invocations involving CrashReporter or LaunchAgents paths
+       from non-system parent processes are highly suspicious.
+       Requires macOS Unified Log or osquery forwarding to Wazuh.
+       =========================================================== -->
+  <rule id="103910" level="13">
+    <if_group>macos,audit</if_group>
+    <field name="audit.exe" type="pcre2">(?i)/usr/bin/codesign$</field>
+    <field name="audit.command" type="pcre2">(?i)(CrashReporter|LaunchAgents)</field>
+    <description>CrashStealer macOS: codesign executed with CrashReporter or LaunchAgents path on $(agent.name) by $(audit.auid) -- CrashStealer re-signing malware binary to masquerade as Apple CrashReporter (T1553.002, T1036.005)</description>
+    <mitre>
+      <id>T1553.002</id>
+      <id>T1036.005</id>
+    </mitre>
+    <group>defense_evasion,masquerading,crashstealer,</group>
+  </rule>
+
+  <!-- ===========================================================
+       macOS FIM: LaunchAgent plist written by unexpected process
+       CrashStealer installs persistence via ~/Library/LaunchAgents/.
+       Wazuh FIM monitoring this directory will fire on any new plist.
+       Non-critical (level 13) - tune false positives per environment
+       by adding known-good writers (Homebrew, IDEs) to exclusion list.
+       =========================================================== -->
+  <rule id="103911" level="13">
+    <if_sid>550,553,554</if_sid>
+    <field name="file" type="pcre2">(?i)/Library/LaunchAgents/.*\.plist$</field>
+    <description>CrashStealer macOS: LaunchAgent plist written in Library/LaunchAgents on $(agent.name) -- persistence installation; verify if process is a known-good writer; CrashStealer installs LaunchAgent under CrashReporter-mimicking path (T1547.011)</description>
+    <mitre>
+      <id>T1547.011</id>
+    </mitre>
+    <group>persistence,launchagent,crashstealer,</group>
+  </rule>
+
+  <!-- ===========================================================
+       macOS FIM: LaunchAgent plist with CrashReporter in path (high confidence)
+       CrashStealer specifically uses a CrashReporter-mimicking path for its
+       LaunchAgent plist. Any plist containing "CrashReporter" written to
+       ~/Library/LaunchAgents/ is near-certain malicious activity.
+       =========================================================== -->
+  <rule id="103912" level="15">
+    <if_sid>550,553,554</if_sid>
+    <field name="file" type="pcre2">(?i)/Library/LaunchAgents/.*CrashReporter.*\.plist$</field>
+    <description>CrashStealer macOS: LaunchAgent plist with CrashReporter in path written on $(agent.name) -- CRITICAL: CrashStealer persistence masquerading as Apple CrashReporter; isolate and investigate (T1547.011, T1036.005)</description>
+    <mitre>
+      <id>T1547.011</id>
+      <id>T1036.005</id>
+    </mitre>
+    <group>persistence,launchagent,masquerading,crashstealer,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       macOS: direct Keychain database file access by unexpected process
+       CrashStealer directly accesses the macOS Keychain database
+       (login.keychain-db) to harvest stored credentials. Wazuh FIM or
+       auditd monitoring of Keychain file access can detect this.
+       =========================================================== -->
+  <rule id="103913" level="13">
+    <if_group>macos,audit</if_group>
+    <field name="audit.file.name" type="pcre2">(?i)(login\.keychain-db|login\.keychain|keychain-2\.db)$</field>
+    <field name="audit.exe" negate="yes" type="pcre2">(?i)/(securityd|Security|SecurityAgent|keychaind|keychain-agent|Safari|Chrome|Firefox|Brave|Edge|1Password|Keychain Access)$</field>
+    <description>CrashStealer macOS: Keychain database accessed by unexpected process $(audit.exe) on $(agent.name) -- credential theft from macOS Keychain; CrashStealer or similar infostealer activity (T1555.001)</description>
+    <mitre>
+      <id>T1555.001</id>
+      <id>T1005</id>
+    </mitre>
+    <group>credential_access,keychain,crashstealer,</group>
+  </rule>
+
+</group>
