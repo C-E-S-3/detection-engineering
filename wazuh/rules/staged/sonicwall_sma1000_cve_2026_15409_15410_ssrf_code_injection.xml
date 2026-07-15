@@ -192,7 +192,7 @@
        Known-legitimate outbound connections (LDAP, RADIUS, NTP) should be
        baselined and suppressed via overrides after confirming SSRF is not active. -->
   <rule id="103939" level="11">
-    <match type="pcre2">(?i)(?:ALLOW|ACCEPT|permit|pass).*?(?:src|SRC|source|srcip)=\S*?(?:src|SRC|source|srcip)=(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})</match>
+    <match type="pcre2">(?i)(?:ALLOW|ACCEPT|permit|pass).*?(?:src|SRC|source|srcip)=(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})</match>
     <match type="pcre2">(?i)(?:dst|DST|dest|dstip)=(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})</match>
     <description>SonicWall SMA1000 CVE-2026-15409 SSRF: Firewall log shows connection from internal source to internal RFC1918 destination on $(agent.name) -- if source IP is the SMA1000 appliance, this is the outbound SSRF connection; correlate source IP with SMA1000 appliance address (T1190/T1071.001)</description>
     <mitre>
