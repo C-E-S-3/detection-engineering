@@ -11,7 +11,7 @@
        T1078  - Valid Accounts (TA0005 Privilege Escalation / TA0001 Initial Access)
      CISA KEV: Added 2026-07-15, Federal Deadline 2026-07-29
      CISA ICS Advisory: ICSA-23-236-01
-     Rule IDs: 103962-103968
+     Rule IDs: 103972-103978
      Author: SecOps Engineer (Purple Team)
      Date: 2026-07-15
 
@@ -68,40 +68,40 @@
 
      Detection Approach:
 
-     Layer 1 - Firewall log (rules 103962-103964):
-       Rule 103962 (level 7): Base anchor - any network connection to or from
+     Layer 1 - Firewall log (rules 103972-103974):
+       Rule 103972 (level 7): Base anchor - any network connection to or from
          port 3671 seen in firewall logs. KNXnet/IP exclusively uses port 3671
          UDP and TCP. Any connection to this port from non-KNX infrastructure
          hosts warrants investigation.
-       Rule 103963 (level 13): Child of 103962 - source IP is publicly routable
+       Rule 103973 (level 13): Child of 103972 - source IP is publicly routable
          (non-RFC1918). KNX is an intranet building automation protocol and
          should never be reachable from the internet. External access is an
          unambiguous exploitation signal.
-       Rule 103964 (level 11): Child of 103962 - destination is the KNX IP
+       Rule 103974 (level 11): Child of 103972 - destination is the KNX IP
          multicast group 224.0.23.12. SEARCH_REQUEST packets sent to this
          multicast enumerate all KNX IP interfaces on the local network.
          This is the attacker discovery phase.
 
-     Layer 2 - Suricata IDS (rules 103965-103966):
-       Rule 103965 (level 12): Suricata ICS/KNX protocol detection - any
+     Layer 2 - Suricata IDS (rules 103975-103976):
+       Rule 103975 (level 12): Suricata ICS/KNX protocol detection - any
          Suricata ET ICS signature matching KNX/EIBnet protocol activity.
          Suricata with the ET ICS ruleset can identify KNXnet/IP SEARCH_REQUEST,
          CONNECT_REQUEST, and TUNNELING_REQUEST packets at the network layer.
-       Rule 103966 (level 13): Suricata KNX exploitation-specific alert - IDS
+       Rule 103976 (level 13): Suricata KNX exploitation-specific alert - IDS
          signatures for KNX scanning, enumeration, BCU key programming, or
          unauthorized device access patterns consistent with CVE-2023-4346
          attack tooling.
 
-     Layer 3 - Raw log / KNX management software (rule 103967):
-       Rule 103967 (level 14): Matches application-level log messages from
+     Layer 3 - Raw log / KNX management software (rule 103977):
+       Rule 103977 (level 14): Matches application-level log messages from
          KNX management software (ETS, KNX Virtual, or custom KNX syslog
          forwarders) or Zeek ICS protocol analyzer output containing KNXnet/IP
          service type names, BCU key writes, or programming mode access.
          These strings appear in vendor KNX diagnostic logs, Zeek KNX
          analyzer NOTICE logs, and some ICS security monitoring tools.
 
-     Layer 4 - Frequency (rule 103968):
-       Rule 103968 (level 9): Rapid probe burst from a single source to port
+     Layer 4 - Frequency (rule 103978):
+       Rule 103978 (level 9): Rapid probe burst from a single source to port
          3671 - 10+ connection attempts in 60 seconds. Automated KNX scanner
          tools (KNXmap, knxd, custom exploit scripts) issue rapid sequential
          connections when scanning for unprotected KNX interfaces.
@@ -127,27 +127,27 @@
         9 - Frequency: 10+ connections to port 3671 from same source in 60 seconds
 
      False Positive Guidance:
-       103962: Legitimate KNXnet/IP traffic from authorized building management
+       103972: Legitimate KNXnet/IP traffic from authorized building management
          workstations, ETS (Engineering Tool Software) PCs, or KNX IP Router
-         devices will fire this anchor. Correlate with 103963 and 103968 for
+         devices will fire this anchor. Correlate with 103973 and 103978 for
          exploitation signals; suppress for known-good KNX infrastructure IPs.
-       103963: No benign business justification exists for internet-routable IPs
+       103973: No benign business justification exists for internet-routable IPs
          connecting to port 3671. If KNX is deliberately exposed to the internet
          (strongly inadvisable), this rule would need an override for the
          specific permitted source CIDRs.
-       103964: KNX IP Routers and ETS installation software legitimately send
+       103974: KNX IP Routers and ETS installation software legitimately send
          SEARCH_REQUEST multicast during network startup and when discovering
          KNX IP interfaces. Alert is meaningful when originating from
          unexpected hosts (e.g., workstations that are not authorized ETS PCs).
-       103965: ET ICS rules may fire during normal authorized ETS commissioning
+       103975: ET ICS rules may fire during normal authorized ETS commissioning
          sessions. Baseline expected commissioning windows and alert on
          deviations or unexpected source IPs.
-       103966: KNX exploitation-specific signatures have very low false positive
+       103976: KNX exploitation-specific signatures have very low false positive
          rates; treat any match as requiring immediate investigation.
-       103967: KNX management software may log CONNECT_REQUEST messages during
+       103977: KNX management software may log CONNECT_REQUEST messages during
          authorized device programming sessions. Correlate with time-of-day
          (outside maintenance windows) and source host (non-ETS workstations).
-       103968: Automated KNX diagnostic tools run on a schedule may generate
+       103978: Automated KNX diagnostic tools run on a schedule may generate
          rapid sequential connections; baseline known-good scan sources.
          Treat unknown source IPs as confirmed scanning activity.
      ============================================================ -->
@@ -156,7 +156,7 @@
 
   <!-- ===========================================================
        Layer 1: Firewall log rules (nftables/iptables)
-       Rule IDs: 103962-103964
+       Rule IDs: 103972-103974
 
        KNXnet/IP exclusively uses port 3671 (UDP for tunneling and routing,
        TCP for secure tunneling). Any connection to or from port 3671 is
@@ -174,14 +174,14 @@
        This anchor fires on any packet destined for port 3671, including both
        inbound connections from building management workstations and unexpected
        connections from unauthorized hosts. The level 7 severity is
-       informational - it correlates with child rules 103963, 103964, and 103968
+       informational - it correlates with child rules 103973, 103974, and 103978
        to distinguish legitimate building automation traffic from CVE-2023-4346
        exploitation attempts. Suppress for well-known authorized KNX
        infrastructure source IPs. -->
-  <rule id="103962" level="7">
+  <rule id="103972" level="7">
     <if_group>firewall</if_group>
     <field name="data.dest_port">^3671$</field>
-    <description>KNXnet/IP: Connection to KNX building automation port 3671 on $(data.dest_ip) from $(data.src_ip) -- KNXnet/IP (port 3671) traffic detected; investigate source against authorized KNX infrastructure; correlate with rules 103963-103968 for CVE-2023-4346 exploitation signals (T1190)</description>
+    <description>KNXnet/IP: Connection to KNX building automation port 3671 on $(data.dest_ip) from $(data.src_ip) -- KNXnet/IP (port 3671) traffic detected; investigate source against authorized KNX infrastructure; correlate with rules 103973-103978 for CVE-2023-4346 exploitation signals (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -209,8 +209,8 @@
        immediate investigation: identify the source IP, capture traffic,
        audit all KNX device BCU key states, and assess whether unauthorized
        BCU key writes occurred. -->
-  <rule id="103963" level="13">
-    <if_sid>103962</if_sid>
+  <rule id="103973" level="13">
+    <if_sid>103972</if_sid>
     <field name="data.src_ip" negate="yes" type="pcre2">^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|127\.|::1$|fe80:)</field>
     <description>CVE-2023-4346 KNXnet/IP: External source $(data.src_ip) connecting to KNX port 3671 on $(data.dest_ip) -- internet-routable IP accessing building automation network; KNXnet/IP is a local-network protocol with no legitimate internet exposure; active CVE-2023-4346 exploitation likely; audit KNX device BCU key states immediately (T1190)</description>
     <mitre>
@@ -238,8 +238,8 @@
        unexpected hosts or outside maintenance windows indicates unauthorized
        KNX device enumeration consistent with the KNXlock attack campaign
        (CVE-2023-4346). -->
-  <rule id="103964" level="11">
-    <if_sid>103962</if_sid>
+  <rule id="103974" level="11">
+    <if_sid>103972</if_sid>
     <field name="data.dest_ip" type="pcre2">^224\.0\.23\.12$</field>
     <description>CVE-2023-4346 KNXnet/IP: KNX discovery multicast SEARCH_REQUEST from $(data.src_ip) to 224.0.23.12:3671 -- KNXnet/IP device discovery on the KNX multicast group; attacker enumerating KNX IP interfaces for CVE-2023-4346 BCU key bypass attack; investigate source host against authorized ETS workstation list (T1046/T1190)</description>
     <mitre>
@@ -252,7 +252,7 @@
 
   <!-- ===========================================================
        Layer 2: Suricata IDS rules
-       Rule IDs: 103965-103966
+       Rule IDs: 103975-103976
 
        Suricata with the Emerging Threats ICS ruleset (ET ICS category)
        can decode KNXnet/IP packet headers and match on specific service
@@ -272,12 +272,12 @@
        used interchangeably in vendor documentation and some IDS signatures
        (particularly older Snort/Suricata rules).
 
-       This rule is broader than 103966 and covers any Suricata detection
+       This rule is broader than 103976 and covers any Suricata detection
        event related to KNX/EIBnet, even if not exploitation-specific.
        False positives are possible during authorized commissioning sessions;
        correlate with source IP and time-of-day against the maintenance
        change calendar. -->
-  <rule id="103965" level="12">
+  <rule id="103975" level="12">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(KNX|EIBnet|knxnet|knxip|KNX\/IP|building.automat)</field>
     <description>Suricata ICS: KNXnet/IP or EIBnet building automation protocol alert -- $(alert.signature) from $(alert.src_ip) to $(alert.dest_ip):$(alert.dest_port); KNX IDS signature fired; investigate source against authorized ETS workstation list for CVE-2023-4346 exploitation (T1190)</description>
@@ -298,12 +298,12 @@
          - KNX group object write from unexpected source (actuator manipulation)
          - KNXmap or KNXscan tool signatures
 
-       Unlike 103965 (any KNX IDS alert), this rule matches signatures that
+       Unlike 103975 (any KNX IDS alert), this rule matches signatures that
        explicitly reference exploitation-related terms. These signatures have
        a very low false positive rate and should trigger immediate escalation
        to the building operations team to audit device BCU key states and
        assess whether unauthorized writes occurred. -->
-  <rule id="103966" level="13">
+  <rule id="103976" level="13">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(KNX|EIBnet|knxnet).*(exploit|scan|enum|connect.request|BCU|program|lock|group.write|memory.write|tunnel|unauthorized)</field>
     <description>Suricata ICS: KNX exploitation or enumeration alert -- $(alert.signature) from $(alert.src_ip) to $(alert.dest_ip):$(alert.dest_port); KNX-specific IDS signature indicating unauthorized access or BCU key write consistent with CVE-2023-4346 KNXlock attack; escalate to building operations immediately (T1190/T1499.002)</description>
@@ -316,7 +316,7 @@
 
 
   <!-- ===========================================================
-       Layer 3: Application log / KNX management software (rule 103967)
+       Layer 3: Application log / KNX management software (rule 103977)
 
        KNX management and diagnostic software (ETS, KNX Virtual, OpenKNX,
        linknx, knxd) and Zeek ICS protocol analyzers emit structured log
@@ -353,7 +353,7 @@
        locking the device; incident response must begin immediately to
        determine which devices were affected and whether the building operator
        still has a path to recovery. -->
-  <rule id="103967" level="14">
+  <rule id="103977" level="14">
     <match type="pcre2">(?i)(?:KNXnet|EIBnet|knxd|linknx|openknx).*(?:CONNECT_REQUEST|BCU[_\s]key|BCU_KEY|A_Memory_Write|programming[_\s]mode|program[_\s]mode|A_GroupValue_Write)|(?:BCU[_\s]key|BCU_KEY).*(?:KNX|EIB|knxnet)|(?:KNX|knxnet|EIBnet).*(?:lock(?:ed|ing)?|unauthorized.*program|unauthorized.*BCU)</match>
     <description>CVE-2023-4346 KNXnet/IP: KNX management log shows programming access, BCU key write, or CONNECT_REQUEST -- $(agent.name); unauthenticated BCU key write or programming mode access is the CVE-2023-4346 attack payload; KNX device lockout may be in progress; escalate to building operations and isolate affected KNX IP interfaces immediately (T1190/T1499.002/T1078)</description>
     <options>alert_by_email</options>
@@ -367,7 +367,7 @@
 
 
   <!-- ===========================================================
-       Layer 4: Frequency-based detection (rule 103968)
+       Layer 4: Frequency-based detection (rule 103978)
 
        Automated KNX exploitation tools (KNXmap, knxd scan mode, custom
        Python scripts using the xknx library) issue rapid sequential
@@ -394,8 +394,8 @@
        known KNX IP Interface and do not generate rapid bursts. Treat any
        such burst from an unrecognized source IP as automated KNX exploitation
        tooling and investigate the source host immediately. -->
-  <rule id="103968" level="9">
-    <if_matched_sid>103962</if_matched_sid>
+  <rule id="103978" level="9">
+    <if_matched_sid>103972</if_matched_sid>
     <same_field>data.src_ip</same_field>
     <timeframe>60</timeframe>
     <frequency>10</frequency>
