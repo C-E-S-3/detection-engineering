@@ -22,7 +22,7 @@ CISA added CVE-2026-46817 to the Known Exploited Vulnerabilities catalog on 2026
 - Legitimate Oracle Payments trading partner integrations may POST to `/OA_HTML/ibytransmit` on a scheduled basis from allowlisted partner IP ranges. Baseline known-good partner IPs and suppress alerts from those sources when correlated with expected transmission windows.
 - Oracle Payments system tests and load balancer health checks may generate requests to this endpoint. Identify and allowlist monitoring source IPs.
 - HTTP 2xx from ibytransmit to a known authorized partner IP during a scheduled window is expected. Flag unknown source IPs and off-schedule transmissions.
-- File path patterns (rule 103958) in a request body from a known Oracle EBS administrator console or integration testing tool may be benign; correlate with the source IP and operational context.
+- File path patterns (rule 103968) in a request body from a known Oracle EBS administrator console or integration testing tool may be benign; correlate with the source IP and operational context.
 
 ## MITRE ATT&CK Mapping
 
@@ -58,17 +58,17 @@ Secondary techniques:
 
 ## Wazuh Detection Rules
 
-Rules 103955-103961 in `wazuh/rules/staged/oracle_ebs_cve_2026_46817_payments_privesc.xml`:
+Rules 103965-103971 in `wazuh/rules/staged/oracle_ebs_cve_2026_46817_payments_privesc.xml`:
 
 | Rule ID | Level | Description |
 |---------|-------|-------------|
-| 103955 | 7 | Base anchor: HTTP request to `/OA_HTML/ibytransmit` endpoint (info) |
-| 103956 | 11 | POST method to ibytransmit (exploit delivery vector) |
-| 103957 | 13 | POST to ibytransmit returning 2xx (auth bypass at HTTP layer confirmed) |
-| 103958 | 14 | Request to ibytransmit with LFI/file path payload (file read attempt) |
-| 103959 | 15 | POST 2xx to ibytransmit with file path payload (exploitation confirmed) |
-| 103960 | 9 | Probe burst: 8+ requests to ibytransmit from same IP in 60 seconds |
-| 103961 | 12 | Apache/Oracle HTTP Server access log: POST to ibytransmit returning 2xx |
+| 103965 | 7 | Base anchor: HTTP request to `/OA_HTML/ibytransmit` endpoint (info) |
+| 103966 | 11 | POST method to ibytransmit (exploit delivery vector) |
+| 103967 | 13 | POST to ibytransmit returning 2xx (auth bypass at HTTP layer confirmed) |
+| 103968 | 14 | Request to ibytransmit with LFI/file path payload (file read attempt) |
+| 103969 | 15 | POST 2xx to ibytransmit with file path payload (exploitation confirmed) |
+| 103970 | 9 | Probe burst: 8+ requests to ibytransmit from same IP in 60 seconds |
+| 103971 | 12 | Apache/Oracle HTTP Server access log: POST to ibytransmit returning 2xx |
 
 ## Splunk Detection Query
 
