@@ -1,0 +1,242 @@
+<!-- ============================================================
+     BoryptGrab Infostealer - DLL Sideloading + Credential Theft
+     Active campaign since 2026-06-26 (292+ fake GitHub repos)
+     MITRE ATT&amp;CK:
+       T1574.002 - DLL Sideloading (WinGUP.exe + libcurl.dll)
+       T1055     - Process Injection (COM/SafeArray reflective loader)
+       T1555     - Credentials from Password Stores (41 crypto wallets)
+       T1555.003 - Credentials from Web Browsers (19+ browsers)
+       T1539     - Steal Web Session Cookie (browser extension storage)
+       T1195.001 - Supply Chain: Compromise Software Dependencies
+       T1059.003 - Windows Command Shell (post-exploitation)
+       T1218     - System Binary Proxy Execution (COM loader bypass)
+     Rule IDs: 103955-103964
+     Author: SecOps Engineer (Purple Team) - ESKA-506
+     Date: 2026-07-15
+
+     Campaign summary:
+       BoryptGrab is an active infostealer campaign using 292+ fake GitHub
+       repositories to distribute WinGUP.exe bundled with a malicious
+       libcurl.dll. When WinGUP.exe runs, it sideloads the rogue libcurl.dll
+       (instead of the legitimate curl library). The sideloaded DLL uses a
+       COM/SafeArray reflective loader for process injection, then systematically
+       harvests credentials from 41 cryptocurrency wallets and 19+ browsers.
+
+     Log sources:
+       - Windows Sysmon EventID 1 (Process Create) via Wazuh agent
+       - Windows Sysmon EventID 7 (Image Loaded) via Wazuh agent
+       - Wazuh FIM (syscheck) on AppData wallet/credential paths
+     ============================================================ -->
+
+<group name="defense_evasion,credential_access,collection,boryptgrab,dll_sideloading,infostealer,">
+
+  <!-- ===========================================================
+       T1574.002 - DLL Sideloading
+       Rules 103955-103957: WinGUP.exe + libcurl.dll detection
+       Log source: Sysmon EventID 1 (process create), EventID 7 (image load)
+       =========================================================== -->
+
+  <!-- Base anchor: WinGUP.exe process execution detected.
+       WinGUP.exe is the signed Notepad++ GUP update host used as the
+       sideloading carrier in the BoryptGrab campaign. Legitimate WinGUP.exe
+       should only run from the Notepad++ installation directory. Execution
+       from any other path (Temp, Downloads, AppData, Desktop) is suspicious.
+       Level 0: used for correlation; no alert by itself. -->
+  <rule id="103955" level="0">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^1$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\WinGUP\.exe$</field>
+    <description>BoryptGrab base anchor: WinGUP.exe started by $(win.eventdata.parentImage) at $(win.eventdata.image) (T1574.002)</description>
+    <group>boryptgrab,winguup_exec,</group>
+  </rule>
+
+  <!-- WinGUP.exe loaded libcurl.dll - DLL sideloading confirmed.
+       WinGUP.exe (the Notepad++ updater) imports libcurl.dll at runtime.
+       In the BoryptGrab campaign, a trojanized libcurl.dll is placed in the
+       same directory as WinGUP.exe; the OS loader picks it up before the
+       legitimate system copy. This sysmon EventID 7 event is the DLL load
+       confirmation and the primary high-confidence indicator.
+       Level 14: DLL sideloading confirmed; initiate investigation. -->
+  <rule id="103956" level="14">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^7$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\WinGUP\.exe$</field>
+    <field name="win.eventdata.imageLoaded" type="pcre2">(?i)\\libcurl\.dll$</field>
+    <description>BoryptGrab CONFIRMED: WinGUP.exe sideloaded libcurl.dll from $(win.eventdata.imageLoaded) on $(agent.name) -- trojanized libcurl.dll activates COM/SafeArray reflective loader for credential harvest; initiate host investigation (T1574.002)</description>
+    <mitre>
+      <id>T1574.002</id>
+    </mitre>
+    <group>boryptgrab,dll_sideloading,</group>
+  </rule>
+
+  <!-- libcurl.dll loaded from a non-standard directory (any process).
+       Legitimate libcurl.dll lives in system directories or within curl/
+       browser installation folders. Loading from Temp, AppData, Downloads,
+       Desktop, or user home is a strong sideloading indicator even without
+       WinGUP.exe being identified first.
+       Level 11: suspicious DLL load path; investigate the loading process. -->
+  <rule id="103957" level="11">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^7$</field>
+    <field name="win.eventdata.imageLoaded" type="pcre2">(?i)\\libcurl\.dll$</field>
+    <field name="win.eventdata.imageLoaded" type="pcre2" negate="yes">(?i)\\(?:Windows\\System32|Windows\\SysWOW64|curl|Git\\mingw|Program\s*Files[^\\]*\\(?:curl|Git|CMake)|Microsoft\\Edge|Google\\Chrome|Mozilla\\Firefox)\\</field>
+    <description>BoryptGrab: libcurl.dll loaded from non-standard path $(win.eventdata.imageLoaded) by $(win.eventdata.image) on $(agent.name) -- potential DLL sideloading vector; BoryptGrab places rogue libcurl.dll alongside WinGUP.exe in user-writable directories (T1574.002)</description>
+    <mitre>
+      <id>T1574.002</id>
+    </mitre>
+    <group>boryptgrab,dll_sideloading,defense_evasion,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1555 - Credentials from Password Stores
+       Rules 103958-103959: Crypto wallet + browser credential access
+       Log source: Wazuh FIM (syscheck) monitoring AppData paths
+       =========================================================== -->
+
+  <!-- Crypto wallet storage file access detected via FIM.
+       BoryptGrab targets 41 cryptocurrency wallets by accessing their
+       local storage directories under AppData. FIM on these paths detects
+       unauthorized access or exfiltration staging. Common wallet paths
+       include Bitcoin Core, Ethereum keystore, Exodus, Electrum, Monero,
+       Ledger Live, Atomic, and Binance.
+       Level 13: credential access; correlate with WinGUP.exe activity. -->
+  <rule id="103958" level="13">
+    <if_group>syscheck</if_group>
+    <field name="syscheck.path" type="pcre2">(?i)\\AppData\\(?:Roaming|Local)\\(?:Bitcoin\\wallets|Ethereum\\keystore|Exodus\\exodus\.wallet|Electrum\\wallets|Monero\\wallets|Ledger\s*Live|Atomic|Coinbase\s*Wallet|Trust\s*Wallet|exodus\.wallet|com\.ledger|Binance|Armory|Electrum-LTC|Wasabi\s*Wallet)</field>
+    <description>BoryptGrab: cryptocurrency wallet storage accessed at $(syscheck.path) -- BoryptGrab targets 41+ wallets; verify whether WinGUP.exe or an unexpected process triggered this FIM event (T1555)</description>
+    <mitre>
+      <id>T1555</id>
+    </mitre>
+    <group>boryptgrab,credential_access,crypto_wallet,</group>
+  </rule>
+
+  <!-- Browser credential and session store accessed via FIM.
+       BoryptGrab harvests saved passwords and session tokens from 19+
+       browsers. Key files: Chrome/Edge Login Data (SQLite), Firefox
+       logins.json + key4.db, and browser cookie stores. FIM access to
+       these files outside of normal browser operation is suspicious.
+       Level 13: credential store access; verify accessor process. -->
+  <rule id="103959" level="13">
+    <if_group>syscheck</if_group>
+    <field name="syscheck.path" type="pcre2">(?i)\\AppData\\(?:Local|Roaming)\\(?:Google\\Chrome|Microsoft\\Edge|BraveSoftware\\Brave-Browser|Opera\s*Software|Vivaldi|360Browser|Comodo)\\User\s*Data\\[^\\]+\\(?:Login\s*Data(?:\s*-journal)?|Web\s*Data|Cookies|History)$</field>
+    <description>BoryptGrab: browser credential or session store file modified at $(syscheck.path) -- BoryptGrab targets 19+ browsers for password/cookie harvest; correlate with WinGUP.exe process activity (T1555.003)</description>
+    <mitre>
+      <id>T1555.003</id>
+    </mitre>
+    <group>boryptgrab,credential_access,browser_credentials,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1055 / T1218 - Process Injection / COM Loader Bypass
+       Rule 103960: SafeArray reflective loader detection
+       Log source: Sysmon EventID 1 (process create)
+       =========================================================== -->
+
+  <!-- COM/SafeArray reflective loader: system binary loading DLL from
+       user-writable directory. BoryptGrab uses COM SafeArray tricks to
+       load its payload DLL via rundll32, regsvr32, or mshta acting as
+       proxy executors. The DLL path originates from Temp/AppData/Downloads
+       system binaries loading DLLs from these locations is anomalous.
+       Level 13: proxy execution of user-path DLL; high FP potential in
+       dev environments; tune if needed. -->
+  <rule id="103960" level="13">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^1$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(?:rundll32|regsvr32|mshta|wscript|cscript)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)\\(?:Temp|Downloads|Desktop|Documents|AppData\\(?:Local|Roaming))\\[^\\]+\.(?:dll|ocx|ax)(?:\s|,|$)</field>
+    <description>BoryptGrab: $(win.eventdata.image) loading DLL from user-writable path on $(agent.name): $(win.eventdata.commandLine) -- matches COM/SafeArray reflective loader pattern used by BoryptGrab for process injection (T1055/T1218)</description>
+    <mitre>
+      <id>T1055</id>
+      <id>T1218</id>
+    </mitre>
+    <group>boryptgrab,execution,process_injection,com_loader,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1574.002 / T1059 - DLL Sideloading + Post-Exploitation
+       Rule 103961: WinGUP.exe spawning shell or utility
+       Log source: Sysmon EventID 1 (process create), parentImage field
+       =========================================================== -->
+
+  <!-- WinGUP.exe (Notepad++ updater) spawning command interpreter or
+       utility. Legitimate WinGUP.exe only updates Notepad++ executables;
+       it should never spawn cmd.exe, PowerShell, bitsadmin, or certutil.
+       When the trojanized libcurl.dll is active, it may use WinGUP.exe
+       as a parent to launch post-exploitation tools.
+       Level 14: high-confidence post-exploitation; investigate immediately. -->
+  <rule id="103961" level="14">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^1$</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\WinGUP\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(?:cmd|powershell|pwsh|conhost|wscript|cscript|mshta|bitsadmin|certutil|curl)\.exe$</field>
+    <description>BoryptGrab: WinGUP.exe spawned suspicious child $(win.eventdata.image) on $(agent.name) -- Notepad++ updater should not spawn shells; trojanized libcurl.dll likely active and executing post-exploitation (T1574.002/T1059.003)</description>
+    <mitre>
+      <id>T1574.002</id>
+      <id>T1059.003</id>
+    </mitre>
+    <group>boryptgrab,execution,dll_sideloading,post_exploit,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1539 - Steal Web Session Cookie (browser extension wallets)
+       Rule 103962: Browser crypto extension LocalStorage access
+       Log source: Wazuh FIM on browser extension storage paths
+       =========================================================== -->
+
+  <!-- Browser-based crypto wallet extension storage accessed via FIM.
+       MetaMask, Coinbase Wallet, Phantom, and similar browser extension
+       wallets store encrypted private key material in Local Extension Settings
+       under the browser profile. BoryptGrab specifically targets these
+       extension IDs to extract wallet keys. FIM on these paths is high-fidelity
+       since normal extension access is handled by the browser process itself.
+       Level 14: crypto wallet extension targeted; high-value credential theft. -->
+  <rule id="103962" level="14">
+    <if_group>syscheck</if_group>
+    <field name="syscheck.path" type="pcre2">(?i)\\AppData\\(?:Local|Roaming)\\(?:Google\\Chrome|Microsoft\\Edge|BraveSoftware\\Brave-Browser)\\User\s*Data\\[^\\]+\\Local\s*Extension\s*Settings\\(?:nkbihfbeogaeaoehlefnkodbefgpgknn|nanjmdknhkinifnkgdcggcfnhdaammmj|egjidjbpglichdcondbcbdnbeeppgdph|bfnaelmomeahhmniioccaoke[a-z]{6}|aeachknmefphepccionboohckonoeemg|ojggmchlghnjlapmfbnjholfjkiidbch)</field>
+    <description>BoryptGrab: browser crypto wallet extension storage accessed at $(syscheck.path) -- matches MetaMask (nkbihf), Coinbase Wallet (aeachk), or Phantom (bfnael) extension IDs targeted by BoryptGrab; wallet key material may be exfiltrated (T1539/T1555)</description>
+    <mitre>
+      <id>T1539</id>
+      <id>T1555</id>
+    </mitre>
+    <group>boryptgrab,credential_access,crypto_wallet,browser_extension,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Composite / High-Confidence Rules
+       Rules 103963-103964
+       =========================================================== -->
+
+  <!-- High-confidence BoryptGrab kill chain: 3+ indicators in 5 minutes.
+       When 3 or more BoryptGrab-tagged alerts fire on the same host within
+       300 seconds, this indicates an active infection progressing through
+       the kill chain (WinGUP exec -> DLL load -> credential harvest).
+       Level 15: confirmed BoryptGrab infection; initiate incident response. -->
+  <rule id="103963" level="15" frequency="3" timeframe="300">
+    <if_matched_group>boryptgrab</if_matched_group>
+    <description>BoryptGrab ACTIVE INFECTION: 3+ kill chain indicators in 5 minutes on $(agent.name) -- DLL sideloading campaign confirmed; isolate endpoint and initiate incident response (T1574.002/T1555/T1055)</description>
+    <mitre>
+      <id>T1574.002</id>
+      <id>T1555</id>
+      <id>T1055</id>
+    </mitre>
+    <group>boryptgrab,dll_sideloading,credential_access,critical,incident_response,</group>
+  </rule>
+
+  <!-- WinGUP.exe binary created in user-writable directory (distribution stage).
+       Legitimate Notepad++ installs WinGUP.exe under Program Files and never
+       places it in Temp, Downloads, Desktop, or user profile roots.
+       Detection of WinGUP.exe creation in these paths indicates the BoryptGrab
+       dropper was downloaded (likely from a fake GitHub repo) and extracted.
+       Level 12: dropper stage detected before activation. -->
+  <rule id="103964" level="12">
+    <if_group>syscheck</if_group>
+    <field name="syscheck.path" type="pcre2">(?i)\\(?:Temp|Downloads|Desktop|Documents)\\WinGUP\.exe$</field>
+    <description>BoryptGrab: WinGUP.exe created in user-writable directory $(syscheck.path) -- Notepad++ updater should not appear outside Program Files; BoryptGrab distributes via fake GitHub repos; delete file and check git clone history (T1574.002/T1195.001)</description>
+    <mitre>
+      <id>T1574.002</id>
+      <id>T1195.001</id>
+    </mitre>
+    <group>boryptgrab,initial_access,dll_sideloading,dropper_stage,</group>
+  </rule>
+
+</group>
