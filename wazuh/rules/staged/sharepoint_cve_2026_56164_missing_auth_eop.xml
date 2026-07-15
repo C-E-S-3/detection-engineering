@@ -1,0 +1,290 @@
+<!-- ============================================================
+     Microsoft SharePoint Server Missing Authentication EoP
+     CVE-2026-56164 (CWE-306: Missing Authentication for Critical Function)
+     Affected: SharePoint Server (multiple supported versions)
+     MITRE ATT&amp;CK:
+       T1190 - Exploit Public-Facing Application (TA0001 Initial Access)
+       T1098 - Account Manipulation (unauthenticated privilege grant via REST API)
+       T1548 - Abuse Elevation Control Mechanism (auth bypass enabling EoP)
+       T1136 - Create Account (account creation via unauthenticated admin endpoint)
+     CISA KEV: Added 2026-07-14, Federal Deadline 2026-07-17
+     Rule IDs: 103925-103934
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-14
+
+     Vulnerability Summary:
+       CVE-2026-56164: SharePoint Server fails to enforce authentication
+       for critical administrative REST API endpoints. An unauthenticated
+       network attacker can call privileged SharePoint REST endpoints
+       (/_api/web/SiteGroups, /_api/web/RoleAssignments,
+       /_api/web/SiteAdministrators) without credentials and receive 2xx
+       responses. This allows the attacker to add accounts to privileged
+       SharePoint groups, assign full-control role bindings, or grant
+       site administrator access without any valid credentials.
+
+       Exploit sequence:
+         1. Attacker POSTs to /_api/contextinfo to obtain a form digest
+            token (anonymous access succeeds due to missing auth check).
+         2. Attacker uses the form digest to POST to a privileged endpoint
+            such as /_api/web/SiteGroups(n)/Users or
+            /_api/web/RoleAssignments/addroleassignment, adding their
+            account to the Owners or Site Administrators group.
+         3. Windows Security Event 4728 fires with the SharePoint AppPool
+            account as the Subject, confirming web-driven privilege grant.
+
+     Log source prerequisites:
+       HTTP layer:
+         - Traefik access logs in JSON format forwarded to Wazuh.
+           Field names follow Traefik defaults: RequestMethod, RequestPath,
+           RequestHost, DownstreamStatus, ClientHost.
+       Windows Security Event layer:
+         - Windows Security Event Log forwarded to Wazuh. Requires
+           Security audit policy: Audit Account Management (Success).
+           Wazuh must be running the Windows Security log decoder.
+           Fields: win.system.eventID, win.eventdata.subjectUserName,
+           win.eventdata.targetUserName, win.eventdata.memberName.
+
+     Detection layers:
+       1. HTTP (rules 103925-103929): Traefik JSON access logs covering
+          requests to privileged SharePoint REST endpoints. Success (2xx)
+          on these endpoints is the primary exploit delivery signal.
+          Rule 103925 anchors on endpoint path; 103926-103929 grade
+          severity by endpoint sensitivity and success status.
+       2. Windows Security Events (rules 103930-103934): Group membership
+          changes (EventID 4728) and account creation (EventID 4720)
+          attributed to IIS AppPool or SharePoint service accounts indicate
+          the web application executed unauthorized privilege changes in
+          response to an unauthenticated exploit request.
+
+     Severity tiers:
+        9 - Any request to privileged SharePoint REST endpoint (info anchor)
+       11 - POST to /_api/contextinfo returning 2xx (anon form digest obtained)
+       12 - 2xx response to SiteGroups or RoleAssignments (privilege manipulation)
+       13 - POST to SiteGroups(n)/Users returning 2xx (group member addition)
+       14 - POST to SiteAdministrators or addroleassignment returning 2xx
+            (site admin or full-control grant confirmed; near-certain exploit)
+       Windows Event layer:
+       12 - EventID 4728 targeting SharePoint admin group name patterns
+       13 - EventID 4728 with IIS/SharePoint service account as Subject
+       12 - EventID 4720 with IIS/SharePoint service account as Subject
+
+     False positive guidance:
+       103925: SharePoint admins legitimately call these REST APIs from
+         management tools; correlate with 103926-103929 for 2xx responses.
+       103926: A POST to contextinfo during normal site load is expected
+         for authenticated sessions; flag only unexpected sources or clients
+         without prior authenticated sessions.
+       103927-103929: 2xx on admin REST endpoints from non-admin sources is
+         anomalous; SharePoint returns 401/403 to unauthenticated callers
+         under normal operation.
+       103931: SharePoint admins add members via the web UI; review Subject
+         account. If Subject is a human admin account this is expected.
+       103932: Flag immediately; IIS AppPool accounts should not trigger
+         Windows group membership changes directly.
+       103934: Same as 103932 for account creation events.
+     ============================================================ -->
+
+<group name="initial_access,privilege_escalation,exploit_pubfacing,sharepoint,cve_2026_56164,cisa_kev,">
+
+  <!-- ===========================================================
+       Layer 1: HTTP / Traefik reverse proxy (JSON access logs)
+       Rule IDs: 103925-103929
+
+       CVE-2026-56164 is exploited by sending requests to SharePoint
+       administrative REST API endpoints without authentication. The
+       missing auth check causes the server to process these requests
+       and return 2xx responses. Monitoring the reverse proxy layer
+       catches exploit delivery before post-exploit host events fire.
+       =========================================================== -->
+
+  <!-- Base anchor: any request to privileged SharePoint REST or SOAP endpoint.
+       Covers the primary REST endpoints used in CVE-2026-56164 exploitation:
+         /_api/web/SiteGroups       - site group membership management
+         /_api/web/RoleAssignments  - permission role bindings
+         /_api/web/SiteAdministrators - site administrator management
+         /_vti_bin/UserGroup.asmx   - legacy SOAP user/group management
+         /_api/SP.Directory.*       - directory services API
+         /_layouts/15/user.aspx     - user management UI page
+       All child rules (103926-103929) chain from this anchor via if_sid. -->
+  <rule id="103925" level="9">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)(?:/_api/web/(?:sitegroups|roleassignments|siteadministrators)|/_vti_bin/(?:usergroup|lists)\.asmx|/_api/SP\.Directory\.|/_layouts/15/user\.aspx)</field>
+    <description>SharePoint CVE-2026-56164: Request to privileged SharePoint REST endpoint $(RequestPath) from $(ClientHost) at $(RequestHost) -- potential missing-auth EoP exploit delivery (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_56164,initial_access,exploit_pubfacing,</group>
+  </rule>
+
+  <!-- POST to /_api/contextinfo returning 2xx.
+       The contextinfo endpoint issues a form digest value required for
+       all state-changing POST requests in SharePoint. Under normal
+       operation this endpoint requires a valid authentication session.
+       An unauthenticated POST that returns 2xx indicates the auth check
+       is missing and the attacker has obtained a valid form digest token,
+       which is the first step in the CVE-2026-56164 exploit chain. -->
+  <rule id="103926" level="11">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)/_api/contextinfo</field>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>SharePoint CVE-2026-56164: POST to /_api/contextinfo from $(ClientHost) at $(RequestHost) returned $(DownstreamStatus) -- anonymous form digest token obtained; first step in unauthenticated privilege escalation exploit chain (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_56164,initial_access,anon_token_grant,</group>
+  </rule>
+
+  <!-- 2xx response to SiteGroups or RoleAssignments endpoint.
+       SiteGroups controls SharePoint group membership (Owners, Members,
+       Visitors). RoleAssignments controls permission levels (Full Control,
+       Design, Contribute). A 2xx response to either endpoint confirms the
+       server processed the request. Under normal operation these endpoints
+       require authentication; a 2xx from an unexpected or unauthenticated
+       caller indicates active CVE-2026-56164 exploitation. -->
+  <rule id="103927" level="12">
+    <if_sid>103925</if_sid>
+    <field name="RequestPath" type="pcre2">(?i)/_api/web/(?:sitegroups|roleassignments)</field>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>SharePoint CVE-2026-56164: $(RequestMethod) to $(RequestPath) from $(ClientHost) returned $(DownstreamStatus) -- SiteGroups or RoleAssignments access succeeded; privilege manipulation via missing-auth exploit (T1190/T1098)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1098</id>
+    </mitre>
+    <group>sharepoint,cve_2026_56164,privilege_escalation,group_manipulation,</group>
+  </rule>
+
+  <!-- POST 2xx to SiteGroups users sub-resource: group member addition.
+       POSTing to /_api/web/SiteGroups(id)/Users adds a principal to a
+       SharePoint site group. A 2xx response confirms the group membership
+       change was accepted. This is the direct privilege escalation action:
+       the attacker adds their account to the site Owners or other
+       privileged group without authentication. -->
+  <rule id="103928" level="13">
+    <if_sid>103925</if_sid>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)/_api/web/sitegroups\(\d+\)/users</field>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>SharePoint CVE-2026-56164 HIGH: POST to SiteGroups users at $(RequestHost)$(RequestPath) from $(ClientHost) returned $(DownstreamStatus) -- group member added without authentication; active privilege escalation via CVE-2026-56164 (T1190/T1098)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1098</id>
+    </mitre>
+    <group>sharepoint,cve_2026_56164,privilege_escalation,group_member_add,high_confidence,</group>
+  </rule>
+
+  <!-- POST 2xx to SiteAdministrators, addroleassignment, or UserGroup.asmx.
+       SiteAdministrators is the top-level privilege tier in a SharePoint
+       site collection. addroleassignment grants any permission level
+       including Full Control. UserGroup.asmx is the legacy SOAP endpoint
+       for user and group management that mirrors the REST API surface.
+       A successful POST to any of these endpoints means the attacker
+       achieved site-administrator-level access without credentials. -->
+  <rule id="103929" level="14">
+    <if_sid>103925</if_sid>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)(?:/_api/web/siteadministrators|/_vti_bin/usergroup\.asmx|/_api/web/roleassignments/addroleassignment)</field>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>SharePoint CVE-2026-56164 CRITICAL: POST to admin endpoint $(RequestPath) from $(ClientHost) returned $(DownstreamStatus) -- site administrator or full-control role granted without authentication; immediate incident response required (T1190/T1098/T1548)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1098</id>
+      <id>T1548</id>
+    </mitre>
+    <group>sharepoint,cve_2026_56164,privilege_escalation,admin_grant,critical,high_confidence,cisa_kev,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Layer 2: Windows Security Events
+       Rule IDs: 103930-103934
+       Log source: Windows Security Event Log forwarded to Wazuh.
+       Requires: Security audit policy Audit Account Management (Success).
+       Wazuh base SID 60103 covers Windows Security log events.
+
+       After CVE-2026-56164 exploitation, the privilege grant appears in
+       the Windows Security Event Log as standard account management events.
+       The key indicator is that the Subject performing the change is an
+       IIS AppPool account or SharePoint service account, not a human admin.
+       IIS AppPool accounts trigger Windows group changes only when the
+       web application itself initiates the operation, which occurs when
+       an unauthenticated HTTP request reaches the unprotected admin endpoint.
+       =========================================================== -->
+
+  <!-- Base anchor: Windows Security Event 4728.
+       EventID 4728 fires when a member is added to a security-enabled
+       global group. SharePoint site group memberships are backed by Windows
+       security groups whose names follow SharePoint naming conventions.
+       This anchor enables child rules to filter by group name and Subject. -->
+  <rule id="103930" level="0">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4728$</field>
+    <description>SharePoint CVE-2026-56164: Base anchor - member added to security-enabled global group (EventID 4728)</description>
+  </rule>
+
+  <!-- EventID 4728 targeting SharePoint admin group name patterns.
+       SharePoint creates Windows security groups using names that include
+       keywords such as SharePoint, WSS_ADMIN_WPG, WSS_WPG, Farm Administrators,
+       SP_Admin, or SPWA. A member addition to any of these groups should
+       be reviewed, particularly when the Subject is not a human admin. -->
+  <rule id="103931" level="12">
+    <if_sid>103930</if_sid>
+    <field name="win.eventdata.targetUserName" type="pcre2">(?i)(?:SharePoint|WSS_ADMIN|WSS_WPG|Farm.Admin|SP_Admin|SPWA)</field>
+    <description>SharePoint CVE-2026-56164: Member $(win.eventdata.memberName) added to SharePoint admin group $(win.eventdata.targetUserName) by $(win.eventdata.subjectUserName) -- potential unauthenticated privilege grant; correlate with HTTP exploit events on $(agent.name) (T1098)</description>
+    <mitre>
+      <id>T1098</id>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_56164,privilege_escalation,group_manipulation,</group>
+  </rule>
+
+  <!-- EventID 4728 where Subject is IIS AppPool or SharePoint service account.
+       When the account initiating a Windows group membership change is an
+       IIS AppPool identity, IUSR, or a named SharePoint service account
+       (spservice, sp_farm, svc_sp, etc.), the change was made by the web
+       application process, not by a human administrator. This indicates the
+       SharePoint IIS worker process responded to an unauthenticated HTTP
+       request by executing a privilege escalation operation. This is the
+       highest-confidence Windows-layer signal for CVE-2026-56164 exploitation. -->
+  <rule id="103932" level="13">
+    <if_sid>103930</if_sid>
+    <field name="win.eventdata.subjectUserName" type="pcre2">(?i)(?:IIS APPPOOL\\|w3wp|IUSR|spservice|spadmin|sp_farm|sp_service|sharepoint_service|svc_sp)</field>
+    <description>SharePoint CVE-2026-56164 HIGH: Group membership change in $(win.eventdata.targetUserName) initiated by IIS/SharePoint service account $(win.eventdata.subjectUserName) on $(agent.name) -- web process executed privilege grant; likely CVE-2026-56164 unauthenticated EoP (T1098/T1190)</description>
+    <mitre>
+      <id>T1098</id>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_56164,privilege_escalation,service_account_exploit,high_confidence,</group>
+  </rule>
+
+  <!-- Base anchor: Windows Security Event 4720.
+       EventID 4720 fires when a user account is created. SharePoint can
+       provision or enable accounts as part of site membership flows.
+       An account creation event where the Subject is a SharePoint or
+       IIS service account indicates the web application created the account,
+       which can occur as a post-exploit action following CVE-2026-56164
+       to establish a persistent backdoor account with elevated access. -->
+  <rule id="103933" level="0">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4720$</field>
+    <description>SharePoint CVE-2026-56164: Base anchor - user account created (EventID 4720)</description>
+  </rule>
+
+  <!-- EventID 4720 where Subject is IIS AppPool or SharePoint service account.
+       Account creation triggered by an IIS AppPool or SharePoint service
+       account identity indicates the SharePoint web process itself issued
+       the account creation call. Under normal operation human administrators
+       use the admin console to create accounts; creation attributed to a
+       service process identity is a strong indicator of post-exploit
+       backdoor account provisioning via CVE-2026-56164. -->
+  <rule id="103934" level="12">
+    <if_sid>103933</if_sid>
+    <field name="win.eventdata.subjectUserName" type="pcre2">(?i)(?:IIS APPPOOL\\|w3wp|IUSR|spservice|spadmin|sp_farm|sp_service|sharepoint_service|svc_sp)</field>
+    <description>SharePoint CVE-2026-56164: User account $(win.eventdata.targetUserName) created by IIS/SharePoint service account $(win.eventdata.subjectUserName) on $(agent.name) -- unauthenticated account provisioning via missing-auth exploit; possible backdoor account (T1136/T1190)</description>
+    <mitre>
+      <id>T1136</id>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_56164,privilege_escalation,account_creation,high_confidence,</group>
+  </rule>
+
+</group>
