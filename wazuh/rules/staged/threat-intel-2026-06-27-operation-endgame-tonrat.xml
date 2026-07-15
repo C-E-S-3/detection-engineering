@@ -40,7 +40,7 @@
 <!-- ==============================================================
      SECTION 1: Amadey Infostealer C2 Detection
      T1071.001 (Web Protocol C2) / T1555.003 (Credential Theft)
-     Amadey C2 protocol: HTTP POST to /<8-16char path>/index.php
+     Amadey C2 protocol: HTTP POST to /&lt;8-16char path>/index.php
      Victim fingerprint POST body: machine info, installed AV, country
      Plugin retrieval: HTTP GET from same endpoint after registration
      Active IOC domains (Operation Endgame Phase 2, June 2026):
@@ -65,7 +65,7 @@
   </rule>
 
   <!-- Rule 103673  - Web log: HTTP POST matching Amadey C2 URL pattern
-       Amadey registers victim by POSTing to /<path>/index.php where <path>
+       Amadey registers victim by POSTing to /&lt;path>/index.php where &lt;path>
        is an 8-16 character alphanumeric string derived from the campaign ID.
        Known paths: /hg8jjfSr5hy/, /gd7djkDveE2/, /ms/, /cvdfnaFJBmC0/, /Lsge63sd3/
        False positives: legitimate index.php applications; filter by POST method + path depth. -->
@@ -98,7 +98,7 @@
 <!-- ==============================================================
      SECTION 2: StealC Infostealer C2 Detection
      T1071.001 (Web Protocol C2) / T1041 (Exfiltration Over C2)
-     StealC C2 protocol: HTTP POST to /<20-char hex>.php
+     StealC C2 protocol: HTTP POST to /&lt;20-char hex>.php
      Data encrypted with RC4 before transmission (key in config)
      Active IOC domains (Operation Endgame Phase 2, June 2026):
        polse.us, roger99699.xyz, bluescry.com,
@@ -120,7 +120,7 @@
   </rule>
 
   <!-- Rule 103676  - Web log: HTTP POST matching StealC C2 URL pattern
-       StealC exfil endpoint: POST to /<exactly 20 hex chars>.php
+       StealC exfil endpoint: POST to /&lt;exactly 20 hex chars>.php
        Known paths: /62ea47cac2534aa18f74.php, /425f1faf4b214434b8a3.php, etc.
        The 20-char lowercase hex filename is virtually never used in legitimate web apps. -->
   <rule id="103676" level="13">
@@ -174,7 +174,7 @@
      SECTION 4: TonRAT Node.js Implant Detection
      T1105 (Ingress Tool Transfer) / T1036.005 (Masquerading)
      T1059.001 (PowerShell) / T1027.004 (Compile After Delivery)
-     TonRAT deploys node.exe v24.13.0 (~89.9 MB) to ProgramData\<path>
+     TonRAT deploys node.exe v24.13.0 (~89.9 MB) to ProgramData\&lt;path>
      or AppData subdirectories  - unusual for legitimate Node.js installs
      which go to Program Files, nvm, or system paths.
      ============================================================== -->

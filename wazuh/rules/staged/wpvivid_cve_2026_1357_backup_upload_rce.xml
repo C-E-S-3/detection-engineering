@@ -14,7 +14,7 @@
 
      Vulnerability summary:
        CVE-2026-1357 is a predictable encryption key bypass vulnerability in the
-       WPvivid Backup Plugin for WordPress (version <=0.9.123, CVSS 9.8). WPvivid
+       WPvivid Backup Plugin for WordPress (version &lt;=0.9.123, CVSS 9.8). WPvivid
        uses a static/predictable key when packaging backup archives for transport.
        Attackers exploit this predictability to craft a malicious backup archive
        containing arbitrary PHP files encrypted with the known key, then POST it

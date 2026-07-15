@@ -14,7 +14,7 @@
 
      Vulnerability summary:
        CVE-2026-0740 is an unauthenticated arbitrary file upload vulnerability
-       in the Ninja Forms File Uploads extension for WordPress (version <=3.3.26,
+       in the Ninja Forms File Uploads extension for WordPress (version &lt;=3.3.26,
        CVSS 9.8). The extension exposes a REST API namespace (/wp-json/ninja-forms/
        or /wp-json/nf-api/) for file handling without enforcing WordPress
        capability or nonce checks on unauthenticated requests. Attackers POST

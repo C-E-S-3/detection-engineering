@@ -160,7 +160,7 @@
   <!-- ===========================================================
        FIM: jscrambler Rust infostealer payload IOC hashes (T1195.002, T1555.003)
        Three known hashes for the cross-platform Rust infostealer payloads
-       dropped by the jscrambler preinstall hook. The Wazuh <match> element
+       dropped by the jscrambler preinstall hook. The Wazuh &lt;match> element
        fires if any of these hex strings appear in the alert (FIM SHA256 field).
        =========================================================== -->
   <rule id="103855" level="15">

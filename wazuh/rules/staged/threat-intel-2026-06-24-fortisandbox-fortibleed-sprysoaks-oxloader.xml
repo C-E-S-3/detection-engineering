@@ -3,7 +3,7 @@
      Sources:
        - CVE-2026-25089: Fortinet FortiSandbox OS Command Injection (CVSS 9.8 Critical)
          Unauthenticated RCE via crafted JSON input to VNC start API endpoint
-         Affected: FortiSandbox 4.2.x (<=4.2.8), 4.4.x (<=4.4.8), 5.0.x (<=5.0.5)
+         Affected: FortiSandbox 4.2.x (&lt;=4.2.8), 4.4.x (&lt;=4.4.8), 5.0.x (&lt;=5.0.5)
                    FortiSandbox Cloud 5.0.4-5.0.5, PaaS 5.0.4-5.0.5
          Fortinet advisory FG-IR-26-141; not yet in CISA KEV but CVSS 9.8
          Fix: upgrade to 5.0.6+, 4.4.9+, 4.2.9+
