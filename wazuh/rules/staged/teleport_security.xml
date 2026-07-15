@@ -13,7 +13,7 @@
 
      Relevant CVEs:
        CVE-2025-49825  - Teleport remote SSH auth bypass (CVSS 9.8)
-                        Affects Community Edition <= 17.5.1; patched
+                        Affects Community Edition &lt;= 17.5.1; patched
                         in 17.5.2 / 16.5.12 / 15.5.3 / 14.4.1.
                         Pattern: SSH sessions established without a
                         corresponding authenticated login event.
@@ -22,10 +22,10 @@
        - Teleport audit log shipped to Wazuh via localfile
          (JSON or syslog format  - see teleport_audit.xml decoder)
        - Localfile config on each Teleport host:
-           <localfile>
-             <log_format>json</log_format>
-             <location>/var/lib/teleport/log/events.log</location>
-           </localfile>
+           &lt;localfile>
+             &lt;log_format>json&lt;/log_format>
+             &lt;location>/var/lib/teleport/log/events.log&lt;/location>
+           &lt;/localfile>
        - Teleport audit_events_uri configured to local file backend
          (default in self-hosted Community Edition)
      ================================================================ -->

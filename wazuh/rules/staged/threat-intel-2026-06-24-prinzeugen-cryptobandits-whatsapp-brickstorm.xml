@@ -617,7 +617,7 @@
   <!-- bash -i or exec fd redirection  - reverse shell from network device -->
   <rule id="103537" level="15">
     <if_sid>103533</if_sid>
-    <match type="pcre2">(?i)(bash\s+-i\s+&gt;&amp;|exec\s+[0-9]+&lt;&gt;/dev/tcp|bash\s+-c\s+.*[0-9]{1,3}\.[0-9]{1,3}|nc\s+-e\s+/bin/(bash|sh)|python.*pty\.spawn)</match>
+    <match type="pcre2">(?i)(bash\s+-i\s+\x3e&amp;|exec\s+[0-9]+\x3c\x3e/dev/tcp|bash\s+-c\s+.*[0-9]{1,3}\.[0-9]{1,3}|nc\s+-e\s+/bin/(bash|sh)|python.*pty\.spawn)</match>
     <description>BRICKSTORM: Reverse shell pattern in network device syslog on $(hostname) - interactive backdoor session via appliance (T1505.003, T1059)</description>
     <mitre>
       <id>T1505.003</id>
