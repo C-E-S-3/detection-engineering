@@ -2,7 +2,7 @@
      Progress ShareFile StorageZones Controller Pre-Auth RCE
      CVE-2026-2699 (CWE-287: Improper Authentication) CVSS 9.8
      CVE-2026-2701 (CWE-434: Unrestricted Upload) CVSS 9.1
-     Affected: ShareFile Storage Zones Controller (SZC) <= 5.12.3
+     Affected: ShareFile Storage Zones Controller (SZC) &lt;= 5.12.3
      Fixed in: Storage Zones Controller 5.12.4 (March 2026)
      MITRE ATT&amp;CK:
        T1190     - Exploit Public-Facing Application (TA0001 Initial Access)

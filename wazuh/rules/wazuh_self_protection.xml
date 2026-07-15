@@ -119,7 +119,7 @@
     <if_group>syscheck</if_group>
     <match>ossec.conf|local_rules.xml</match>
     <field name="syscheck.event">modified</field>
-    <regex type="pcre2">(?:&lt;active-response&gt;|&lt;global&gt;|&lt;cluster&gt;)</regex>
+    <regex type="pcre2">(?:\x3cactive-response\x3e|\x3cglobal\x3e|\x3ccluster\x3e)</regex>
     <description>Wazuh critical config section modified (active-response/global/cluster) - high-risk defense evasion (T1562.001)</description>
     <mitre>
       <id>T1562.001</id>

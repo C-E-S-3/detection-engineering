@@ -11,7 +11,7 @@
      Date: 2026-06-15
 
      Vulnerability Summary:
-       CVE-2026-42271: LiteLLM >= 1.74.2 < 1.83.7 accepts an MCP stdio
+       CVE-2026-42271: LiteLLM >= 1.74.2 &lt; 1.83.7 accepts an MCP stdio
        transport config (command/args/env) in POST body to:
          /mcp-rest/test/connection
          /mcp-rest/test/tools/list
@@ -19,7 +19,7 @@
        LLM provider API keys (OpenAI, Anthropic, Azure), cloud credentials,
        and CI/CD tokens stored by the proxy are exposed to the attacker.
 
-       CVE-2026-48710 (Starlette BadHost): Starlette <= 1.0.0 host-header
+       CVE-2026-48710 (Starlette BadHost): Starlette &lt;= 1.0.0 host-header
        validation bypass that upgrades authenticated RCE to unauthenticated
        RCE when paired with CVE-2026-42271.
 

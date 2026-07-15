@@ -290,7 +290,7 @@
      Fixed: Android June 2026 Security Update (patch level 2026-06-05 or later)
 
      Detection approach:
-       - MDM/EMM (Microsoft Intune, Jamf) compliance event: device patch level < 2026-06-05
+       - MDM/EMM (Microsoft Intune, Jamf) compliance event: device patch level &lt; 2026-06-05
        - Android enterprise log: unexpected process with escalated UID (root/system)
          spawned from non-system app (UID >= 10000) on an unpatched device
        - Wazuh syscheck: unexpected app acquiring system/root UID in Android managed logs
@@ -316,7 +316,7 @@
 
   <!-- Rule 103640  - Android enterprise log: non-system app gaining elevated UID
        CVE-2025-48595 exploitation causes a normal app (UID >= 10000) to gain
-       system or root UID (UID < 1000). Android enterprise/work-profile audit logs
+       system or root UID (UID &lt; 1000). Android enterprise/work-profile audit logs
        forwarded via MDM may capture this anomalous UID escalation.
        Level 14: app gaining root/system UID outside expected system context. -->
   <rule id="103640" level="14">

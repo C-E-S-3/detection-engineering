@@ -225,7 +225,7 @@
        command, it deletes itself and its loader DLLs.
        Detection: cmd.exe spawned by MpExtMs.exe using del or
        ping-then-delete self-deletion pattern (cmd /c ping -n 3
-       127.0.0.1 & del <path>).
+       127.0.0.1 & del &lt;path>).
        =========================================================== -->
 
   <rule id="103597" level="13">
