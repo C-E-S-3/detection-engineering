@@ -1,0 +1,317 @@
+<!-- ============================================================
+     Oracle E-Business Suite Payments File Transmission Privilege Escalation
+     CVE-2026-46817 (CWE-269: Improper Privilege Management
+                   / CWE-287: Improper Authentication
+                   / CWE-306: Missing Authentication for Critical Function)
+     Affected: Oracle E-Business Suite 12.2.3 through 12.2.15
+               Oracle Payments File Transmission component (ibytransmit)
+     MITRE ATT&CK:
+       T1190 - Exploit Public-Facing Application (TA0001 Initial Access)
+       T1548 - Abuse Elevation Control Mechanism (TA0004 Privilege Escalation)
+       T1083 - File and Directory Discovery (TA0007 Discovery)
+       T1552.001 - Unsecured Credentials: Credentials in Files (TA0006)
+     CISA KEV: Added 2026-07-15, Federal Deadline 2026-07-18
+     Rule IDs: 103955-103961
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-15
+
+     Vulnerability Summary:
+
+     CVE-2026-46817 is a critical unauthenticated privilege escalation
+     vulnerability (CVSS 9.8) in the Oracle Payments File Transmission
+     component of Oracle E-Business Suite (EBS). The vulnerable endpoint
+     /OA_HTML/ibytransmit fails to enforce authentication before processing
+     incoming requests. An unauthenticated attacker with HTTP network access
+     can send a crafted POST request to this endpoint that invokes an internal
+     Oracle Java function and redirects it to read arbitrary files from the
+     EBS server filesystem.
+
+     First in-the-wild exploitation was observed on June 27, 2026, approximately
+     six weeks after Oracle published patches in the May 2026 Critical Patch
+     Update. CISA added CVE-2026-46817 to the Known Exploited Vulnerabilities
+     catalog on July 15, 2026.
+
+     Attack chain:
+       1. Attacker sends HTTP POST to /OA_HTML/ibytransmit with no credentials.
+       2. The missing authentication check allows the request to be processed.
+       3. A crafted payload in the POST body invokes an internal Oracle Java
+          function (in the Oracle Payments/iPayments namespace).
+       4. The function is redirected to read an arbitrary file from the server
+          (confirmed: /etc/passwd readable without authentication).
+       5. High-value follow-on targets include Oracle wallet files, DBC
+          configuration files (containing DB credentials), encryption keys,
+          and application configuration files that would enable lateral movement
+          to the Oracle Database.
+
+     Detection Approach:
+
+     HTTP / Traefik reverse-proxy layer (rules 103955-103960):
+       Rule 103955 (level 7): Base anchor - any HTTP request to the ibytransmit
+         endpoint. Used for correlation; all HTTP-layer child rules chain from here.
+       Rule 103956 (level 11): POST method to ibytransmit - the attack vector.
+         Normal file transmission clients may use GET; unauthenticated POST is
+         the exploit delivery method.
+       Rule 103957 (level 13): POST to ibytransmit returning HTTP 2xx - auth
+         bypass confirmed at the HTTP layer; the server accepted and processed the
+         unauthenticated request.
+       Rule 103958 (level 14): Request to ibytransmit with file path or LFI
+         patterns in the raw request body - attacker payload targeting credential
+         files, Oracle DBC/wallet files, or path traversal sequences.
+       Rule 103959 (level 15): POST 2xx to ibytransmit with file path payload -
+         highest-confidence signal; both the auth bypass and the file read payload
+         are present in a single request; confirmed active exploitation.
+       Rule 103960 (level 9): Rapid probe burst from single source to ibytransmit
+         - automated exploit scanner fingerprint; 8+ requests in 60 seconds.
+
+     Application server access log layer (rule 103961):
+       Rule 103961 (level 12): Apache/Oracle HTTP Server combined log format -
+         covers environments where EBS traffic is not proxied through Traefik.
+         Matches POST to ibytransmit with 2xx response in standard Apache/OHS
+         access log format as decoded from syslog or Wazuh agent file ingestion.
+
+     Log source prerequisites:
+       Traefik layer: Traefik access logs in JSON format forwarded to Wazuh.
+         Field names: RequestMethod, RequestPath, RequestHost, DownstreamStatus,
+         ClientHost, rawRequest.
+       Oracle HTTP Server / Apache layer: OHS or Apache combined access log
+         format forwarded to Wazuh via agent or syslog. Standard fields
+         including request method, path, and status code in the log line.
+
+     Severity tiers:
+        7 - HTTP request to ibytransmit (any method; info anchor only)
+       11 - POST to ibytransmit (attack method; no response code required)
+       13 - POST to ibytransmit returning 2xx (auth bypass at HTTP layer)
+       14 - Request to ibytransmit with LFI/file path payload present
+       15 - POST 2xx to ibytransmit with file path payload (confirmed exploit)
+        9 - Probe burst: 8+ ibytransmit requests from same IP in 60 seconds
+       12 - Apache/OHS access log: POST to ibytransmit returning 2xx
+
+     False positive guidance:
+       103955: Legitimate Oracle Payments File Transmission client software
+         may poll ibytransmit on a schedule; baseline known-good client IPs
+         and suppress via overrides. Any external/internet-sourced request
+         to this endpoint has no legitimate business justification.
+       103956: POST to ibytransmit from a legitimate Oracle Payments trading
+         partner integration is plausible; review ClientHost against the
+         authorized partner IP allowlist.
+       103957: A 2xx from ibytransmit to an internal known-good partner IP
+         during a scheduled transmission window is expected behavior; flag
+         all requests from unknown or external IPs.
+       103958: Oracle DBC/wallet file path patterns in a request body have
+         virtually no benign explanation from an external caller; treat as
+         high-confidence exploitation indicator.
+       103959: No benign justification for an unauthenticated POST 2xx
+         to ibytransmit containing credential file path patterns; treat as
+         confirmed exploitation requiring immediate incident response.
+       103960: Legitimate Oracle Payments integration tools do not send
+         burst traffic to ibytransmit; bursts from a single IP indicate
+         automated scanning or exploit tool activity.
+       103961: Authorized Oracle Payments partner transmissions arrive on
+         a known schedule from known source IPs; unexpected source IPs or
+         off-schedule POSTs returning 2xx indicate active exploitation.
+     ============================================================ -->
+
+<group name="privilege_escalation,exploit_pubfacing,oracle_ebs,oracle_payments,cisa_kev,cve_2026_46817,">
+
+  <!-- ===========================================================
+       Layer 1: HTTP / Traefik reverse-proxy (JSON access logs)
+       Rule IDs: 103955-103960
+
+       CVE-2026-46817 is exploited by sending a crafted POST request
+       to /OA_HTML/ibytransmit with no authentication credentials.
+       Monitoring the reverse-proxy layer catches exploit delivery
+       before any host-level or application-level events fire.
+       =========================================================== -->
+
+  <!-- Base anchor: any HTTP request to the Oracle Payments ibytransmit endpoint.
+
+       /OA_HTML/ibytransmit is the Oracle iPayments File Transmission servlet
+       (iby = Oracle internal payments namespace). Under normal operation this
+       endpoint accepts authenticated file transmission requests from configured
+       Oracle Payments trading partner integrations. Any unexpected request to
+       this endpoint, especially from external or unrecognized sources, warrants
+       investigation.
+
+       This anchor is level 7 (informational correlation only). All HTTP-layer
+       child rules (103956-103960) chain from this via if_sid or if_matched_sid
+       and raise severity when additional exploitation signals are present. -->
+  <rule id="103955" level="7">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)/OA_HTML/ibytransmit</field>
+    <description>Oracle EBS CVE-2026-46817: HTTP request to Oracle Payments File Transmission endpoint $(RequestPath) from $(ClientHost) at $(RequestHost) -- CVE-2026-46817 attack surface anchor; correlate with child rules 103956-103960 for exploitation signals (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>oracle_ebs_ibytransmit,</group>
+  </rule>
+
+  <!-- POST method to ibytransmit: elevated suspicion.
+
+       CVE-2026-46817 is exploited exclusively via HTTP POST. The vulnerability
+       allows the POST body payload to invoke an internal Oracle Java function
+       without authentication. A POST to ibytransmit from any non-whitelisted
+       source, or from any external IP, should trigger investigation. Authorized
+       Oracle Payments trading partner transmissions typically originate from
+       known, allowlisted IP ranges on a defined schedule.
+
+       GET and HEAD requests to ibytransmit may occur during connectivity probes
+       by legitimate monitoring systems; POST is the specific exploit delivery
+       method and carries a higher suspicion level. -->
+  <rule id="103956" level="11">
+    <if_sid>103955</if_sid>
+    <field name="RequestMethod">POST</field>
+    <description>Oracle EBS CVE-2026-46817: POST to Oracle Payments ibytransmit from $(ClientHost) at $(RequestHost) -- unauthenticated POST to File Transmission interface is the CVE-2026-46817 exploit delivery method; review source IP against authorized partner allowlist (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>oracle_ebs_ibytransmit,post_method,cve_2026_46817,</group>
+  </rule>
+
+  <!-- POST to ibytransmit returning HTTP 2xx: authentication bypass confirmed.
+
+       Under a correctly patched or normally configured Oracle EBS instance,
+       POST requests to ibytransmit from unauthenticated or unauthorized
+       callers return HTTP 401 (Unauthorized) or 403 (Forbidden). A 2xx
+       response status indicates the server accepted and processed the
+       unauthenticated request, confirming the missing authentication check
+       described in CVE-2026-46817.
+
+       This is a high-confidence signal that active exploitation is occurring.
+       The source IP, timestamp, and request body should be captured immediately
+       for incident response. -->
+  <rule id="103957" level="13">
+    <if_sid>103956</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>Oracle EBS CVE-2026-46817: POST to Oracle Payments ibytransmit from $(ClientHost) returned HTTP $(DownstreamStatus) -- authentication bypass confirmed at HTTP layer; server processed unauthenticated POST; active CVE-2026-46817 exploitation; investigate immediately (T1190/T1548)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1548</id>
+    </mitre>
+    <group>oracle_ebs_ibytransmit,post_method,auth_bypass,cve_2026_46817,high_confidence,</group>
+  </rule>
+
+  <!-- Request to ibytransmit with file path or LFI payload patterns.
+
+       The CVE-2026-46817 exploit payload calls an internal Oracle Java function
+       and redirects it to read arbitrary files from the EBS server. Confirmed
+       targets from in-the-wild exploitation include /etc/passwd. High-value
+       attacker follow-on targets include:
+         - Oracle DBC configuration files (.dbc): contain JDBC connection
+           strings and may include plaintext database passwords
+         - Oracle wallet files (.p12, .sso, cwallet.sso): encrypted credential
+           stores for Oracle advanced security
+         - appsweb.cfg, wdbc.cfg, admin.xml: Oracle EBS application config
+           files with database connection and authentication details
+         - /etc/shadow: system password hashes
+         - Path traversal sequences (../../) to reach files outside web root
+
+       Presence of any of these patterns in the raw request body indicates the
+       attacker is attempting file-read exploitation via the Java function
+       redirection attack chain described in CVE-2026-46817. -->
+  <rule id="103958" level="14">
+    <if_sid>103955</if_sid>
+    <field name="rawRequest" type="pcre2">(?i)(?:/etc/passwd|/etc/shadow|/etc/oracle|/etc/oratab|\.\.\/|%2e%2e[%2f/]|%252e%252e|/opt/oracle|/u01/oracle|/u02/oracle|oracle\.dbc|\.dbc\b|cwallet\.sso|ewallet\.p12|\.ora\b|wdbc\.cfg|appsweb\.cfg|admin\.xml|dbc_file|/oracle/product|/app/oracle)</field>
+    <description>Oracle EBS CVE-2026-46817 LFI payload: Request to ibytransmit from $(ClientHost) at $(RequestHost) contains file path or path traversal pattern -- attacker invoking internal Oracle Java function to read credential or configuration files via CVE-2026-46817; likely targeting Oracle DBC/wallet files or system credentials (T1190/T1083/T1552.001)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1083</id>
+      <id>T1552.001</id>
+    </mitre>
+    <group>oracle_ebs_ibytransmit,lfi,file_read,cve_2026_46817,high_confidence,</group>
+  </rule>
+
+  <!-- POST 2xx to ibytransmit with file path payload: confirmed exploitation.
+
+       This rule combines the two highest-confidence signals:
+         1. POST method (the exploit delivery vector)
+         2. 2xx response status (auth bypass confirmed)
+         3. File path / LFI pattern in the request body (file read payload present)
+
+       All three conditions together constitute confirmed active exploitation of
+       CVE-2026-46817. An unauthenticated POST that was accepted (2xx) and that
+       contains a file path payload demonstrates the full attack chain is executing.
+       Incident response should be initiated immediately: isolate the EBS server
+       from the network, capture the full request including body, and audit
+       all files that may have been exfiltrated. -->
+  <rule id="103959" level="15">
+    <if_sid>103956</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <field name="rawRequest" type="pcre2">(?i)(?:/etc/passwd|/etc/shadow|/etc/oracle|/etc/oratab|\.\.\/|%2e%2e[%2f/]|%252e%252e|/opt/oracle|/u01/oracle|/u02/oracle|oracle\.dbc|\.dbc\b|cwallet\.sso|ewallet\.p12|\.ora\b|wdbc\.cfg|appsweb\.cfg|admin\.xml|dbc_file|/oracle/product|/app/oracle)</field>
+    <description>Oracle EBS CVE-2026-46817 EXPLOITATION CONFIRMED: POST to Oracle Payments ibytransmit from $(ClientHost) returned $(DownstreamStatus) with file read payload -- unauthenticated Java function invocation succeeded; attacker likely reading Oracle credential or configuration files from server filesystem; IMMEDIATE INCIDENT RESPONSE REQUIRED (T1190/T1083/T1552.001/T1548)</description>
+    <options>alert_by_email</options>
+    <mitre>
+      <id>T1190</id>
+      <id>T1083</id>
+      <id>T1552.001</id>
+      <id>T1548</id>
+    </mitre>
+    <group>oracle_ebs_ibytransmit,lfi,file_read,auth_bypass,cve_2026_46817,critical,high_confidence,cisa_kev,</group>
+  </rule>
+
+  <!-- Rapid probe burst to ibytransmit from a single source.
+
+       Automated exploit frameworks and vulnerability scanners issue rapid
+       sequential requests to the ibytransmit endpoint when scanning for
+       CVE-2026-46817. A burst of 8 or more requests from the same source
+       IP within a 60-second window against this endpoint is consistent
+       with automated exploit tool activity: scanner reconnaissance, exploit
+       framework enumeration, or repeated exploit attempt iteration.
+
+       Legitimate Oracle Payments integrations operate on scheduled transmission
+       windows and do not generate high-frequency request bursts. Any burst
+       pattern from an unrecognized IP should be treated as automated exploitation
+       tooling. -->
+  <rule id="103960" level="9">
+    <if_matched_sid>103955</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <timeframe>60</timeframe>
+    <frequency>8</frequency>
+    <description>Oracle EBS CVE-2026-46817: Rapid probe burst from $(ClientHost) to Oracle Payments ibytransmit at $(RequestHost) -- 8+ requests in 60 seconds from same source; automated exploit scanner or CVE-2026-46817 exploitation tooling fingerprint; investigate source IP (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>oracle_ebs_ibytransmit,probe_burst,scanner,cve_2026_46817,</group>
+  </rule>
+
+
+  <!-- ===========================================================
+       Layer 2: Oracle HTTP Server / Apache access log (non-Traefik)
+       Rule ID: 103961
+
+       For environments where Oracle EBS traffic is not routed through a
+       Traefik reverse proxy, Oracle HTTP Server (OHS) - which is based on
+       Apache HTTP Server - generates access logs in combined log format.
+       These logs are typically forwarded to Wazuh via the Wazuh agent file
+       ingestion or syslog. This rule matches the raw combined-format log
+       line for a POST to ibytransmit with a 2xx response code.
+
+       Oracle HTTP Server access log format (combined):
+         client_ip - user [timestamp] "METHOD /path HTTP/version" STATUS bytes
+       Example:
+         198.51.100.42 - - [15/Jul/2026:03:14:01 -0500] "POST /OA_HTML/ibytransmit HTTP/1.1" 200 4821
+       =========================================================== -->
+
+  <!-- Apache/OHS access log: POST to ibytransmit with 2xx response.
+
+       Covers non-Traefik environments where Oracle HTTP Server access logs
+       are forwarded directly to Wazuh. Matches combined-format log lines
+       containing the POST method, the ibytransmit path, and a 2xx status
+       code. This is the same exploitation signal as rule 103957 but detected
+       from the application server access log rather than a reverse proxy.
+
+       Expected source in non-exploit traffic: known Oracle Payments partner
+       integration IPs on scheduled transmission windows. Any source IP that
+       is not in the authorized partner allowlist, or any request outside
+       the scheduled transmission window, should be treated as an exploitation
+       attempt. -->
+  <rule id="103961" level="12">
+    <match type="pcre2">(?i)POST\s+/OA_HTML/ibytransmit\s+HTTP/[\d.]+"\s+2\d{2}\s</match>
+    <description>Oracle EBS CVE-2026-46817 OHS/Apache log: POST to Oracle Payments ibytransmit returned 2xx on $(agent.name) -- authentication bypass confirmed in Oracle HTTP Server or Apache access log; active CVE-2026-46817 exploitation; review source IP and request body for file-read payload (T1190/T1548)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1548</id>
+    </mitre>
+    <group>oracle_ebs_ibytransmit,post_method,auth_bypass,cve_2026_46817,apache_log,</group>
+  </rule>
+
+</group>
