@@ -1,0 +1,425 @@
+<!-- ============================================================
+     Microsoft SharePoint Server Deserialization of Untrusted Data RCE
+     CVE-2026-58644 (CWE-502: Deserialization of Untrusted Data)
+     Affected: SharePoint Server Subscription Edition, 2019,
+               Enterprise Server 2016, SharePoint Online (on-prem)
+     MITRE ATT&amp;CK:
+       T1190     - Exploit Public-Facing Application (TA0001 Initial Access)
+       T1059.001 - Command and Scripting Interpreter: PowerShell (TA0002 Execution)
+       T1059.003 - Command and Scripting Interpreter: Windows Command Shell
+       T1105     - Ingress Tool Transfer (TA0011 C2)
+       T1505.003 - Server Software Component: Web Shell (TA0003 Persistence)
+       T1218     - System Binary Proxy Execution (TA0005 Defense Evasion)
+       T1046     - Network Service Discovery (TA0007 Discovery)
+     CISA KEV: Added 2026-07-16, Federal Deadline 2026-07-19
+     Rule IDs: 103979-103985
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-16
+
+     Vulnerability Summary:
+
+     CVE-2026-58644 is a critical-severity (CVSS critical) deserialization of
+     untrusted data vulnerability in Microsoft SharePoint Server. Unlike
+     CVE-2026-45659 (which required Site Member credentials), CVE-2026-58644
+     is exploitable by an UNAUTHORIZED (unauthenticated) attacker with
+     network access to the SharePoint HTTP endpoint. No credentials are
+     required.
+
+     The vulnerability exists in SharePoint's server-side processing of
+     user-supplied data that is passed to .NET deserialization routines.
+     When a specially crafted HTTP POST request is sent to specific
+     SharePoint endpoints accessible without authentication, the server
+     deserializes attacker-controlled .NET objects via BinaryFormatter or
+     equivalent .NET serialization internals, achieving remote code
+     execution in the context of the IIS worker process (w3wp.exe) running
+     the SharePoint application pool.
+
+     Pre-authentication distinguishes this CVE from prior SharePoint
+     deserialization bugs and dramatically lowers the attack barrier:
+     any network-reachable attacker can attempt exploitation without
+     obtaining valid SharePoint credentials.
+
+     Attack Chain:
+
+       1. Reconnaissance: Attacker fingerprints SharePoint version via
+          /_vti_bin/sitedata.asmx, /_api/contextinfo, or /_layouts/ responses.
+          Version-specific gadget chains are selected accordingly.
+       2. Payload Construction: Attacker generates a .NET deserialization
+          payload using tooling (ysoserial.net, NDESERIALIZER) targeting
+          gadget chains present in SharePoint's .NET assembly load path
+          (e.g., ObjectDataProvider, TypeConfuseDelegate, ActivitySurrogateSelector).
+          OOB callback gadgets (DNS or HTTP) are injected first to confirm
+          code execution before staging a full implant.
+       3. Delivery: Attacker sends an HTTP POST to a pre-auth accessible
+          SharePoint endpoint containing the serialized payload. The POST
+          body contains BinaryFormatter-serialized data (magic bytes AAEAAAD
+          in base64) or SOAP-wrapped serialized objects.
+       4. Execution: SharePoint deserializes the payload; the IIS worker
+          process (w3wp.exe) executes the embedded gadget chain. The first
+          observable signal is typically an OOB DNS lookup or HTTP callback
+          from the server confirming RCE.
+       5. Post-Exploitation: Common second-stage actions observed in the wild:
+          - PowerShell download cradle to stage a reverse shell or Cobalt
+            Strike beacon (w3wp.exe spawning powershell.exe)
+          - Webshell drop to /_layouts/, /sites/<name>/, or %SystemDrive%\inetpub
+            (w3wp.exe creating .aspx, .asmx, or .ashx files)
+          - LOLBin execution for lateral movement staging (certutil, bitsadmin)
+          - Host enumeration (whoami, ipconfig, nltest) for situational awareness
+          - DNS OOB callback (nslookup / ping to attacker-controlled domain)
+            to confirm RCE and exfiltrate preliminary host data
+
+     Detection Layers:
+
+     Layer 1 - Process Execution (Sysmon EventID 1, Wazuh SID 61603):
+       Rule 103979 (level 0): Silent base anchor - w3wp.exe spawning any
+         child process. All Layer 1 child rules depend on this anchor.
+         Level 0 means no alert is generated for the anchor itself; it
+         only serves as a correlation parent for the severity-bearing
+         child rules.
+       Rule 103980 (level 14): w3wp.exe spawning PowerShell, pwsh, or
+         .NET compiler (csc.exe, vbc.exe). These are the highest-confidence
+         process-layer signals. Deserialization gadget chains routinely
+         invoke PowerShell as the first post-RCE action for download cradles
+         or C# compilation of staged implants. Near-certain true positive.
+       Rule 103981 (level 13): w3wp.exe spawning download/staging LOLBins
+         (certutil, bitsadmin, mshta, wscript, cscript, curl, wget).
+         These are used to retrieve second-stage payloads from attacker
+         infrastructure immediately after RCE. High-confidence signal.
+       Rule 103982 (level 12): w3wp.exe spawning host-enumeration or OOB
+         callback utilities (whoami, hostname, ipconfig, nslookup, ping,
+         nltest, net, arp). Covers both the standard post-exploit recon
+         phase AND the out-of-band callback pattern: deserialization gadgets
+         using DNS OOB to confirm execution call nslookup or ping with an
+         attacker-controlled domain as the target, producing a detectable
+         DNS query from the server.
+
+     Layer 2 - File Creation (Sysmon EventID 11):
+       Rule 103983 (level 15): w3wp.exe creating an ASPX, ASMX, ASHX, or
+         SVC file. Under normal SharePoint operation the IIS worker process
+         does not create new web script files. Any such file creation is a
+         near-certain webshell drop indicating persistent backdoor access
+         was established after the deserialization exploit landed. Requires
+         immediate incident response.
+
+     Layer 3 - HTTP / Traefik reverse proxy (JSON access logs):
+       Rule 103984 (level 9): POST to pre-authentication-accessible SharePoint
+         endpoints. These endpoints do not require valid credentials and are
+         the expected delivery vectors for CVE-2026-58644. Acts as an anchor
+         for the HTTP-layer child rule.
+       Rule 103985 (level 11): Child of 103984 - POST to SharePoint pre-auth
+         endpoint returned HTTP 5xx. A deserialization exception before gadget
+         chain completion surfaces as a 500 response. Active exploit probing
+         or misconfigured payload delivery in progress.
+
+     Log Source Prerequisites:
+       Process/File layer (rules 103979-103983): Sysmon installed on Windows
+         hosts running IIS/SharePoint with EventID 1 (Process Creation) and
+         EventID 11 (File Created) enabled. Wazuh Sysmon integration assigns
+         SID 61603 for Sysmon EventID 1. The file-creation rule (103983) uses
+         decoded_as=json with win.eventdata.eventID field matching to
+         distinguish EventID 11 from other Sysmon events.
+       HTTP layer (rules 103984-103985): Traefik access logs in JSON format
+         forwarded to Wazuh. Field names follow Traefik v2+ JSON log defaults:
+         RequestMethod, RequestPath, RequestHost, DownstreamStatus, ClientHost.
+         Rules use decoded_as=json. No authentication header inspection is
+         performed at the Wazuh layer; the anchor fires on all POSTs to
+         the listed paths regardless of whether Authorization headers are present.
+
+     Severity Tiers:
+        0 - Process anchor (silent, correlation parent only)
+       14 - w3wp.exe spawning PowerShell or .NET compiler (near-certain RCE)
+       13 - w3wp.exe spawning download/staging LOLBins (payload delivery)
+       12 - w3wp.exe spawning OOB/recon tools (DNS OOB callback or enumeration)
+       15 - w3wp.exe creating web script file (webshell drop, critical)
+        9 - HTTP POST to pre-auth SharePoint endpoint (anchor)
+       11 - HTTP POST to pre-auth endpoint returning 5xx (exception probe)
+
+     False Positive Guidance:
+       103979: w3wp.exe legitimately spawns child processes during app pool
+         recycling and IIS worker maintenance. However, the specific child
+         process types in rules 103980-103982 have essentially no benign
+         explanation in a SharePoint AppPool context.
+       103980: PowerShell invocations from w3wp.exe have no legitimate
+         operational justification in standard SharePoint deployments.
+         SharePoint uses .NET managed code internally, not PowerShell.
+         Custom SharePoint apps using PowerShell cmdlets should be inventoried;
+         suppress for known-good application pool identities if required.
+       103981: download LOLBins from w3wp.exe are unexpected in production.
+         Staging environments running automated deployment tools may trigger
+         this; baseline the source host and user context.
+       103982: nslookup/ping from w3wp.exe may occur in custom SharePoint
+         apps that perform DNS lookups for internal services. Correlate with
+         destination domain: known-internal destinations are likely benign,
+         external or randomly-named destinations indicate OOB DNS callbacks.
+       103983: Near-zero false positive rate. w3wp.exe writing web script
+         files is not a routine SharePoint operation in production environments.
+         Any match should trigger immediate incident response.
+       103984: Legitimate SharePoint REST API clients, workflow engines, and
+         search crawlers issue POST requests to these paths. Alert volume will
+         be high; use as enrichment anchor. Escalate based on child rules
+         (103985) or correlation with process-layer events (103980-103983).
+       103985: SharePoint returns 500 for misconfigured requests, expired
+         tokens, and transient server errors. Meaningful signal when the same
+         source IP generates repeated 500 responses across multiple SharePoint
+         path patterns in a short window, or when correlated with host-side
+         process events.
+     ============================================================ -->
+
+<group name="initial_access,exploit_pubfacing,sharepoint,cisa_kev,cve_2026_58644,">
+
+  <!-- ===========================================================
+       Layer 1: Process Execution (Sysmon EventID 1 -> Wazuh SID 61603)
+       Rule IDs: 103979-103982
+
+       CVE-2026-58644 achieves code execution within the SharePoint IIS
+       application pool (w3wp.exe). All post-RCE actions visible at the
+       process-execution layer originate as w3wp.exe children. The silent
+       anchor (103979) correlates parent-child process relationships; the
+       severity-bearing child rules (103980-103982) fire on specific
+       child process types that have no legitimate operational justification
+       in a production SharePoint deployment.
+       =========================================================== -->
+
+  <!-- Base anchor: w3wp.exe spawning any child process (silent, level 0).
+
+       SharePoint runs in IIS worker processes (w3wp.exe). Under normal
+       operation the AppPool executes .NET managed code internally without
+       spawning external child processes. Any child process spawned by
+       w3wp.exe is anomalous and warrants inspection. This silent anchor
+       at level 0 generates no alert itself; it is the if_sid parent for
+       rules 103980-103982, enabling severity escalation based on the
+       specific child process type.
+
+       SID 61603 is the Wazuh built-in rule for Sysmon EventID 1
+       (Process Creation). win.eventdata.parentImage is the full image
+       path of the parent process from the Sysmon CreateProcess event. -->
+  <rule id="103979" level="0">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\w3wp\.exe$</field>
+    <description>SharePoint CVE-2026-58644: w3wp.exe spawned child process $(win.eventdata.image) on $(win.eventdata.computer) (base anchor for deserialization RCE detection)</description>
+    <group>sharepoint,cve_2026_58644,iis_worker,</group>
+  </rule>
+
+  <!-- w3wp.exe spawning PowerShell, pwsh, or .NET compiler.
+
+       PowerShell (powershell.exe, pwsh.exe) and the Roslyn C# compiler
+       (csc.exe, vbc.exe) are the primary first-stage post-exploitation
+       tools invoked by .NET deserialization gadget chains targeting
+       SharePoint. Typical patterns observed in the wild:
+
+         - powershell.exe -enc <base64>   : download cradle for reverse shell
+         - powershell.exe -nop -w hidden  : Cobalt Strike stager
+         - csc.exe /out:<tmp>.dll         : in-memory C# compilation of implant
+
+       There is no legitimate operational reason for the SharePoint IIS
+       worker process to spawn PowerShell or a .NET compiler. Any match
+       against this rule should be treated as a confirmed deserialization
+       RCE and escalated immediately. -->
+  <rule id="103980" level="14">
+    <if_sid>103979</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(powershell|pwsh|csc|vbc|jsc)\.exe$</field>
+    <description>SharePoint CVE-2026-58644: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) as $(win.eventdata.user) -- near-certain deserialization RCE; PowerShell download cradle or .NET in-memory compilation post-exploit; initiate incident response (T1190/T1059.001)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.001</id>
+    </mitre>
+    <group>sharepoint,cve_2026_58644,rce,powershell,high_confidence,cisa_kev,</group>
+  </rule>
+
+  <!-- w3wp.exe spawning download or staging LOLBins.
+
+       After achieving RCE via deserialization, threat actors retrieve
+       second-stage payloads from attacker-controlled infrastructure using
+       native Windows binaries (Living Off The Land Binaries):
+
+         - certutil.exe -urlcache -f <url>    : HTTP download, decodes base64
+         - bitsadmin /transfer <url> <dest>   : BITS download, evades some AV
+         - mshta.exe http://...               : remote HTA payload execution
+         - wscript.exe / cscript.exe          : script execution
+         - curl.exe / wget.exe                : direct HTTP download
+
+       All of these are standard Microsoft-provided or OS-bundled binaries.
+       None have a legitimate use case as direct children of the SharePoint
+       IIS worker process in production. A match here indicates an attacker
+       is staging additional capabilities after initial RCE. -->
+  <rule id="103981" level="13">
+    <if_sid>103979</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(certutil|bitsadmin|mshta|wscript|cscript|curl|wget)\.exe$</field>
+    <description>SharePoint CVE-2026-58644: w3wp.exe spawned download LOLBin $(win.eventdata.image) on $(win.eventdata.computer) as $(win.eventdata.user) -- second-stage payload staging after deserialization RCE; attacker retrieving implant from external infrastructure (T1190/T1105)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1105</id>
+    </mitre>
+    <group>sharepoint,cve_2026_58644,rce,lolbin,payload_staging,</group>
+  </rule>
+
+  <!-- w3wp.exe spawning host-enumeration or OOB callback utilities.
+
+       This rule covers two distinct but overlapping detection patterns:
+
+       1. Out-of-band (OOB) DNS/ICMP callback confirmation:
+          ysoserial.net and similar .NET deserialization tools support
+          "DNS OOB" gadget chains that call nslookup.exe or ping.exe
+          with an attacker-controlled domain as the argument. The resulting
+          DNS query to an external resolver confirms code execution to the
+          attacker without producing a visible HTTP response. This is the
+          most common technique used to validate deserialization RCE before
+          deploying a full implant.
+
+          Examples:
+            nslookup.exe <attacker-owned-domain>
+            ping.exe -n 1 <attacker-owned-domain>
+
+       2. Post-exploit host enumeration (first-stage recon):
+          After confirming RCE via OOB callback, attackers issue rapid
+          host-enumeration commands to gather situational awareness before
+          lateral movement:
+
+            whoami.exe           : current process identity
+            hostname.exe         : system hostname
+            ipconfig.exe /all    : network configuration
+            nltest.exe /domain_trusts : AD domain trust enumeration
+            net.exe / net1.exe   : local users, groups, shares, sessions
+            arp.exe -a           : local ARP table for adjacent host discovery
+
+       Correlate the child process command-line arguments with external
+       threat intel to distinguish OOB callback (external/random domain
+       targets in nslookup/ping) from internal reconnaissance. -->
+  <rule id="103982" level="12">
+    <if_sid>103979</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(nslookup|ping|hostname|whoami|ipconfig|nltest|net|net1|arp|tracert|systeminfo|tasklist)\.exe$</field>
+    <description>SharePoint CVE-2026-58644: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) as $(win.eventdata.user) -- OOB callback or post-exploit host enumeration; DNS OOB (nslookup/ping to attacker domain) confirms deserialization RCE; review child process command line for external domain targets (T1190/T1046)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1046</id>
+    </mitre>
+    <group>sharepoint,cve_2026_58644,rce,oob_callback,enumeration,</group>
+  </rule>
+
+
+  <!-- ===========================================================
+       Layer 2: File Creation (Sysmon EventID 11)
+       Rule ID: 103983
+
+       Web script file creation by the IIS worker process is the clearest
+       indicator that a persistent webshell has been deployed after the
+       initial deserialization exploit. Unlike process-execution events
+       (which may have short-lived child processes), a webshell file persists
+       on disk and provides the attacker with durable remote access.
+       =========================================================== -->
+
+  <!-- w3wp.exe creating a web script file (webshell drop, critical).
+
+       Sysmon EventID 11 (File Created) captures the image path of the
+       process that created the file. Under normal SharePoint operation
+       w3wp.exe does not create new ASPX, ASMX, ASHX, or SVC files.
+       These file types are the standard web script formats used to host
+       webshells on ASP.NET / IIS platforms.
+
+       Common webshell deployment paths observed in SharePoint exploitation:
+         - C:\inetpub\wwwroot\wss\VirtualDirectories\...\<name>.aspx
+         - C:\Program Files\Common Files\Microsoft Shared\web server extensions\
+           \LAYOUTS\<name>.aspx
+         - C:\Program Files\Common Files\Microsoft Shared\web server extensions\
+           \isapi\<name>.asmx
+
+       Any file creation event matching this rule requires immediate incident
+       response: identify the created file, analyze for webshell content,
+       remove it, audit SharePoint access logs for subsequent use, and initiate
+       IR for full scope assessment.
+
+       win.eventdata.eventID is matched as pcre2 field (not decoded_as event
+       number) because some Wazuh Sysmon decoder variants include it as a
+       string field in the decoded JSON. The decoded_as=json ensures the
+       Wazuh JSON decoder processes the log before field extraction. -->
+  <rule id="103983" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="win.eventdata.eventID" type="pcre2">^11$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\w3wp\.exe$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.(aspx|asmx|ashx|svc|cshtml|vbhtml)$</field>
+    <description>SharePoint CVE-2026-58644 CRITICAL: w3wp.exe created web script file $(win.eventdata.targetFilename) on $(win.eventdata.computer) -- WEBSHELL DROP confirmed; persistent backdoor established after deserialization RCE; initiate immediate incident response, isolate host, preserve forensic image (T1505.003/T1190)</description>
+    <options>alert_by_email</options>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_58644,webshell,persistence,critical,high_confidence,cisa_kev,</group>
+  </rule>
+
+
+  <!-- ===========================================================
+       Layer 3: HTTP / Traefik reverse proxy (JSON access logs)
+       Rule IDs: 103984-103985
+
+       CVE-2026-58644 is triggered by an HTTP POST to SharePoint endpoints
+       accessible without authentication. Traefik access logs in JSON format
+       provide the HTTP-layer visibility needed to detect the exploit delivery
+       phase before any process events fire on the SharePoint host.
+
+       Pre-authentication endpoints targeted by this CVE include:
+         /_vti_bin/    - Legacy SharePoint SOAP WCF services (client.svc,
+                         authentication.asmx, webs.asmx). These expose
+                         .NET serialization surfaces pre-authentication.
+         /_layouts/    - SharePoint layout pages. Some layouts handle
+                         ViewState or form body deserialization without
+                         requiring authentication.
+         /_api/contextinfo - REST endpoint that returns the form digest
+                         value; commonly probed to fingerprint SharePoint
+                         version before exploit payload delivery.
+         /_api/web     - SharePoint REST API root; some actions pre-auth.
+       =========================================================== -->
+
+  <!-- POST to pre-authentication-accessible SharePoint endpoint (anchor).
+
+       Fires on any HTTP POST to the SharePoint endpoint patterns listed
+       above. This is a broad anchor; by itself it generates level 9
+       informational alerts that are useful for correlation. The majority
+       of these requests are benign (SharePoint REST clients, search crawlers,
+       workflow engines). Alert volume will be high on active SharePoint
+       deployments. Use this rule primarily as a correlation anchor:
+       escalate when it fires in combination with process-layer events
+       (103980-103983) on the same destination host within a short window,
+       or when the child rule 103985 fires for the same source IP.
+
+       RequestPath is matched with pcre2 against a set of path prefixes
+       known to be pre-auth accessible and relevant to deserialization
+       attack delivery. Traefik field names follow the v2+ JSON access
+       log format. -->
+  <rule id="103984" level="9">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)(?:/_vti_bin/(?:client\.svc|authentication\.asmx|webs\.asmx|sitedata\.asmx|usergroup\.asmx|lists\.asmx|search\.asmx)|/_layouts/(?:15|16)/[^/]+\.(?:aspx|asmx|ashx)|/_api/(?:contextinfo|web(?:$|/))|/sites/[^/]+/_vti_bin/|/sites/[^/]+/_layouts/)</field>
+    <description>SharePoint CVE-2026-58644: HTTP POST to pre-auth-accessible SharePoint endpoint from $(ClientHost) at $(RequestHost)$(RequestPath) -- potential unauthenticated deserialization exploit delivery (T1190); correlate with host-side process events on the SharePoint server</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_58644,initial_access,exploit_pubfacing,http_probe,</group>
+  </rule>
+
+  <!-- POST to SharePoint pre-auth endpoint returning HTTP 5xx.
+
+       A .NET deserialization exception produces an HTTP 500 Internal Server
+       Error before the gadget chain completes successfully. Attackers
+       probing CVE-2026-58644 with iterative payload variants (different
+       gadget chains, different BinaryFormatter encoding, different target
+       types) generate a sequence of 500 responses as they refine the
+       exploit. A single 500 may be a transient SharePoint error; repeated
+       500 responses from the same source IP against pre-auth endpoint
+       patterns is a strong exploitation signal.
+
+       HTTP 5xx (500-599) is matched broadly: some deserialization exceptions
+       surface as 502 (if Traefik receives no response from the upstream)
+       or 503 (if the AppPool crashes and IIS returns service unavailable).
+       A 500 on _vti_bin or _layouts where the post body caused the exception
+       is the canonical exploit-probe response. -->
+  <rule id="103985" level="11">
+    <if_sid>103984</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^5\d{2}$</field>
+    <description>SharePoint CVE-2026-58644: POST to pre-auth SharePoint endpoint at $(RequestHost)$(RequestPath) from $(ClientHost) returned HTTP $(DownstreamStatus) -- deserialization exception likely; active exploit probe or gadget chain refinement in progress; check for repeated 500s from same source IP and correlate with host-side w3wp.exe events (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_58644,initial_access,exploit_pubfacing,deserialization_probe,</group>
+  </rule>
+
+</group>
