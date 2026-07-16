@@ -1,0 +1,319 @@
+<!-- ============================================================
+     Fortinet FortiSandbox JRPC API OS Command Injection
+     CVE-2026-39808 (CWE-78: OS Command Injection)
+     Affected: FortiSandbox prior to 5.0.6 and 4.4.9
+     MITRE ATT&amp;CK:
+       T1190 - Exploit Public-Facing Application (TA0001 Initial Access)
+       T1059.004 - Command and Scripting Interpreter: Unix Shell (TA0002 Execution)
+       T1562.001 - Impair Defenses: Disable or Modify Tools (TA0005)
+     CISA KEV: Added 2026-07-16, Federal Deadline 2026-07-19
+     Rule IDs: 103986-103992
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-16
+
+     Vulnerability Summary:
+
+     CVE-2026-39808 is a critical OS command injection vulnerability (CVSS
+     9.1-9.8) in the Fortinet FortiSandbox JRPC API. An unauthenticated
+     network attacker can send a crafted HTTP request to the JRPC API endpoint
+     with malicious parameters injected with OS command metacharacters. The
+     JRPC handler passes these parameters unsanitized to a system() or
+     equivalent OS function call, resulting in arbitrary OS command execution
+     under the FortiSandbox web service process identity (typically root or
+     a privileged service account).
+
+     FortiSandbox is the threat intelligence backbone for other Fortinet
+     security products (FortiGate, FortiMail, FortiWeb, FortiClient).
+     Compromise of FortiSandbox can silently disable threat verdicts
+     across an organization's entire Fortinet security stack, creating
+     organization-wide blind spots.
+
+     CVE-2026-39808 was actively exploited from June 2026 per KEVIntel sensors.
+     CISA added it to the KEV catalog on 2026-07-16 with a July 19 federal deadline.
+
+     NOTE: CVE-2026-25089 (a separate FortiSandbox OS command injection affecting
+     the Web UI VNC start endpoint) was addressed in prior detection PR #41 (merged
+     2026-06-25). CVE-2026-39808 targets a DISTINCT endpoint (JRPC API) and
+     requires separate detection rules. Both CVEs may be exploited in the same
+     campaign; operators should treat alerts from either rule set as related signals.
+
+     Attack chain:
+       1. Attacker sends an HTTP POST (or GET with parameters) to the FortiSandbox
+          JRPC API endpoint (/jrpc or equivalent path prefix) with a payload
+          containing OS command injection metacharacters (semicolon, pipe, &&,
+          backtick, dollar-parenthesis) in one or more parameters.
+       2. The JRPC request handler passes the unsanitized parameter value to
+          an OS command execution function.
+       3. Attacker achieves arbitrary OS command execution as the web service
+          process identity (typically root on FortiSandbox appliance).
+       4. Follow-on impact: deployment of persistent backdoor, credential
+          harvesting, or disabling FortiSandbox threat verdict processing to
+          blind downstream Fortinet enforcement products.
+
+     Detection Approach:
+
+     HTTP / Traefik reverse-proxy layer (rules 103986-103991):
+       Rule 103986 (level 7): Base anchor - any HTTP request to the FortiSandbox
+         JRPC API endpoint path. FortiSandbox management interfaces typically use
+         /jrpc, /api/v1/jrpc, or /api/v2/jrpc paths. This anchor captures all
+         traffic to these endpoints for correlation with child rules.
+       Rule 103987 (level 11): POST to FortiSandbox JRPC API (primary exploit
+         delivery method). Crafted JSON or form-encoded parameters containing
+         injection metacharacters are delivered via POST body.
+       Rule 103988 (level 13): POST to FortiSandbox JRPC returning HTTP 2xx
+         (server processed the unauthenticated request). A successful response
+         to an unauthenticated crafted POST indicates the request was accepted
+         and the JRPC handler processed the parameters, including any injected
+         OS commands.
+       Rule 103989 (level 14): Any request to FortiSandbox JRPC with command
+         injection metacharacters detected in the URL path or query string.
+         URL-encoded variants (%3B=semicolon, %7C=pipe, %60=backtick) are
+         included; attackers frequently URL-encode metacharacters to bypass
+         simple string filters.
+       Rule 103990 (level 15): POST to FortiSandbox JRPC returning 2xx with
+         command injection metacharacters in the URL (highest-confidence signal).
+         Both the successful processing and the injection pattern are present;
+         confirms active CVE-2026-39808 exploitation.
+       Rule 103991 (level 9): Probe burst - 8 or more requests from the same
+         source IP to FortiSandbox JRPC within 60 seconds. Automated exploit
+         tooling iterates parameters and payloads rapidly; this burst pattern
+         has no legitimate operational explanation.
+
+     Syslog / host process layer (rule 103992):
+       Rule 103992 (level 14): Syslog from FortiSandbox indicating unexpected
+         process execution by the web service daemon. Successful CVE-2026-39808
+         exploitation causes the JRPC handler (running as httpd, python, or a
+         custom daemon) to spawn OS commands. FortiSandbox syslog typically
+         captures unexpected execve() calls or shell invocations as system
+         log entries. Pattern matches common post-exploit shell commands.
+
+     Log source prerequisites:
+       HTTP layer:
+         Traefik access logs in JSON format forwarded to Wazuh.
+         Field names: RequestMethod, RequestPath, RequestHost, DownstreamStatus,
+         ClientHost. FortiSandbox management interface must be behind Traefik.
+       Syslog layer:
+         FortiSandbox appliance syslog forwarded to Wazuh via syslog input or
+         Wazuh agent. The FortiSandbox daemon process name typically appears as
+         httpd, python, fortisandbox, or fdsm in syslog process fields.
+
+     Severity tiers:
+        7 - Any request to FortiSandbox JRPC endpoint (info anchor)
+       11 - POST to FortiSandbox JRPC (exploit delivery method)
+       13 - POST to JRPC returning 2xx (unauthenticated request processed)
+       14 - JRPC request with command injection metacharacters in URL
+       15 - POST to JRPC returning 2xx + injection metacharacters (confirmed exploit)
+        9 - Probe burst: 8+ requests from same IP to JRPC in 60 seconds
+       14 - Syslog: FortiSandbox web process spawning shell commands (post-exploit)
+
+     False positive guidance:
+       103986: FortiSandbox legitimate management API calls from the Fortinet
+         management console originate from known internal IPs; baseline these
+         and suppress via Wazuh overrides. External/internet-sourced requests
+         to the JRPC API have no legitimate business justification.
+       103987: Authorized FortiSandbox REST/JRPC API clients (Fabric integration,
+         EMS, FortiManager) use authenticated POST; review ClientHost against
+         the authorized integration IP allowlist.
+       103988: A 2xx response to an authenticated API POST from a known integration
+         is expected; flag responses to requests from unknown or external IPs.
+       103989: URL-encoded semicolons or pipes in legitimate FortiSandbox API
+         parameters are unusual; review the full URL and request context. If
+         the source IP matches an authorized management system, escalate for
+         manual review rather than suppressing.
+       103990: No legitimate FortiSandbox API integration sends command injection
+         metacharacters and receives a 2xx response; treat as confirmed exploitation
+         requiring immediate incident response and FortiSandbox isolation.
+       103991: Legitimate Fortinet Fabric integrations poll FortiSandbox APIs on
+         a schedule but do not generate rapid burst traffic; bursts indicate
+         automated scanning or exploit tool activity.
+       103992: FortiSandbox system processes occasionally spawn shell commands
+         for legitimate administrative tasks; correlate with HTTP-layer alerts
+         (103988 or 103990) from the same timeframe to confirm exploitation.
+     ============================================================ -->
+
+<group name="initial_access,execution,exploit_pubfacing,fortisandbox,cisa_kev,cve_2026_39808,os_command_injection,">
+
+  <!-- ===========================================================
+       Layer 1: HTTP / Traefik reverse proxy (JSON access logs)
+       Rule IDs: 103986-103991
+
+       CVE-2026-39808 is exploited by sending crafted HTTP requests to
+       the FortiSandbox JRPC API with OS command injection metacharacters
+       in parameters. Monitoring the reverse proxy layer catches exploit
+       delivery based on endpoint access, POST method, response codes,
+       and URL-embedded injection patterns.
+       =========================================================== -->
+
+  <!-- Base anchor: any HTTP request to the FortiSandbox JRPC API endpoint.
+
+       The FortiSandbox JRPC API is accessible at path prefixes including
+       /jrpc, /api/v1/jrpc, and /api/v2/jrpc. Under CVE-2026-39808, an
+       unauthenticated attacker sends a crafted request to this API with
+       injected OS command metacharacters in request parameters or JSON body.
+
+       This anchor is level 7 (informational correlation only). All HTTP-layer
+       child rules (103987-103991) chain from this anchor. Any external or
+       unexpected source accessing FortiSandbox JRPC endpoints should be
+       investigated against the authorized management IP allowlist. -->
+  <rule id="103986" level="7">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)/(?:api/v[12]/)?jrpc\b</field>
+    <description>FortiSandbox CVE-2026-39808: Request to FortiSandbox JRPC API endpoint $(RequestPath) from $(ClientHost) at $(RequestHost) -- CVE-2026-39808 OS command injection attack surface anchor; correlate with child rules 103987-103992 (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>fortisandbox,cve_2026_39808,jrpc_api,initial_access,</group>
+  </rule>
+
+  <!-- POST method to FortiSandbox JRPC API: elevated suspicion.
+
+       CVE-2026-39808 is primarily exploited via HTTP POST with a crafted
+       JSON body containing OS command injection metacharacters in parameter
+       values. GET requests with injection in query strings are also possible
+       but less common for this JRPC attack path. POST to FortiSandbox JRPC
+       from any non-authorized source IP, or from any external IP, should
+       trigger investigation. Authorized FortiSandbox API integrations
+       (FortiManager, EMS, Fabric) originate from known, allowlisted internal
+       IP ranges. -->
+  <rule id="103987" level="11">
+    <if_sid>103986</if_sid>
+    <field name="RequestMethod">POST</field>
+    <description>FortiSandbox CVE-2026-39808: POST to FortiSandbox JRPC API $(RequestPath) from $(ClientHost) at $(RequestHost) -- POST is the primary exploit delivery method for CVE-2026-39808 JRPC OS command injection; review source IP against authorized Fortinet integration allowlist (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>fortisandbox,cve_2026_39808,jrpc_api,post_method,</group>
+  </rule>
+
+  <!-- POST to FortiSandbox JRPC returning HTTP 2xx: unauthenticated request processed.
+
+       Under a correctly patched or protected FortiSandbox instance, unauthenticated
+       requests to the JRPC API return HTTP 401 (Unauthorized) or 403 (Forbidden).
+       A 2xx response status indicates the JRPC handler accepted and processed the
+       unauthenticated request, confirming the CVE-2026-39808 vulnerability is
+       present and that any injected OS commands in the request body were passed
+       to the OS command execution function.
+
+       This is a high-confidence exploitation signal. Capture source IP, timestamp,
+       request body size, and response body for incident response. -->
+  <rule id="103988" level="13">
+    <if_sid>103987</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>FortiSandbox CVE-2026-39808: POST to FortiSandbox JRPC API $(RequestPath) from $(ClientHost) returned HTTP $(DownstreamStatus) at $(RequestHost) -- unauthenticated JRPC request accepted and processed; CVE-2026-39808 vulnerability confirmed; injected OS commands may have executed (T1190/T1059.004)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.004</id>
+    </mitre>
+    <group>fortisandbox,cve_2026_39808,jrpc_api,post_method,auth_bypass,high_confidence,</group>
+  </rule>
+
+  <!-- Request to FortiSandbox JRPC with OS command injection metacharacters in URL.
+
+       When CVE-2026-39808 payloads are delivered via URL query parameters
+       (rather than POST body), the injection metacharacters appear in the
+       RequestPath field of Traefik access logs. Common metacharacters used
+       in OS command injection:
+         - %3B / semicolon (;): command separator
+         - %7C / pipe (|): command piping
+         - %60 / backtick (`): command substitution
+         - %26%26 / &&: conditional command execution
+         - %24%28 / dollar-paren ($(...)): command substitution
+         - %0A / newline (\n): command separator bypass
+       This rule fires on both URL-encoded and raw metacharacter forms
+       detected in the RequestPath field. -->
+  <rule id="103989" level="14">
+    <if_sid>103986</if_sid>
+    <field name="RequestPath" type="pcre2">(?i)(?:%3B|%7C|%60|%26%26|%0[aA]|%24%28|;[a-z]|\|[a-z]|`[a-z]|\$\()</field>
+    <description>FortiSandbox CVE-2026-39808: Request to FortiSandbox JRPC API $(RequestPath) from $(ClientHost) contains OS command injection metacharacters in URL -- active CVE-2026-39808 exploitation attempt; URL contains shell metacharacters indicating command injection payload (T1190/T1059.004)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.004</id>
+    </mitre>
+    <group>fortisandbox,cve_2026_39808,jrpc_api,command_injection,high_confidence,</group>
+  </rule>
+
+  <!-- POST to FortiSandbox JRPC returning 2xx + command injection in URL: RCE confirmed.
+
+       Highest-confidence signal: both the successful HTTP response (confirming the
+       JRPC handler processed the request) and the OS command injection metacharacters
+       in the URL path are present in a single event. This combination means an
+       unauthenticated request containing injection metacharacters was accepted and
+       processed by the FortiSandbox JRPC handler, confirming active exploitation
+       of CVE-2026-39808. Initiate immediate incident response. -->
+  <rule id="103990" level="15">
+    <if_sid>103989</if_sid>
+    <field name="RequestMethod">POST</field>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>FortiSandbox CVE-2026-39808 CRITICAL: POST to FortiSandbox JRPC $(RequestPath) from $(ClientHost) returned HTTP $(DownstreamStatus) with command injection metacharacters -- confirmed active CVE-2026-39808 OS command injection exploitation; OS commands have executed; initiate incident response and isolate FortiSandbox immediately (T1190/T1059.004/T1562.001)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.004</id>
+      <id>T1562.001</id>
+    </mitre>
+    <group>fortisandbox,cve_2026_39808,jrpc_api,command_injection,rce_confirmed,critical,</group>
+  </rule>
+
+  <!-- Probe burst: 8 or more requests from same IP to FortiSandbox JRPC in 60 seconds.
+
+       Automated CVE-2026-39808 exploitation scripts (including AI-assisted exploit
+       generators observed in the wild as of June 2026) iterate over multiple
+       parameter positions, injection metacharacters, and encoding variations in
+       rapid succession. A burst of 8 or more requests from a single source IP
+       to FortiSandbox JRPC endpoints within 60 seconds is a strong scanner or
+       exploit tool fingerprint with no legitimate operational explanation.
+
+       Related: CVE-2026-25089 (Web UI VNC endpoint) was observed exploited by
+       AI-generated exploit attempts in June 2026; similar automated probing
+       patterns are expected for CVE-2026-39808. -->
+  <rule id="103991" level="9" frequency="8" timeframe="60">
+    <if_matched_sid>103986</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>FortiSandbox CVE-2026-39808: Probe burst - $(ClientHost) sent 8+ requests to FortiSandbox JRPC API at $(RequestHost) within 60 seconds -- automated exploit tooling or scanner fingerprint; investigate source IP for CVE-2026-39808 exploitation activity (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>fortisandbox,cve_2026_39808,jrpc_api,probe_burst,scanner,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Layer 2: FortiSandbox syslog - host process execution
+       Rule ID: 103992
+
+       Successful CVE-2026-39808 exploitation causes the FortiSandbox JRPC
+       handler process to spawn OS commands. FortiSandbox appliances forward
+       syslog to Wazuh. This rule detects unexpected shell command patterns
+       in syslog entries attributable to FortiSandbox web service processes
+       (httpd, python, fortisandbox, fdsm).
+
+       Correlate with HTTP-layer alerts (103988 or 103990) from the same
+       timeframe to confirm CVE-2026-39808 exploitation rather than
+       legitimate administrative shell use.
+       =========================================================== -->
+
+  <!-- Syslog: FortiSandbox web service process executing suspicious OS commands.
+
+       Following CVE-2026-39808 exploitation, common attacker follow-on OS
+       commands observed in the wild include:
+         - id, whoami: identity confirmation
+         - wget, curl: payload download from attacker C2
+         - nc, ncat, bash -i: reverse shell establishment
+         - python -c, perl -e: inline interpreter for reverse shell
+         - crontab, at: persistence establishment
+         - rm -rf / chmod 777: destructive or access-enabling actions
+       FortiSandbox syslog entries from the web service process (httpd or
+       fortisandbox daemon) that contain these command strings are a
+       strong indicator of post-exploitation activity. -->
+  <rule id="103992" level="14">
+    <decoded_as>syslog</decoded_as>
+    <match type="pcre2">(?i)(?:httpd|python[23]?|fortisandbox|fdsm)\[</match>
+    <regex type="pcre2">(?i)(?:wget\s+http|curl\s+-[a-z]*\s+http|nc\s+-[a-z]*\s+\d|bash\s+-i|python\s+-c|perl\s+-e|/bin/sh\s+-c|crontab\s+-[el]|chmod\s+[0-7]{3,4}\s+/|id\s*;|whoami\s*;|cat\s+/etc/(?:passwd|shadow)|uname\s+-[ar])</regex>
+    <description>FortiSandbox CVE-2026-39808: Suspicious OS command in FortiSandbox web service process syslog on $(agent.name) -- web service process executed shell command consistent with post-CVE-2026-39808 exploitation; correlate with HTTP-layer events for confirmation (T1059.004/T1562.001)</description>
+    <mitre>
+      <id>T1059.004</id>
+      <id>T1562.001</id>
+      <id>T1190</id>
+    </mitre>
+    <group>fortisandbox,cve_2026_39808,execution,post_exploit,command_injection,</group>
+  </rule>
+
+</group>
