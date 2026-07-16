@@ -130,7 +130,7 @@
   <!-- Login with disabled/locked account override - PAM auth bypass indicators -->
   <rule id="100848" level="12">
     <if_sid>5503</if_sid>
-    <match type="pcre2">(Account locked|account is locked|authentication failure|account expired|Password expired)</match>
+    <regex type="pcre2">(Account locked|account is locked|authentication failure|account expired|Password expired)</regex>
     <srcip negate="yes">127.0.0.1</srcip>
     <description>Authentication attempt with locked/expired account on $(hostname) from $(srcip): user=$(dstuser) -- possible account override attempt (T1078)</description>
     <mitre>

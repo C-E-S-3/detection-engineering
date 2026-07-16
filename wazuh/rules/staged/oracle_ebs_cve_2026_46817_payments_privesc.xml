@@ -303,7 +303,7 @@
        the scheduled transmission window, should be treated as an exploitation
        attempt. -->
   <rule id="103971" level="12">
-    <match type="pcre2">(?i)POST\s+/OA_HTML/ibytransmit\s+HTTP/[\d.]+"\s+2\d{2}\s</match>
+    <regex type="pcre2">(?i)POST\s+/OA_HTML/ibytransmit\s+HTTP/[\d.]+"\s+2\d{2}\s</regex>
     <description>Oracle EBS CVE-2026-46817 OHS/Apache log: POST to Oracle Payments ibytransmit returned 2xx on $(agent.name) -- authentication bypass confirmed in Oracle HTTP Server or Apache access log; active CVE-2026-46817 exploitation; review source IP and request body for file-read payload (T1190/T1548)</description>
     <mitre>
       <id>T1190</id>

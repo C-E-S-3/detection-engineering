@@ -75,7 +75,7 @@
   <!-- Wazuh FIM: /etc/sudoers or /etc/sudoers.d/* modified -->
   <rule id="100854" level="12">
     <if_sid>550,554</if_sid>
-    <match type="pcre2">/etc/sudoers(\.|$)</match>
+    <regex type="pcre2">/etc/sudoers(\.|$)</regex>
     <description>FIM alert: sudoers file modified on $(hostname) -- privilege escalation path added or changed (T1136)</description>
     <mitre>
       <id>T1136</id>
@@ -125,7 +125,7 @@
   <!-- Syslog: new user added message from useradd/PAM -->
   <rule id="100858" level="12">
     <if_sid>5902</if_sid>
-    <match type="pcre2">(new user:|new group:|useradd\[|added user)</match>
+    <regex type="pcre2">(new user:|new group:|useradd\[|added user)</regex>
     <description>New user/group creation logged via PAM/useradd on $(hostname) -- account creation event (T1136)</description>
     <mitre>
       <id>T1136</id>

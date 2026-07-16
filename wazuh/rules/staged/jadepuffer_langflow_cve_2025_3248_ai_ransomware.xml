@@ -59,7 +59,7 @@
        =========================================================== -->
   <rule id="103914" level="12">
     <if_group>web,accesslog</if_group>
-    <match type="pcre2">POST\s+/api/v1/run/</match>
+    <regex type="pcre2">POST\s+/api/v1/run/</regex>
     <description>JADEPUFFER/CVE-2025-3248: POST request to Langflow /api/v1/run/ execution endpoint on $(agent.name) -- CVE-2025-3248 exploit surface; monitor for Python subprocess spawning (T1190)</description>
     <mitre>
       <id>T1190</id>
@@ -96,7 +96,7 @@
        =========================================================== -->
   <rule id="103916" level="14">
     <if_sid>103000</if_sid>
-    <match type="pcre2">\.trycloudflare\.com</match>
+    <regex type="pcre2">\.trycloudflare\.com</regex>
     <description>JADEPUFFER/CVE-2025-3248: outbound connection to trycloudflare.com tunnel C2 from $(agent.name) -- JADEPUFFER uses Cloudflare tunnels for C2 after Langflow RCE; bidirectional C2 via web service (T1102.002)</description>
     <mitre>
       <id>T1102.002</id>
