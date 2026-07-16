@@ -316,8 +316,8 @@
        Match is against common ADFS admin log message patterns for RPT lifecycle
        events. -->
   <rule id="103953" level="12">
-    <program_name type="pcre2">(?i)(?:Microsoft-Windows-ADFS|ADFS|AdfsAdmin|AD FS)</program_name>
-    <match type="pcre2">(?i)(?:Relying\s+Party\s+Trust|relying_party_trust|RelyingPartyTrust).*?(?:add|creat|modif|updat|chang|remov|delet)</match>
+    <program_name >(Microsoft-Windows-ADFS|ADFS|AdfsAdmin|AD FS)</program_name>
+    <regex type="pcre2">(?i)(?:Relying\s+Party\s+Trust|relying_party_trust|RelyingPartyTrust).*?(?:add|creat|modif|updat|chang|remov|delet)</regex>
     <description>Microsoft ADFS CVE-2026-56155 EoP: ADFS admin event log records Relying Party Trust lifecycle change on $(agent.name) -- RPT modification alters token issuance access controls; matches CISA KEV CVE-2026-56155 exploitation pattern; correlate with PowerShell ADFS cmdlet events and operator change records (T1484.002/T1068)</description>
     <mitre>
       <id>T1484.002</id>

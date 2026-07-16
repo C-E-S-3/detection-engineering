@@ -613,7 +613,7 @@
        Level 10: plugin version enumeration; reconnaissance indicator. -->
   <rule id="103626" level="10">
     <if_sid>31103,31100,31102</if_sid>
-    <url type="pcre2">(?i)/wp-json/(edd|easy-digital-downloads)/v1/(software-licensing|update-check|license)</url>
+    <regex type="pcre2">(?i)/wp-json/(edd|easy-digital-downloads)/v1/(software-licensing|update-check|license)</regex>
     <description>Web: WordPress EDD license/update check probed - possible ShapedPlugin supply chain pre-compromise reconnaissance (T1592)</description>
     <mitre>
       <id>T1592</id>

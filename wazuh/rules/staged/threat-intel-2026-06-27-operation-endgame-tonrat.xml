@@ -72,7 +72,7 @@
   <rule id="103673" level="11">
     <if_group>web|accesslog</if_group>
     <match>POST</match>
-    <url type="pcre2">^/[A-Za-z0-9]{5,16}/index\.php$</url>
+    <url >^/[A-Za-z0-9]{5,16}/index\.php$</url>
     <description>HTTP POST to short-path index.php - pattern consistent with Amadey infostealer C2 beacon (T1071.001); investigate for victim registration traffic</description>
     <mitre>
       <id>T1071.001</id>
@@ -126,7 +126,7 @@
   <rule id="103676" level="13">
     <if_group>web|accesslog</if_group>
     <match>POST</match>
-    <url type="pcre2">^/[0-9a-f]{20}\.php$</url>
+    <url >^/[0-9a-f]{20}\.php$</url>
     <description>HTTP POST to 20-char hex .php path - highly specific pattern matching StealC infostealer C2 exfil endpoint; RC4-encrypted credential data (T1041)</description>
     <mitre>
       <id>T1071.001</id>

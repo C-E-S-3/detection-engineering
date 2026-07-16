@@ -581,7 +581,7 @@
   <!-- Shell commands from network device syslog  - curl/wget HTTP download -->
   <rule id="103534" level="14">
     <if_sid>103533</if_sid>
-    <match type="pcre2">(?i)(curl\s+.*(http|ftp)|wget\s+.*http|python[23]?\s+-c.*urllib|python[23]?\s+-c.*requests\.get)</match>
+    <regex type="pcre2">(?i)(curl\s+.*(http|ftp)|wget\s+.*http|python[23]?\s+-c.*urllib|python[23]?\s+-c.*requests\.get)</regex>
     <description>BRICKSTORM: HTTP download command in network device syslog on $(hostname) - possible appliance implant staging tool download (T1105, T1505.003)</description>
     <mitre>
       <id>T1105</id>
@@ -593,7 +593,7 @@
   <!-- /tmp/ execution or mkfifo from network device  - classic implant pattern -->
   <rule id="103535" level="14">
     <if_sid>103533</if_sid>
-    <match type="pcre2">(?i)(/tmp/[a-zA-Z0-9_\-\.]+\s+[&amp;|;]|mkfifo\s+/tmp/|/tmp/\S+\s+-[a-z])</match>
+    <regex type="pcre2">(?i)(/tmp/[a-zA-Z0-9_\-\.]+\s+[&amp;|;]|mkfifo\s+/tmp/|/tmp/\S+\s+-[a-z])</regex>
     <description>BRICKSTORM: /tmp/ binary execution or named pipe creation in network device syslog on $(hostname) - memory-resident implant execution pattern (T1505.003, T1059)</description>
     <mitre>
       <id>T1505.003</id>
@@ -606,7 +606,7 @@
   <!-- chmod +x on /tmp/ file  - making implant executable after drop -->
   <rule id="103536" level="13">
     <if_sid>103533</if_sid>
-    <match type="pcre2">(?i)(chmod\s+[0-7]*[x+][x0-7]*\s+/tmp/|chmod\s+\+x\s+/tmp/)</match>
+    <regex type="pcre2">(?i)(chmod\s+[0-7]*[x+][x0-7]*\s+/tmp/|chmod\s+\+x\s+/tmp/)</regex>
     <description>BRICKSTORM: chmod +x in /tmp/ seen in network device syslog on $(hostname) - implant executable permission change (T1505.003)</description>
     <mitre>
       <id>T1505.003</id>
@@ -617,7 +617,7 @@
   <!-- bash -i or exec fd redirection  - reverse shell from network device -->
   <rule id="103537" level="15">
     <if_sid>103533</if_sid>
-    <match type="pcre2">(?i)(bash\s+-i\s+\x3e&amp;|exec\s+[0-9]+\x3c\x3e/dev/tcp|bash\s+-c\s+.*[0-9]{1,3}\.[0-9]{1,3}|nc\s+-e\s+/bin/(bash|sh)|python.*pty\.spawn)</match>
+    <regex type="pcre2">(?i)(bash\s+-i\s+\x3e&amp;|exec\s+[0-9]+\x3c\x3e/dev/tcp|bash\s+-c\s+.*[0-9]{1,3}\.[0-9]{1,3}|nc\s+-e\s+/bin/(bash|sh)|python.*pty\.spawn)</regex>
     <description>BRICKSTORM: Reverse shell pattern in network device syslog on $(hostname) - interactive backdoor session via appliance (T1505.003, T1059)</description>
     <mitre>
       <id>T1505.003</id>
@@ -629,7 +629,7 @@
   <!-- Perl/Python one-liner in network device syslog  - implant secondary payload -->
   <rule id="103538" level="13">
     <if_sid>103533</if_sid>
-    <match type="pcre2">(?i)(perl\s+-e\s+'[^']*socket|python[23]?\s+-c\s+'[^']*socket|python[23]?\s+-c\s+'[^']*subprocess)</match>
+    <regex type="pcre2">(?i)(perl\s+-e\s+'[^']*socket|python[23]?\s+-c\s+'[^']*socket|python[23]?\s+-c\s+'[^']*subprocess)</regex>
     <description>BRICKSTORM: Python/Perl socket one-liner in network device syslog on $(hostname) - in-memory C2 channel from appliance (T1505.003)</description>
     <mitre>
       <id>T1505.003</id>
@@ -641,7 +641,7 @@
   <!-- Packet capture command from network device  - BRICKSTORM credential sniffing (T1040) -->
   <rule id="103539" level="13">
     <if_sid>103533</if_sid>
-    <match type="pcre2">(?i)(tcpdump\s+.*-w\s+/tmp/|tshark\s+.*-w\s+/tmp/|dumpcap\s+.*-w\s+/tmp/|tcpdump\s+.*port\s+(21|23|25|80|110|143|389|636))</match>
+    <regex type="pcre2">(?i)(tcpdump\s+.*-w\s+/tmp/|tshark\s+.*-w\s+/tmp/|dumpcap\s+.*-w\s+/tmp/|tcpdump\s+.*port\s+(21|23|25|80|110|143|389|636))</regex>
     <description>BRICKSTORM: Packet capture to /tmp/ in network device syslog on $(hostname) - credential harvesting via network sniffing (T1040)</description>
     <mitre>
       <id>T1040</id>

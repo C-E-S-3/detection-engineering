@@ -17,7 +17,7 @@
   <!-- Base: any POST to Langflow file upload endpoint -->
   <rule id="101700" level="0">
     <if_group>web|accesslog</if_group>
-    <match type="pcre2">POST\s+/api/v2/files</match>
+    <regex type="pcre2">POST\s+/api/v2/files</regex>
     <description>Langflow: HTTP POST to file upload endpoint /api/v2/files (base anchor)</description>
     <group>web,langflow,file_upload,</group>
   </rule>
@@ -25,7 +25,7 @@
   <!-- Base: any POST to Langflow auto-login endpoint -->
   <rule id="101701" level="0">
     <if_group>web|accesslog</if_group>
-    <match type="pcre2">POST\s+/api/v1/auto_login</match>
+    <regex type="pcre2">POST\s+/api/v1/auto_login</regex>
     <description>Langflow: HTTP POST to auto-login endpoint /api/v1/auto_login (base anchor)</description>
     <group>web,langflow,auth,</group>
   </rule>
@@ -47,7 +47,7 @@
   <!-- Path traversal sequences in Langflow file upload request -->
   <rule id="101703" level="15">
     <if_matched_sid>101700</if_matched_sid>
-    <url type="pcre2">(?i)(\.\./|\.\.\\|%2e%2e%2f|%252e%252e%252f|%2e%2e/|\.\.%2f)</url>
+    <regex type="pcre2">(?i)(\.\./|\.\.\\|%2e%2e%2f|%252e%252e%252f|%2e%2e/|\.\.%2f)</regex>
     <description>CRITICAL: Langflow path traversal attempt in /api/v2/files - CVE-2026-5027 exploitation, unauthenticated RCE risk (T1190)</description>
     <mitre>
       <id>T1190</id>

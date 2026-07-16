@@ -247,7 +247,7 @@
   <!-- Teleport process exits unexpectedly (auditd or syslog) -->
   <rule id="103128" level="11">
     <program_name>systemd</program_name>
-    <match type="pcre2">teleport\.service.*(failed|start-limit|core-dump|killed)</match>
+    <regex type="pcre2">teleport\.service.*(failed|start-limit|core-dump|killed)</regex>
     <description>Teleport: Service crash/restart detected - potential exploitation attempt (CVE-2025-49825)</description>
     <mitre>
       <id>T1499</id>

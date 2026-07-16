@@ -34,7 +34,7 @@
   <!-- NGINX worker process crash/restart (DoS exploitation indicator) -->
   <rule id="102914" level="11">
     <if_sid>102913</if_sid>
-    <match type="pcre2">worker process \d+ exited|signal \d+ \(SIG(SEGV|ABRT|BUS|FPE)\)|worker processes were shutdown</match>
+    <regex type="pcre2">worker process \d+ exited|signal \d+ \(SIG(SEGV|ABRT|BUS|FPE)\)|worker processes were shutdown</regex>
     <description>CVE-2026-42530: NGINX worker process crash detected - potential HTTP/3 use-after-free exploitation or DoS (T1499.004)</description>
     <mitre>
       <id>T1190</id>
@@ -58,8 +58,8 @@
   <!-- NGINX HTTP/3 QUIC module error (specific to ngx_http_v3_module) -->
   <rule id="102916" level="12">
     <if_sid>102913</if_sid>
-    <match type="pcre2">ngx_http_v3|QUIC|quic|http3|HTTP/3|ngx_quic</match>
-    <match type="pcre2">error|failed|invalid|unexpected|unknown</match>
+    <regex type="pcre2">ngx_http_v3|QUIC|quic|http3|HTTP/3|ngx_quic</regex>
+    <regex type="pcre2">error|failed|invalid|unexpected|unknown</regex>
     <description>CVE-2026-42530: NGINX HTTP/3 (QUIC) module error - $(log_data) - potential exploitation of ngx_http_v3_module use-after-free</description>
     <mitre>
       <id>T1190</id>
@@ -72,8 +72,8 @@
        ============================================================ -->
   <rule id="102917" level="11">
     <if_sid>102913</if_sid>
-    <match type="pcre2">recv\(\) failed|SSL_read\(\) failed|readv\(\) failed</match>
-    <match type="pcre2">peer closed connection|connection reset|broken pipe</match>
+    <regex type="pcre2">recv\(\) failed|SSL_read\(\) failed|readv\(\) failed</regex>
+    <regex type="pcre2">peer closed connection|connection reset|broken pipe</regex>
     <description>CVE-2026-42530: NGINX QUIC connection anomaly - rapid recv failures consistent with malformed QPACK stream (T1190)</description>
     <mitre>
       <id>T1190</id>

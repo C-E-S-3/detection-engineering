@@ -354,7 +354,7 @@
        determine which devices were affected and whether the building operator
        still has a path to recovery. -->
   <rule id="103977" level="14">
-    <match type="pcre2">(?i)(?:KNXnet|EIBnet|knxd|linknx|openknx).*(?:CONNECT_REQUEST|BCU[_\s]key|BCU_KEY|A_Memory_Write|programming[_\s]mode|program[_\s]mode|A_GroupValue_Write)|(?:BCU[_\s]key|BCU_KEY).*(?:KNX|EIB|knxnet)|(?:KNX|knxnet|EIBnet).*(?:lock(?:ed|ing)?|unauthorized.*program|unauthorized.*BCU)</match>
+    <regex type="pcre2">(?i)(?:KNXnet|EIBnet|knxd|linknx|openknx).*(?:CONNECT_REQUEST|BCU[_\s]key|BCU_KEY|A_Memory_Write|programming[_\s]mode|program[_\s]mode|A_GroupValue_Write)|(?:BCU[_\s]key|BCU_KEY).*(?:KNX|EIB|knxnet)|(?:KNX|knxnet|EIBnet).*(?:lock(?:ed|ing)?|unauthorized.*program|unauthorized.*BCU)</regex>
     <description>CVE-2023-4346 KNXnet/IP: KNX management log shows programming access, BCU key write, or CONNECT_REQUEST -- $(agent.name); unauthenticated BCU key write or programming mode access is the CVE-2023-4346 attack payload; KNX device lockout may be in progress; escalate to building operations and isolate affected KNX IP interfaces immediately (T1190/T1499.002/T1078)</description>
     <options>alert_by_email</options>
     <mitre>

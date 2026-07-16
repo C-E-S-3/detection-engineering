@@ -160,7 +160,7 @@
        or when the binary name appears in kernel process log or syslog.
        The pcre2 pattern matches on the full log line without requiring auditd decoder. -->
   <rule id="103700" level="15">
-    <match type="pcre2">(?i)\b(packet_edit_meme|pe_cow)\b</match>
+    <regex type="pcre2">(?i)\b(packet_edit_meme|pe_cow)\b</regex>
     <description>Pedit COW: KNOWN PoC BINARY NAME in process/syslog event - CVE-2026-46331 exploitation tool detected; initiate incident response immediately (T1068)</description>
     <mitre>
       <id>T1068</id>

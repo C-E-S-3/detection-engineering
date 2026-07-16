@@ -42,7 +42,7 @@
   <rule id="100752" level="0">
     <if_group>web|accesslog</if_group>
     <match>HTTP/</match>
-    <url type="pcre2">.+</url>
+    <url >.+</url>
     <field name="http_response_code">404</field>
     <description>Web server: HTTP 404 Not Found (base anchor for enumeration correlation)</description>
     <group>web,http_404,</group>
