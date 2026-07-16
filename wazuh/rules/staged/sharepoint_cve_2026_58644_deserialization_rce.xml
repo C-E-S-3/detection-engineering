@@ -1,0 +1,294 @@
+<!-- ============================================================
+     Microsoft SharePoint Server Deserialization of Untrusted Data RCE
+     CVE-2026-58644 (CWE-502: Deserialization of Untrusted Data)
+     Affected: Microsoft SharePoint Server (multiple supported versions)
+     MITRE ATT&amp;CK:
+       T1190 - Exploit Public-Facing Application (TA0001 Initial Access)
+       T1059.001 - Command and Scripting Interpreter: PowerShell (TA0002 Execution)
+       T1059.003 - Command and Scripting Interpreter: Windows Command Shell (TA0002)
+       T1210 - Exploitation of Remote Services (TA0008 Lateral Movement)
+     CISA KEV: Added 2026-07-16, Federal Deadline 2026-07-19
+     Rule IDs: 103979-103985
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-16
+
+     Vulnerability Summary:
+
+     CVE-2026-58644 is a critical deserialization of untrusted data vulnerability
+     (CWE-502) in Microsoft SharePoint Server. An unauthenticated network attacker
+     can send a specially crafted HTTP request containing a malicious serialized
+     .NET object to SharePoint web service endpoints. SharePoint deserializes the
+     payload using the BinaryFormatter or equivalent .NET deserializer without
+     adequate type filtering, allowing the attacker to supply a ysoserial.net-style
+     gadget chain. Successful exploitation results in arbitrary code execution
+     under the IIS application pool identity (NETWORK SERVICE or a dedicated
+     SharePoint service account).
+
+     CISA added CVE-2026-58644 to the Known Exploited Vulnerabilities catalog on
+     2026-07-16, indicating confirmed in-the-wild exploitation with a July 19
+     federal remediation deadline.
+
+     Attack chain:
+       1. Attacker sends an HTTP POST to a SharePoint CSOM or SOAP endpoint
+          (/_vti_bin/client.svc, /_vti_bin/*.asmx) with a crafted serialized
+          .NET payload in the request body.
+       2. SharePoint deserializes the payload without validating the contained
+          types, invoking a ysoserial.net gadget chain (TypeConfuseDelegate,
+          WindowsIdentity, or similar).
+       3. The gadget chain triggers code execution under the IIS application
+          pool process (w3wp.exe) identity.
+       4. Attacker achieves arbitrary command execution, typically staging a
+          reverse shell or downloading additional tooling.
+
+     Detection Approach:
+
+     HTTP / Traefik reverse-proxy layer (rules 103979-103983):
+       Rule 103979 (level 8): Base anchor - any request to SharePoint CSOM or
+         SOAP endpoint (/_vti_bin/client.svc or /_vti_bin/*.asmx). These endpoints
+         process client-supplied serialized data and represent the primary attack
+         surface for CVE-2026-58644.
+       Rule 103980 (level 11): POST to SharePoint CSOM or SOAP endpoint (attack
+         method). GET requests to these endpoints are routine health checks; POST
+         is the deserialization exploit delivery method.
+       Rule 103981 (level 13): POST to SharePoint CSOM endpoint returning HTTP 2xx
+         (deserialization was executed). A successful response to an unauthenticated
+         crafted POST to client.svc is a high-confidence exploitation signal.
+       Rule 103982 (level 13): POST to SharePoint SOAP endpoint (/_vti_bin/*.asmx)
+         returning HTTP 2xx from a non-internal source. SOAP services process
+         XML-encoded serialized data and may also be vulnerable to the
+         CVE-2026-58644 deserialization path.
+       Rule 103983 (level 9): Probe burst - 8 or more POST requests to SharePoint
+         CSOM or SOAP endpoints from the same source IP within 60 seconds.
+         Automated exploit tooling generates rapid probe patterns while fuzzing
+         deserialization gadget chains.
+
+     IIS / Sysmon process layer (rules 103984-103985):
+       Rule 103984 (level 14): Sysmon EventID 1 - IIS w3wp.exe spawning a
+         suspicious child process (cmd.exe, powershell.exe, csc.exe, mshta.exe,
+         wscript.exe, cscript.exe). When CVE-2026-58644 deserialization succeeds,
+         the gadget chain typically invokes a subprocess under the IIS worker
+         process. Any child process spawned by w3wp.exe that is not expected
+         in normal SharePoint operation warrants investigation.
+       Rule 103985 (level 15): Sysmon EventID 1 - w3wp.exe spawning download or
+         staging tools (certutil, bitsadmin, curl, wget, msiexec for remote
+         install). These are high-confidence indicators of post-exploitation
+         payload staging following successful RCE via CVE-2026-58644.
+
+     Log source prerequisites:
+       HTTP layer:
+         Traefik access logs in JSON format forwarded to Wazuh.
+         Field names: RequestMethod, RequestPath, RequestHost, DownstreamStatus,
+         ClientHost. SharePoint must be behind the Traefik reverse proxy.
+       IIS/Sysmon layer:
+         Sysmon EventID 1 (Process Create) forwarded to Wazuh via Windows agent.
+         Requires Sysmon installed on SharePoint server with process creation
+         logging enabled. Wazuh Windows agent decodes Sysmon events.
+         Field names: win.eventdata.parentImage, win.eventdata.image,
+         win.eventdata.commandLine.
+
+     Severity tiers:
+        8 - Any request to SharePoint CSOM or SOAP endpoint (info anchor)
+       11 - POST to CSOM or SOAP endpoint (attack delivery method)
+       13 - POST to client.svc returning 2xx (deserialization processed)
+       13 - POST to SOAP endpoint returning 2xx from external source
+        9 - Probe burst: 8+ POST requests to CSOM/SOAP from same IP in 60 seconds
+       14 - w3wp.exe spawning cmd/PowerShell/script interpreter (possible RCE)
+       15 - w3wp.exe spawning download/staging tool (confirmed post-exploit staging)
+
+     False positive guidance:
+       103979: SharePoint CSOM is used by legitimate SharePoint client applications
+         (SharePoint Designer, Office clients, PowerShell PnP). Baseline known-good
+         client application IPs and suppress via overrides.
+       103980: POST to client.svc from trusted SharePoint client tools is expected;
+         review ClientHost against authorized client IP ranges. External or
+         internet-sourced POSTs have no legitimate business justification.
+       103981: A 2xx response to a POST from a legitimate SharePoint client is
+         expected behavior; flag requests from unknown or external source IPs.
+       103982: SOAP services may be called by legacy SharePoint integrations;
+         review ClientHost. Unexpected external source IPs should be investigated.
+       103983: SharePoint data migration or bulk operation tools may generate
+         rapid sequential CSOM requests; correlate source IP with known tools.
+       103984: Some SharePoint workflows legitimately invoke PowerShell scripts
+         via w3wp.exe; review the specific command line in win.eventdata.commandLine
+         against known authorized SharePoint PowerShell automation.
+       103985: No legitimate SharePoint workflow invokes certutil, bitsadmin,
+         curl, or wget from w3wp.exe; treat as confirmed post-exploit staging
+         requiring immediate incident response.
+     ============================================================ -->
+
+<group name="initial_access,execution,exploit_pubfacing,sharepoint,cisa_kev,cve_2026_58644,deserialization,">
+
+  <!-- ===========================================================
+       Layer 1: HTTP / Traefik reverse proxy (JSON access logs)
+       Rule IDs: 103979-103983
+
+       CVE-2026-58644 is exploited by sending a crafted deserialization
+       payload via HTTP POST to SharePoint CSOM or SOAP web service
+       endpoints. Monitoring the reverse proxy layer catches exploit
+       delivery before post-exploit host-level events fire.
+       =========================================================== -->
+
+  <!-- Base anchor: any request to SharePoint CSOM or SOAP web service endpoint.
+
+       SharePoint CSOM (Client Side Object Model) at /_vti_bin/client.svc is
+       the primary attack surface for CVE-2026-58644 deserialization. This
+       endpoint accepts client-supplied serialized objects for server-side
+       processing. The /_vti_bin/*.asmx SOAP endpoints also handle
+       serialized XML payloads and may share the vulnerable deserialization
+       code path.
+
+       Any unexpected access to these endpoints from external or non-whitelisted
+       source IPs should be investigated. This anchor is level 8 (informational
+       correlation only). All child rules (103980-103983) chain from this rule. -->
+  <rule id="103979" level="8">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)/_vti_bin/(?:client\.svc|[^/]+\.asmx)</field>
+    <description>SharePoint CVE-2026-58644: Request to SharePoint CSOM/SOAP endpoint $(RequestPath) from $(ClientHost) at $(RequestHost) -- CVE-2026-58644 deserialization attack surface anchor; correlate with child rules 103980-103985 (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_58644,deserialization,initial_access,</group>
+  </rule>
+
+  <!-- POST method to SharePoint CSOM or SOAP endpoint: elevated suspicion.
+
+       CVE-2026-58644 is exploited exclusively via HTTP POST. The deserialization
+       vulnerability is triggered by a crafted POST body containing a malicious
+       serialized .NET object (BinaryFormatter payload). GET requests to these
+       endpoints occur during normal SharePoint client connectivity probes and
+       health checks. POST requests from non-whitelisted sources or external
+       IPs carrying large or unexpected bodies should trigger investigation. -->
+  <rule id="103980" level="11">
+    <if_sid>103979</if_sid>
+    <field name="RequestMethod">POST</field>
+    <description>SharePoint CVE-2026-58644: POST to SharePoint CSOM/SOAP endpoint $(RequestPath) from $(ClientHost) at $(RequestHost) -- POST is the CVE-2026-58644 deserialization exploit delivery method; review source IP against authorized SharePoint client allowlist (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_58644,deserialization,post_method,</group>
+  </rule>
+
+  <!-- POST to SharePoint CSOM endpoint returning HTTP 2xx: deserialization executed.
+
+       Under a correctly patched SharePoint instance, deserialization of untrusted
+       objects from unauthenticated or unauthorized callers is blocked. A 2xx
+       response to a POST on /_vti_bin/client.svc from an unexpected source
+       indicates SharePoint accepted and deserialized the payload, confirming
+       the CVE-2026-58644 vulnerability is present and exploitable.
+
+       This is a high-confidence exploitation signal. The source IP, request
+       body size, and timestamp should be captured for incident response. -->
+  <rule id="103981" level="13">
+    <if_sid>103980</if_sid>
+    <field name="RequestPath" type="pcre2">(?i)/_vti_bin/client\.svc</field>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>SharePoint CVE-2026-58644: POST to SharePoint CSOM client.svc from $(ClientHost) returned HTTP $(DownstreamStatus) at $(RequestHost) -- server deserialized client payload; high-confidence CVE-2026-58644 exploitation; investigate immediately (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_58644,deserialization,post_method,auth_bypass,high_confidence,</group>
+  </rule>
+
+  <!-- POST to SharePoint SOAP endpoint returning 2xx: RCE vector triggered.
+
+       SharePoint SOAP web services (/_vti_bin/Lists.asmx, /_vti_bin/UserGroup.asmx,
+       /_vti_bin/UserProfileService.asmx, etc.) process XML-encoded requests that
+       may share the CVE-2026-58644 vulnerable deserialization path. A 2xx response
+       to a POST on any /_vti_bin/*.asmx endpoint is suspicious when originating
+       from external or unrecognized source IPs; legitimate SOAP integrations
+       originate from known internal systems on defined schedules. -->
+  <rule id="103982" level="13">
+    <if_sid>103980</if_sid>
+    <field name="RequestPath" type="pcre2">(?i)/_vti_bin/[^/]+\.asmx</field>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>SharePoint CVE-2026-58644: POST to SharePoint SOAP service $(RequestPath) from $(ClientHost) returned HTTP $(DownstreamStatus) at $(RequestHost) -- SOAP endpoint processed deserialized payload; potential CVE-2026-58644 RCE path; correlate with host-layer events (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_58644,deserialization,soap_endpoint,post_method,</group>
+  </rule>
+
+  <!-- Probe burst: 8 or more POST requests to SharePoint CSOM/SOAP from same IP in 60 seconds.
+
+       Automated CVE-2026-58644 exploitation tooling (ysoserial.net scripts,
+       Metasploit modules) typically sends rapid sequential POST requests while
+       iterating over gadget chains, payloads, or target endpoints. A burst of
+       8 or more requests from a single source IP to these endpoints in 60 seconds
+       has no legitimate explanation in normal SharePoint client operation. -->
+  <rule id="103983" level="9" frequency="8" timeframe="60">
+    <if_matched_sid>103979</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>SharePoint CVE-2026-58644: Probe burst - $(ClientHost) sent 8+ requests to SharePoint CSOM/SOAP endpoints at $(RequestHost) within 60 seconds -- automated exploit tooling fingerprint; investigate source IP for CVE-2026-58644 scanning (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_58644,probe_burst,scanner,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Layer 2: IIS / Sysmon process creation (Windows endpoint)
+       Rule IDs: 103984-103985
+
+       Successful CVE-2026-58644 exploitation causes the SharePoint IIS
+       worker process (w3wp.exe) to spawn an attacker-controlled subprocess.
+       Sysmon EventID 1 (Process Create) captures this parent-child
+       relationship. These rules detect the post-exploitation phase where
+       the deserialization gadget chain has already succeeded.
+
+       Sysmon Wazuh SID 61603 covers Process Create events.
+       =========================================================== -->
+
+  <!-- Sysmon EventID 1: IIS w3wp.exe spawning suspicious child process.
+
+       Under normal SharePoint operation, w3wp.exe (the IIS application pool
+       worker process) does not spawn interactive command interpreters or
+       script engines directly. CVE-2026-58644 deserialization gadget chains
+       commonly invoke:
+         - cmd.exe: direct shell command execution
+         - powershell.exe: PowerShell-based staging or payload download
+         - csc.exe: C# compiler for in-memory code compilation
+         - mshta.exe: HTML Application host for script execution
+         - wscript.exe / cscript.exe: Windows Script Host execution
+       Any of these processes with w3wp.exe as parent is a strong indicator
+       that deserialization-triggered code execution has occurred. -->
+  <rule id="103984" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\w3wp\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(?:cmd|powershell|csc|mshta|wscript|cscript)\.exe$</field>
+    <description>SharePoint CVE-2026-58644: IIS w3wp.exe spawned $(win.eventdata.image) on $(agent.name) -- command interpreter child of IIS worker process indicates deserialization RCE; review commandLine for exploit payload; CVE-2026-58644 post-exploitation (T1190/T1059)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.001</id>
+      <id>T1059.003</id>
+    </mitre>
+    <group>sharepoint,cve_2026_58644,execution,iis_exploit,deserialization_rce,high_confidence,</group>
+  </rule>
+
+  <!-- Sysmon EventID 1: w3wp.exe spawning download or payload staging tools.
+
+       Following successful CVE-2026-58644 deserialization RCE, attackers
+       typically stage a persistent payload or reverse shell via download
+       utilities. These tools are not invoked by w3wp.exe in any normal
+       SharePoint operation:
+         - certutil.exe: commonly used for base64 decode and remote download
+         - bitsadmin.exe: Background Intelligent Transfer Service download
+         - curl.exe: HTTP download from attacker-controlled server
+         - msiexec.exe: remote MSI package installation via URL
+         - regsvr32.exe: COM scriptlet execution or DLL registration
+       Presence of any of these as a child of w3wp.exe is a confirmed
+       post-exploitation payload staging indicator requiring immediate
+       incident response. -->
+  <rule id="103985" level="15">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\w3wp\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(?:certutil|bitsadmin|curl|msiexec|regsvr32|rundll32|regasm|installutil)\.exe$</field>
+    <description>SharePoint CVE-2026-58644 CRITICAL: IIS w3wp.exe spawned payload staging tool $(win.eventdata.image) on $(agent.name) -- confirmed post-exploitation payload download or staging; CVE-2026-58644 deserialization RCE with follow-on tool deployment; initiate incident response immediately (T1190/T1059/T1105)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.001</id>
+      <id>T1105</id>
+    </mitre>
+    <group>sharepoint,cve_2026_58644,execution,iis_exploit,deserialization_rce,payload_staging,critical,</group>
+  </rule>
+
+</group>
