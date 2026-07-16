@@ -208,13 +208,11 @@
        Matching 10 or more requests from the same source within a short window
        to the SMA1000 API surface is consistent with scanner or exploit
        framework reconnaissance activity. -->
-  <rule id="103940" level="9">
+  <rule id="103940" level="9" frequency="10" timeframe="60">
     <if_matched_sid>103935</if_matched_sid>
     <same_field>ClientHost</same_field>
     <description>SonicWall SMA1000: Rapid probe burst from $(ClientHost) to management/API endpoints on $(RequestHost) -- 10+ requests matched CVE-2026-15409 attack surface; exploit scanner or automated exploitation tool fingerprint (T1190)</description>
     <options>alert_by_email</options>
-    <timeframe>60</timeframe>
-    <frequency>10</frequency>
     <mitre>
       <id>T1190</id>
     </mitre>

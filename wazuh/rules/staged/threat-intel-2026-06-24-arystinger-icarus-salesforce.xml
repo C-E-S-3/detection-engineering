@@ -234,7 +234,7 @@
   <!-- High-volume API requests from single IP in short window  - Icarus exfil pattern -->
   <rule id="103556" level="12" frequency="200" timeframe="900">
     <if_matched_group>web,nginx,apache,traefik,</if_matched_group>
-    <same_source_ip />
+    <same_srcip />
     <description>Icarus TTP: High-volume API request burst - 200+ requests in 15 minutes from same source IP (T1213, T1530) - matches Icarus exfiltration pattern of ~1,000 Salesforce API queries per 15-minute window</description>
     <mitre>
       <id>T1213</id>

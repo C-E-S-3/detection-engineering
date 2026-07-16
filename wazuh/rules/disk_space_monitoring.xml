@@ -115,7 +115,7 @@
   <!-- Indicates continuous write pressure, not a one-off error.        -->
   <rule id="101511" level="13" frequency="5" timeframe="60">
     <if_matched_sid>101510</if_matched_sid>
-    <same_source_ip />
+    <same_srcip />
     <description>Docker: Repeated disk-full errors in container - sustained write pressure (possible data staging)</description>
     <mitre>
       <id>T1499</id>

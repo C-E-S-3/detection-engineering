@@ -394,11 +394,9 @@
        known KNX IP Interface and do not generate rapid bursts. Treat any
        such burst from an unrecognized source IP as automated KNX exploitation
        tooling and investigate the source host immediately. -->
-  <rule id="103978" level="9">
+  <rule id="103978" level="9" frequency="10" timeframe="60">
     <if_matched_sid>103972</if_matched_sid>
     <same_field>data.src_ip</same_field>
-    <timeframe>60</timeframe>
-    <frequency>10</frequency>
     <description>CVE-2023-4346 KNXnet/IP: Rapid probe burst from $(data.src_ip) to KNX port 3671 -- 10+ connection attempts in 60 seconds from same source; automated KNX scanner or CVE-2023-4346 exploitation tool (KNXmap, xknx, knxd) fingerprint; investigate source host for unauthorized KNX tooling (T1046)</description>
     <mitre>
       <id>T1046</id>

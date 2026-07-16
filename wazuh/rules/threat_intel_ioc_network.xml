@@ -170,7 +170,7 @@
 
   <rule id="103040" level="10" frequency="10" timeframe="60">
     <if_matched_sid>5710</if_matched_sid>
-    <same_source_ip />
+    <same_srcip />
     <description>FortiBleed pattern: SSH brute force - 10+ failed auth attempts from same IP in 60s (T1110.001)</description>
     <mitre>
       <id>T1110.001</id>
@@ -181,7 +181,7 @@
   <rule id="103041" level="12" frequency="5" timeframe="60">
     <if_matched_sid>5710</if_matched_sid>
     <different_user />
-    <same_source_ip />
+    <same_srcip />
     <description>FortiBleed pattern: SSH password spraying - 5+ failed auth attempts against different users from same IP in 60s (T1110.003)</description>
     <mitre>
       <id>T1110.003</id>
@@ -191,7 +191,7 @@
 
   <rule id="103042" level="13" frequency="20" timeframe="120">
     <if_matched_sid>5710</if_matched_sid>
-    <same_source_ip />
+    <same_srcip />
     <description>FortiBleed pattern: SSH brute force escalation - 20+ failed auth attempts from same IP in 120s; consistent with automated credential stuffing (T1110.001)</description>
     <mitre>
       <id>T1110.001</id>
