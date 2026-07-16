@@ -83,7 +83,7 @@
   <!-- Typical credential spray precursor to CVE-2026-50751 bypass        -->
   <rule id="101431" level="11" frequency="5" timeframe="120">
     <if_matched_sid>101430</if_matched_sid>
-    <same_source_ip/>
+    <same_srcip/>
     <description>Check Point VPN brute force on $(hostname): 5+ authentication failures in 120 seconds from same source -- credential spray preceding CVE-2026-50751 IKEv1 bypass (T1110)</description>
     <options>no_full_log</options>
     <mitre>
@@ -105,7 +105,7 @@
 
   <rule id="101432" level="14" frequency="5" timeframe="300">
     <if_matched_sid>101430</if_matched_sid>
-    <same_source_ip/>
+    <same_srcip/>
     <match type="pcre2">(?i)(user\s+authenticated|authentication\s+success|login\s+success|vpn\s+session\s+opened|connection\s+established|session\s+established|remote\s+access\s+granted)</match>
     <description>Check Point VPN authentication bypass on $(hostname): auth success from source with 5+ recent failures -- high-confidence CVE-2026-50751 IKEv1 certificate bypass exploitation (T1190, T1078)</description>
     <options>no_full_log</options>
@@ -138,7 +138,7 @@
   <!-- High-frequency IKEv1 bursts: exploit tool / scanner fingerprint    -->
   <rule id="101437" level="12" frequency="10" timeframe="60">
     <if_matched_sid>101433</if_matched_sid>
-    <same_source_ip/>
+    <same_srcip/>
     <description>Check Point VPN: high-frequency IKEv1 negotiations (10+ in 60s) on $(hostname) -- exploit tool or CVE-2026-50751 scanner activity, immediate investigation required (T1190)</description>
     <options>no_full_log</options>
     <mitre>

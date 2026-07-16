@@ -261,11 +261,9 @@
        windows and do not generate high-frequency request bursts. Any burst
        pattern from an unrecognized IP should be treated as automated exploitation
        tooling. -->
-  <rule id="103970" level="9">
+  <rule id="103970" level="9" frequency="8" timeframe="60">
     <if_matched_sid>103965</if_matched_sid>
     <same_field>ClientHost</same_field>
-    <timeframe>60</timeframe>
-    <frequency>8</frequency>
     <description>Oracle EBS CVE-2026-46817: Rapid probe burst from $(ClientHost) to Oracle Payments ibytransmit at $(RequestHost) -- 8+ requests in 60 seconds from same source; automated exploit scanner or CVE-2026-46817 exploitation tooling fingerprint; investigate source IP (T1190)</description>
     <mitre>
       <id>T1190</id>

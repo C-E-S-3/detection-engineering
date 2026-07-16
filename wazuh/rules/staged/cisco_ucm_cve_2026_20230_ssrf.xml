@@ -124,7 +124,7 @@
 
   <rule id="103582" level="11" frequency="10" timeframe="60">
     <if_matched_sid>103579</if_matched_sid>
-    <same_source_ip/>
+    <same_srcip/>
     <description>Cisco UCM WebDialer burst on $(hostname): 10+ requests in 60 seconds from same source -- exploit scanner or automated CVE-2026-20230 exploitation tool (T1190)</description>
     <options>no_full_log</options>
     <mitre>
