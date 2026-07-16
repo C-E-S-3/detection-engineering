@@ -96,11 +96,10 @@
     <group>ransomware,lateral_movement,</group>
   </rule>
 
-  <rule id="103331" level="10">
-    <if_group>sshd</if_group>
-    <regex>Accepted password|Accepted publickey</regex>
-    <same_source_ip />
-    <description>INC Ransomware: rapid SSH logins from same IP to multiple hosts - worm-like lateral movement pattern (T1021.004)</description>
+  <rule id="103331" level="10" frequency="6" timeframe="120">
+    <if_matched_sid>5715</if_matched_sid>
+    <same_srcip />
+    <description>INC Ransomware: rapid SSH logins from same source IP (6+ in 120s) - worm-like lateral movement / credential spray pattern (T1021.004)</description>
     <mitre>
       <id>T1021.004</id>
     </mitre>
