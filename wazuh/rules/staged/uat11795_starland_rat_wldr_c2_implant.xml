@@ -1,0 +1,153 @@
+<!-- ============================================================
+     UAT-11795: Starland RAT Trojanized Installer + WLDR C2 Implant
+     MITRE ATT&CK Techniques:
+       T1204.002 - User Execution: Malicious File (TA0002)
+       T1059.006 - Command and Scripting Interpreter: Python (TA0002)
+       T1059.001 - Command and Scripting Interpreter: PowerShell (TA0002)
+       T1102     - Web Service (Polygon blockchain smart contract C2 fallback)
+       T1071.001 - Application Layer Protocol: Web Protocols (TA0011)
+       T1056.001 - Input Capture: Keylogging (TA0009)
+       T1113     - Screen Capture (TA0009)
+       T1555.003 - Credentials from Web Browsers (TA0006)
+     Rule IDs: 103998-104001
+     Author: Audit Engineer
+     Date: 2026-07-17
+
+     Threat Actor: UAT-11795 (Russian-speaking, financially motivated)
+
+     Threat Summary:
+
+     UAT-11795 is a financially motivated, Russian-speaking threat actor
+     targeting victims in the United States and Europe since June 2025
+     (Cisco Talos 2026-07-17). UAT-11795 distributes trojanized versions
+     of popular software installers via SEO-poisoned download pages and
+     direct messaging. Trojanized filenames include:
+       - MobaXterm_v26.1.exe
+       - WebEx_Client.exe
+       - FaceitInstaller_x64.exe
+       - dbeaver-ce-windows-x86_64.exe
+       - Zoom (installer variant)
+
+     When a victim executes the trojanized installer, it silently deploys
+     Starland RAT as a Python process alongside the legitimate application
+     to avoid suspicion. Starland RAT establishes HTTP C2 to actor-controlled
+     VPS servers; if those endpoints are unreachable, it falls back to polling
+     a Polygon blockchain smart contract for instructions (a C2 channel that
+     cannot be sinkholed through DNS intervention). After initial access,
+     Starland RAT injects WLDR (a memory-resident PowerShell agent) for
+     keylogging, screenshot capture, and credential harvesting. Secondary
+     payloads include CastleStealer and Remcos RAT.
+
+     Known C2 Infrastructure (as of 2026-07-17):
+       IPs: 104.248.233.104, 192.81.216.250, 74.114.119.201,
+            178.255.126.39, 193.149.176.254, 185.238.191.234
+       Domains: eorthopaedics.com, sastoro.com, zynaris.io,
+                alphabitcapital.info, web-devtools.com,
+                aipythondevs.com, windowscreenrepairnearme.com
+
+     Log source prerequisites:
+       - Sysmon EventID 1 (ProcessCreate)  -> Wazuh SID 61603
+         Required for rules 103998 (trojanized installer), 103999 (WLDR injection)
+       - Firewall/network logs -> Wazuh SID 103000
+         Required for rules 104000 (C2 IP) and 104001 (C2 domain)
+
+     Severity tiers:
+       13 - Trojanized installer spawning Python (Starland RAT execution)
+       14 - Python spawning hidden PowerShell (WLDR implant injection)
+       14 - Network connection to known UAT-11795 C2 IPs or domains
+
+     References:
+       Cisco Talos 2026-07-17:
+         https://blog.talosintelligence.com/uat-11795-deploys-novel-starland-rat-and-bespoke-wldr-c2-implant-in-financially-motivated-campaign/
+     ============================================================ -->
+
+<group name="threat_intel,execution,command_and_control,windows,uat11795,starland_rat,">
+
+  <!-- ===========================================================
+       Sysmon EventID 1: Trojanized installer spawning Python (Starland RAT)
+       UAT-11795 bundles Starland RAT as a Python executable alongside the
+       legitimate installer payload. When the trojanized installer runs, it
+       spawns python.exe, python3.exe, or pythonw.exe as a child process.
+       The specific trojanized filenames (MobaXterm_v26.1.exe, WebEx_Client.exe,
+       FaceitInstaller_x64.exe, dbeaver-ce-windows-x86_64.exe) do not correspond
+       to any official distribution from the legitimate software vendors.
+       pythonw.exe (windowless variant) is preferred to avoid a visible console
+       window that might alert the victim.
+       =========================================================== -->
+  <rule id="103998" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(MobaXterm_v[0-9]+\.[0-9]+|WebEx_Client|FaceitInstaller_x64|dbeaver-ce-windows-x86_64|Zoom.*[Ii]nstaller)\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(python|python3|pythonw)\.exe$</field>
+    <description>UAT-11795 Starland RAT: Python spawned by trojanized installer $(win.eventdata.parentImage) as user $(win.eventdata.user) on $(win.eventdata.computer) -- UAT-11795 trojanized software installer deploying Starland RAT Python backdoor; C2 fallback to Polygon blockchain (T1204.002, T1059.006)</description>
+    <mitre>
+      <id>T1204.002</id>
+      <id>T1059.006</id>
+    </mitre>
+    <group>initial_access,execution,trojanized_installer,starland_rat,uat11795,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Sysmon EventID 1: Python spawning hidden PowerShell (WLDR implant)
+       Starland RAT injects WLDR (a memory-resident PowerShell C2 agent)
+       by spawning powershell.exe with -WindowStyle Hidden (or equivalent
+       abbreviated flags) to keep the window invisible to the victim.
+       WLDR provides keylogging, screenshot capture, and credential harvesting.
+       Python processes spawning hidden PowerShell is not a pattern of any
+       known legitimate Python application; this is a high-confidence indicator.
+       =========================================================== -->
+  <rule id="103999" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(python|python3|pythonw)\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\powershell\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(-windowstyle\s+hidden|-w\s+hidden|-WindowStyle\s+Hidden|-EncodedCommand|-enc\s)</field>
+    <description>UAT-11795 WLDR Implant: powershell.exe with hidden window style spawned by python.exe on $(win.eventdata.computer) as $(win.eventdata.user) -- Starland RAT injecting WLDR memory-resident PowerShell C2 agent for keylogging and credential harvesting (T1059.001, T1056.001)</description>
+    <mitre>
+      <id>T1059.001</id>
+      <id>T1056.001</id>
+      <id>T1113</id>
+    </mitre>
+    <group>execution,c2_implant,wldr,starland_rat,uat11795,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Network: connection to UAT-11795 confirmed C2 IP addresses
+       Talos confirmed 6 VPS C2 IPs used by UAT-11795 in this campaign.
+       Connections to any of these IPs from a monitored host indicate
+       active Starland RAT or WLDR C2 communication. Immediately isolate
+       the communicating host and initiate incident response.
+       Known IPs: 104.248.233.104 (DigitalOcean), 192.81.216.250,
+                  74.114.119.201, 178.255.126.39, 193.149.176.254,
+                  185.238.191.234
+       =========================================================== -->
+  <rule id="104000" level="14">
+    <if_sid>103000</if_sid>
+    <match>104.248.233.104</match>
+    <description>UAT-11795 Starland RAT: connection to confirmed C2 IP 104.248.233.104 from $(agent.name) -- UAT-11795 Starland RAT primary C2 VPS; isolate host and initiate IR (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>ioc_match,ioc_ip,ioc_c2,starland_rat,uat11795,critical,</group>
+  </rule>
+
+  <rule id="104001" level="14">
+    <if_sid>103000</if_sid>
+    <match>192.81.216.250|74.114.119.201|178.255.126.39|193.149.176.254|185.238.191.234</match>
+    <description>UAT-11795 Starland RAT: connection to confirmed C2 IP $(dst_ip) from $(agent.name) -- UAT-11795 Starland RAT alternate C2 VPS; isolate host and initiate IR (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>ioc_match,ioc_ip,ioc_c2,starland_rat,uat11795,critical,</group>
+  </rule>
+
+  <rule id="104002" level="14">
+    <if_sid>103000</if_sid>
+    <match>eorthopaedics.com|sastoro.com|zynaris.io|alphabitcapital.info|web-devtools.com|aipythondevs.com|windowscreenrepairnearme.com</match>
+    <description>UAT-11795 Starland RAT: connection to confirmed C2 domain from $(agent.name) -- UAT-11795 Starland RAT C2 domain detected in network traffic or DNS; blockchain fallback C2 may also be active; isolate host (T1071.001, T1102)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1102</id>
+    </mitre>
+    <group>ioc_match,ioc_domain,ioc_c2,starland_rat,uat11795,critical,</group>
+  </rule>
+
+</group>
