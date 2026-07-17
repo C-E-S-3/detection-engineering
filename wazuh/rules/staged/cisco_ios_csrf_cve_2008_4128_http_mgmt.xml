@@ -41,7 +41,7 @@
 
      Rewrite note (2026-07-16, ESKA-516):
        Original file quarantined (commit 9979363) due to two defects:
-       (1) bare <pcre2> element -- invalid Wazuh syntax, must be <regex type="pcre2">
+       (1) bare pcre2 element (invalid Wazuh syntax); use regex type="pcre2"
            or plain <regex>/<match>;
        (2) negative-lookahead PCRE2 in rule 103896 caused PCRE2-JIT to
            balloon past ~20 GB, OOM-killing wazuh-analysisd on restart.
