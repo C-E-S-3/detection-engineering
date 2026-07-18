@@ -54,11 +54,11 @@
 <group name="threat_intel,credential_access,persistence,macos,clicklock,infostealer,">
 
   <!-- ===========================================================
-       FIM: ClickLock known LaunchAgent plist filenames — IOC exact match
+       FIM: ClickLock known LaunchAgent plist filenames - IOC exact match
        ClickLock installs two LaunchAgents under /Library/LaunchAgents/ or
        ~/Library/LaunchAgents/:
-         com.authirity.plist — watchdog daemon executing the browser kill-loop
-         com.chromer.plist   — exfiltration agent sending credentials to Telegram
+         com.authirity.plist - watchdog daemon executing the browser kill-loop
+         com.chromer.plist   - exfiltration agent sending credentials to Telegram
        Either filename appearing anywhere under a LaunchAgents path is a
        near-certain indicator of ClickLock infection. No legitimate macOS
        software uses these bundle identifiers. Wazuh FIM monitoring the
@@ -85,7 +85,7 @@
        /Library/LaunchAgents/*.plist output path is anomalous: legitimate
        macOS software installs LaunchAgents via properly signed .pkg installers
        with installer scripts, not via bare shell writes. This rule fires when
-       process arguments include a LaunchAgents plist path — covering both
+       process arguments include a LaunchAgents plist path - covering both
        curl -o /Library/LaunchAgents/com.authirity.plist ... patterns and
        bash -c '... > /Library/LaunchAgents/...' patterns.
        =========================================================== -->
@@ -124,7 +124,7 @@
   </rule>
 
   <!-- ===========================================================
-       Frequency: Browser kill-loop — 5+ kills within 60 seconds
+       Frequency: Browser kill-loop - 5+ kills within 60 seconds
        ClickLock's watchdog daemon fires repeatedly to prevent browser
        restart and maintain the fake authentication dialog. Five or more
        killall/pkill commands targeting browsers from the same source
