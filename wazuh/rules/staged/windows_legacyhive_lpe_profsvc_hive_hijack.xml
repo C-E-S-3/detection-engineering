@@ -1,0 +1,281 @@
+<!-- ============================================================
+     Windows LegacyHive Local Privilege Escalation Detection Rules
+     Vulnerability: LegacyHive ProfSvc zero-day (no CVE assigned as of 2026-07-19)
+     Researcher: Nightmare-Eclipse (public PoC released 2026-07-15)
+     MITRE ATT&CK Techniques:
+       T1068  - Exploitation for Privilege Escalation (TA0004)
+       T1112  - Modify Registry (TA0005)
+       T1134  - Access Token Manipulation (TA0004)
+       T1134.001 - Token Impersonation/Theft (TA0004)
+     Rule IDs: 104008-104013
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-19
+
+     Vulnerability Summary:
+
+     LegacyHive is an unpatched zero-day local privilege escalation
+     vulnerability in the Windows User Profile Service (ProfSvc). A
+     standard-user attacker can load another user's registry hive
+     (including a local admin's) into their own context, enabling
+     arbitrary code execution when the target account next logs on.
+
+     Attack chain:
+       1. Attacker creates a GUID-named staging directory under C:\ root
+          and writes modified ntuser.dat + UsrClass.dat into it.
+       2. NT Object Manager symbolic links (NtCreateSymbolicLinkObject,
+          NtCreateDirectoryObjectEx) redirect the secondary user's
+          Local AppData to the attacker-controlled path.
+       3. User Shell Folders\Local AppData in the secondary account's
+          ntuser.dat is modified to point to the object manager path.
+       4. Attacker triggers secondary-user profile load via
+          CreateProcessWithLogonW or LogonUser.
+       5. An opportunistic lock (oplock) on the staged hive pauses
+          ProfSvc hive loading; attacker swaps symlinks mid-load to
+          mount the target admin's UsrClass.dat in the attacker's
+          registry namespace.
+       6. Attacker modifies entries in the mounted admin hive to
+          plant a persistence payload (e.g., COM hijack, shell
+          extension) executed when the admin account next logs on.
+
+     Affected systems: Windows 10, 11, Server 2016/2019/2022
+     (fully patched as of 2026 July Patch Tuesday). No patch exists.
+
+     CVE status: No CVE assigned as of 2026-07-19.
+
+     Log source prerequisites:
+       - Sysmon EventID 11 (FileCreate) -> Wazuh SID 61644
+         Required for rules 104008 (hive file outside profile) and
+         104011 (GUID-named directory at drive root).
+       - Sysmon EventID 13 (RegistryValueSet) -> Wazuh SID 61645
+         Required for rule 104009 (User Shell Folders tampering).
+       - Sysmon EventID 1 (ProcessCreate) -> Wazuh SID 61603
+         Required for rule 104012 (LegacyHive exploit binary IOC).
+       - Windows Security EventID 4663 (Object Access) -> SID 60103
+         Required for rule 104010 (cross-user hive file access).
+         Must enable "Object Access" auditing + configure SACL on
+         C:\Users\*\ntuser.dat and UsrClass.dat paths.
+       - Windows Security EventID 4648 (Explicit Credentials) -> SID 60103
+         Required for rule 104013 (secondary logon from user-mode process).
+         Must enable "Logon/Logoff" auditing.
+
+     Severity tiers:
+       10 - Explicit credential logon from user-mode process (context/corr.)
+       11 - GUID-named directory created at drive root (staging setup)
+       12 - Cross-user hive file access by non-SYSTEM process (suspicious)
+       13 - ntuser.dat/UsrClass.dat created outside user profile path (high)
+       14 - User Shell Folders Local AppData set to non-standard path (critical)
+       15 - Known LegacyHive exploit binary detected (IOC exact match)
+
+     References:
+       BleepingComputer 2026-07-15:
+         https://www.bleepingcomputer.com/news/security/new-windows-legacyhive-zero-day-exploit-grants-hackers-admin-access/
+       SecurityOnline 2026-07-15:
+         https://securityonline.info/legacyhive-windows-exploit/
+       Rescana Technical Analysis 2026-07-17:
+         https://www.rescana.com/post/critical-windows-10-11-and-server-zero-day-legacyhive-exploit-enables-privilege-escalation-via-user-profile-service-vuln
+       The Register 2026-07-15:
+         https://www.theregister.com/security/2026/07/15/microsofts-serial-tormentor-drops-legacyhive-0-day/5271723
+     ============================================================ -->
+
+<group name="privilege_escalation,legacyhive,profsvc_lpe,windows,">
+
+  <!-- ===========================================================
+       Rule 104008: Hive file created outside user profile directory
+       Sysmon Event 11 (FileCreate) - Wazuh SID 61644
+
+       LegacyHive stages modified ntuser.dat and UsrClass.dat copies
+       in a non-standard location (typically a GUID-named directory
+       under C:\, %TEMP%, or %ProgramData%) before redirecting
+       ProfSvc hive loading to these attacker-controlled files.
+
+       Legitimate Windows operations create ntuser.dat only at:
+         C:\Users\<username>\ntuser.dat
+       and UsrClass.dat only at:
+         C:\Users\<username>\AppData\Local\Microsoft\Windows\UsrClass.dat
+
+       Any creation of these files outside those paths is anomalous
+       and strongly indicates LegacyHive staging or a similar hive
+       manipulation attack.
+
+       Sysmon FileCreate (Event 11) must be configured to log hive
+       file names. Add ntuser.dat and UsrClass.dat to the Sysmon
+       TargetFilename include filter.
+       =========================================================== -->
+  <rule id="104008" level="13">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)(ntuser\.dat|usrclass\.dat)$</field>
+    <field name="win.eventdata.targetFilename" negate="yes" type="pcre2">(?i)C:\\Users\\[^\\]+\\(ntuser\.dat|AppData\\Local\\Microsoft\\Windows\\UsrClass\.dat)$</field>
+    <description>LegacyHive ProfSvc LPE: $(win.eventdata.image) created hive file $(win.eventdata.targetFilename) outside user profile directory on $(win.eventdata.computer) -- LegacyHive stages a modified ntuser.dat or UsrClass.dat outside C:\Users\{user}\ to redirect ProfSvc hive loading; investigate for zero-day LPE activity (T1068, T1112)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1112</id>
+    </mitre>
+    <group>legacyhive,profsvc_lpe,hive_staging,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104009: User Shell Folders Local AppData set to non-standard path
+       Sysmon Event 13 (RegistryValueSet) - Wazuh SID 61645
+
+       LegacyHive modifies the secondary user's ntuser.dat offline to
+       redirect HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer
+       \User Shell Folders\Local AppData away from %USERPROFILE%\AppData\Local
+       to an attacker-controlled object manager path (e.g.,
+       \\.\globalroot\BaseNamedObjects\Restricted\...).
+
+       When ProfSvc loads the secondary user's profile, it follows this
+       redirected Local AppData path to locate UsrClass.dat, walking
+       into the attacker's symlink chain.
+
+       The standard value for Local AppData is one of:
+         %USERPROFILE%\AppData\Local
+         %LOCALAPPDATA%
+         C:\Users\{username}\AppData\Local
+
+       Any write to this registry value that does not match standard
+       AppData path patterns is critical and warrants immediate
+       investigation.
+
+       Sysmon Registry monitoring must include the User Shell Folders
+       key path for Event 13 to fire.
+       =========================================================== -->
+  <rule id="104009" level="14">
+    <if_sid>61645</if_sid>
+    <field name="win.system.eventID">^13$</field>
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders</field>
+    <field name="win.eventdata.details" negate="yes" type="pcre2">(?i)(%USERPROFILE%\\AppData\\Local|%LOCALAPPDATA%|CSIDL_LOCAL_APPDATA|C:\\Users\\[^\\]+\\AppData\\Local|C:\\Windows\\|%APPDATA%|^\s*$)</field>
+    <description>LegacyHive ProfSvc LPE: $(win.eventdata.image) on $(win.eventdata.computer) modified User Shell Folders registry value $(win.eventdata.targetObject) to non-standard path [$(win.eventdata.details)] -- LegacyHive redirects Local AppData to an NT object manager path to hijack ProfSvc hive loading; this is the core LegacyHive exploitation step (T1112, T1068)</description>
+    <mitre>
+      <id>T1112</id>
+      <id>T1068</id>
+    </mitre>
+    <group>legacyhive,profsvc_lpe,registry_tamper,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104010: Cross-user hive file access by non-SYSTEM process
+       Windows Security Event 4663 (Object Access) - Wazuh SID 60103
+
+       Object-access auditing on C:\Users\*\ntuser.dat and
+       C:\Users\*\AppData\Local\Microsoft\Windows\UsrClass.dat
+       must be enabled (SACL with Everyone:Access).
+
+       In normal operation, ProfSvc (running as SYSTEM inside
+       svchost.exe -k netsvcs) is the only non-owner process that
+       reads or writes a user's hive files during profile load/unload.
+
+       Event 4663 fired by a non-SYSTEM, non-service account accessing
+       another user's hive file is anomalous and indicative of
+       LegacyHive-style cross-account hive manipulation.
+
+       NOTE: this rule will produce false positives on endpoints with
+       backup agents (Veeam, Windows Backup) or AV products that scan
+       hive files. Tune by whitelisting known backup/AV process names
+       in your environment once a baseline is established.
+       =========================================================== -->
+  <rule id="104010" level="12">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4663$</field>
+    <field name="win.eventdata.objectName" type="pcre2">(?i)C:\\Users\\[^\\]+\\(ntuser\.dat|AppData\\Local\\Microsoft\\Windows\\UsrClass\.dat)</field>
+    <field name="win.eventdata.subjectUserName" negate="yes" type="pcre2">(?i)(^SYSTEM$|^LOCAL SERVICE$|^NETWORK SERVICE$|.*\$$)</field>
+    <description>LegacyHive ProfSvc LPE: $(win.eventdata.subjectUserName) accessed registry hive file $(win.eventdata.objectName) on $(win.eventdata.computer) -- cross-user hive access by a non-SYSTEM account is anomalous; ProfSvc (SYSTEM) owns legitimate hive loads; investigate for LegacyHive privilege escalation or credential access (T1068)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>legacyhive,profsvc_lpe,hive_access,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104011: GUID-named directory created at drive root
+       Sysmon Event 11 (FileCreate) - Wazuh SID 61644
+
+       LegacyHive's attack setup creates a directory with a GUID name
+       (e.g., C:\{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}\) directly
+       under the drive root to stage modified hive files. This location
+       is chosen to be writable by a standard user (unlike Program Files
+       or Windows), while being unusual enough that legitimate applications
+       rarely create GUID-named root directories.
+
+       GUID-format directories at drive root are a near-exclusive
+       indicator of LegacyHive staging, NTFS junction tricks (GhostTree),
+       or similar object-manager-abuse techniques. No standard Windows
+       feature creates root-level GUID directories.
+
+       Correlate with rule 104008 (hive file outside profile) to confirm
+       LegacyHive vs. other techniques.
+       =========================================================== -->
+  <rule id="104011" level="11">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">^[A-Za-z]:\\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}}\\</field>
+    <description>LegacyHive ProfSvc LPE: $(win.eventdata.image) on $(win.eventdata.computer) created GUID-named path $(win.eventdata.targetFilename) at drive root -- LegacyHive stages attack files in a GUID-named directory under C:\; correlate with rule 104008 (hive file outside profile) and 104009 (User Shell Folders tamper) to confirm exploitation (T1068)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>legacyhive,profsvc_lpe,hive_staging,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104012: Known LegacyHive exploit binary detected
+       Sysmon Event 1 (ProcessCreate) - Wazuh SID 61603
+
+       The public PoC released by Nightmare-Eclipse is distributed as
+       a standalone binary. Known binary names include: LegacyHive.exe,
+       legacyhive.exe, LegacyHiveExploit.exe, and variants following
+       the researcher's naming convention. Any execution matching these
+       names on a Windows endpoint is a confirmed exploit attempt.
+
+       This is a high-confidence IOC rule (level 15). If a binary
+       named after the LegacyHive PoC executes, treat it as an active
+       exploitation attempt regardless of user context.
+       =========================================================== -->
+  <rule id="104012" level="15">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)(legacyhive|legacy_hive|LegacyHiveExploit|profsvc_hive_exploit|hive_hijack_lpe|nightmare.eclipse)</field>
+    <description>LegacyHive ProfSvc LPE: CRITICAL -- known LegacyHive exploit binary $(win.eventdata.image) executed by $(win.eventdata.user) on $(win.eventdata.computer) -- Nightmare-Eclipse LegacyHive zero-day PoC detected; no patch exists as of 2026-07-19; initiate immediate incident response and host isolation (T1068)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>legacyhive,profsvc_lpe,exploit_binary,ioc_match,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104013: Explicit credential logon from user-mode process
+       Windows Security Event 4648 (Explicit Credentials) - SID 60103
+
+       LegacyHive uses CreateProcessWithLogonW or LogonUser to trigger
+       loading the secondary user's profile. This triggers ProfSvc
+       to walk the attacker's redirected registry path.
+
+       Event 4648 (A logon was attempted using explicit credentials)
+       fires whenever a process uses an alternate credential to start
+       a session. In normal operation, this event is produced by:
+         - Remote Desktop (mstsc.exe)
+         - Scheduled Task Service (svchost)
+         - IIS Application Pool identity changes
+         - runas.exe
+
+       Event 4648 from a non-system, non-standard process is anomalous
+       and may indicate LegacyHive's secondary-user profile load step.
+       This is an informational/correlation rule (level 10); use it to
+       correlate with rules 104008-104012 rather than alert in isolation.
+
+       Correlate: 4648 (this rule) within 60 seconds of 104008/104009
+       on the same endpoint is a strong indicator of active LegacyHive
+       exploitation.
+       =========================================================== -->
+  <rule id="104013" level="10">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^4648$</field>
+    <field name="win.eventdata.processName" negate="yes" type="pcre2">(?i)(\\lsass\.exe$|\\svchost\.exe$|\\winlogon\.exe$|\\LogonUI\.exe$|\\mstsc\.exe$|\\taskhost\.exe$|\\taskhostw\.exe$|\\services\.exe$|\\WinRM\.exe$)</field>
+    <field name="win.eventdata.targetUserName" negate="yes" type="pcre2">(?i)(^ANONYMOUS LOGON$|^-$|.*\$$)</field>
+    <description>LegacyHive ProfSvc LPE: Explicit credential logon (Event 4648) initiated from user-mode process $(win.eventdata.processName) as target user $(win.eventdata.targetUserName) on $(win.eventdata.computer) -- LegacyHive triggers secondary-user profile load via CreateProcessWithLogonW/LogonUser; correlate with rules 104008-104012 within 60 seconds for LegacyHive confirmation (T1068, T1134)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1134</id>
+    </mitre>
+    <group>legacyhive,profsvc_lpe,explicit_credentials,</group>
+  </rule>
+
+</group>
