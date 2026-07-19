@@ -1,0 +1,380 @@
+<!-- ============================================================
+     DcRAT — Operation DragonReturn Detection Rules
+     Threat: DcRAT (Dark Crystal RAT) distributed via fake Indian Income Tax
+             filing utility; suspected China-nexus threat actor
+     Source: The Hacker News / Seqrite Blog, July 2026
+             Operation DragonReturn (Seqrite threat intelligence)
+     MITRE ATT&CK Techniques:
+       T1204.002 - User Execution: Malicious File (TA0002)
+       T1027.003 - Obfuscated Files or Information: Steganography (TA0005)
+       T1055     - Process Injection (TA0005)
+       T1543.003 - Create or Modify System Process: Windows Service (TA0003)
+       T1036.005 - Masquerading: Match Legitimate Name or Location (TA0005)
+       T1562.001 - Impair Defenses: Disable or Modify Tools / AMSI (TA0005)
+       T1071.001 - Application Layer Protocol: Web Protocols (TA0011)
+     Rule IDs: 104026-104032
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-19
+
+     Threat Actor: Suspected China-nexus (Silver Fox TTP overlap)
+
+     Threat Summary:
+
+     Operation DragonReturn is a multi-stage espionage campaign targeting
+     Indian tax professionals (corporate entities, chartered accountants,
+     individual taxpayers) exploiting the AY2026-27 ITR filing season.
+     Victims are lured via spear-phishing emails impersonating the Indian
+     Income Tax Department (first observed 2026-05-18; fully active as of
+     2026-06-17). A ZIP archive poses as the Common Offline Utility and
+     contains a fake installer.
+
+     Multi-Stage Infection Chain:
+       Stage 1: Fake .exe installer drops background.jpg containing an
+                LSB-steganographically hidden payload alongside the
+                visible installer UI.
+       Stage 2: DLL side-loading chain (CameraUtil.dll, VTCP.dll)
+                executed to decode and decrypt the hidden payload.
+       Stage 3: Decrypted .NET assembly is loaded fully in-memory via
+                reflection; AMSI is patched to prevent detection.
+       Stage 4: Decrypted assembly targets svchost.exe for process
+                injection (CreateToolhelp32Snapshot + VirtualAllocEx +
+                WriteProcessMemory + CreateRemoteThread).
+       Stage 5: Persistence established via Windows service "MixedSvc"
+                masquerading as "Windows Mixed Reality Service".
+       Stage 6: Dual payloads beacon outbound -- DcRAT over encrypted
+                TLS to 223.26.63.40:2671 (ChinaNet ASN with Chinese-
+                language management panel) and a Gh0st RAT derivative
+                to kkxqbh[.]top:6666.
+
+     Known C2 Infrastructure (Operation DragonReturn, as of 2026-06-17):
+       IPs:     223.26.63.40 (DcRAT TLS C2, port 2671; ChinaNet)
+       Domains: kkxqbh[.]top (Gh0st RAT C2, port 6666)
+                ouewop[.]com (AsyncRAT/Quasar-family, port 6351)
+                1kkkkddd[.]com (supplemental C2 / staging)
+
+     Log source prerequisites:
+       - Sysmon EventID 1 (ProcessCreate)  -> Wazuh SID 61603
+         Required for rules 104026, 104027, 104030.
+         Sysmon must capture CommandLine, ParentImage, and Image fields.
+       - Sysmon EventID 8 (CreateRemoteThread) -> Wazuh SID 61644 + eventID=8
+         Required for rule 104028.
+         Sysmon must have EventID 8 logging enabled (off by default in
+         minimal configs; add to sysmon_config.xml under CreateRemoteThread).
+       - Windows Security / System EventID 7045 (new service install) -> Wazuh SID 60103
+         Required for rule 104029.
+         Enabled by default in all Windows environments with Wazuh agent.
+       - Network/firewall logs -> Wazuh SID 103000
+         Required for rules 104031 and 104032.
+         Source: FortiGate, pfSense, Windows Filtering Platform (WFP), Sysmon EventID 3.
+
+     Severity tiers:
+       12 - PowerShell bitmap steganography image processing (suspicious,
+            low false-positive rate, used as triage correlator)
+       13 - Fake tax installer spawning interpreter child process (high
+            confidence; Indian tax software never spawns cmd/powershell)
+       13 - AMSI bypass via .NET reflection in PowerShell (near-certain
+            malicious; patching AmsiScanBuffer is not a legitimate admin op)
+       14 - CreateRemoteThread from non-system process into svchost.exe
+            (near-certain process injection; isolate immediately)
+       14 - MixedSvc service installed from non-Microsoft path (confirmed
+            DcRAT persistence mechanism)
+       14 - DcRAT C2 IOC match (single connection to attributed C2 infra)
+       15 - Sustained DcRAT C2 beaconing (2+ connections in 120s from same
+            source; active RAT implant confirmed; CRITICAL response)
+
+     References:
+       The Hacker News 2026-07:
+         https://thehackernews.com/2026/07/suspected-china-nexus-hackers-use-fake.html
+       Seqrite - Operation DragonReturn:
+         https://www.seqrite.com/blog/operation-dragonreturn-china-nexus-cyber-espionage-campaign-targeting-govt-of-india-mof-tax-infrastructure-via-multi-stage-dcrat-deployment/
+       Cyderes - Tax Trap (dual RAT deployment):
+         https://www.cyderes.com/howler-cell/fake-indian-itr-notice-dual-rat-deployment
+       CSO Online - Dual-malware campaign:
+         https://www.csoonline.com/article/4194440/cybercriminals-exploit-indias-tax-filing-season-with-a-dual-malware-campaign.html
+       DcRAT deep dive (muha2xmad):
+         https://muha2xmad.github.io/malware-analysis/dcrat/
+       Splunk DarkCrystal RAT Analytics Story:
+         https://research.splunk.com/stories/darkcrystal_rat/
+     ============================================================ -->
+
+<group name="threat_intel,execution,persistence,defense_evasion,command_and_control,windows,dcrat,dragonreturn,china_nexus,">
+
+  <!-- ===========================================================
+       Rule 104026: Fake Indian tax installer spawning child interpreter
+       Sysmon EventID 1 (ProcessCreate) - Wazuh SID 61603
+       MITRE: T1204.002 (User Execution: Malicious File)
+
+       Operation DragonReturn distributes a ZIP archive disguised as the
+       Indian Income Tax Department's Common Offline Utility for AY2026-27
+       ITR filing. The archive contains a .exe installer that presents a
+       plausible tax filing UI while silently executing its malicious payload
+       chain in the background.
+
+       Legitimate Indian tax filing utilities (ITR Prep Pro, the official
+       Income Tax Department offline utility, ClearTax, etc.) do not spawn
+       cmd.exe, powershell.exe, wscript.exe, mshta.exe, rundll32.exe, or
+       other scripting interpreters as child processes during normal operation.
+       Any Indian tax utility process spawning a scripting engine is a
+       near-certain indicator that a trojanized variant has been executed.
+
+       The parentImage pattern targets known official and common third-party
+       Indian tax utility executable names. Analysts should extend this list
+       as the campaign evolves and new installer filenames are observed.
+
+       False positives: extremely rare. Indian tax software that has
+       scripting-based update mechanisms (uncommon) may trigger this.
+       Validate the parentImage path: legitimate tax utilities install to
+       Program Files or user-accessible paths with vendor-signed binaries.
+       =========================================================== -->
+  <rule id="104026" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)(ITRPrepPro|IncomeTax|itr.*offline|ITR_AY|itr.*filing|IncomeTaxReturn|IT_Offline_Utility|income_tax.*util|offline_itr|tax.*utility|itr_prep|e-Filing)\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(powershell|pwsh|cmd|wscript|cscript|mshta|rundll32|regsvr32|certutil|bitsadmin)\.exe$</field>
+    <description>DcRAT/DragonReturn: Fake Indian tax utility $(win.eventdata.parentImage) spawned child interpreter $(win.eventdata.image) on $(win.eventdata.computer) as $(win.eventdata.user) [$(win.eventdata.commandLine)] -- Operation DragonReturn distributes trojanized ITR filing software; legitimate Indian tax utilities never spawn cmd/PowerShell; high-confidence initial execution indicator (T1204.002)</description>
+    <mitre>
+      <id>T1204.002</id>
+    </mitre>
+    <group>dcrat,dragonreturn,initial_access,execution,fake_installer,india_tax,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104027: PowerShell bitmap steganography payload extraction
+       Sysmon EventID 1 (ProcessCreate) - Wazuh SID 61603
+       MITRE: T1027.003 (Obfuscated Files or Information: Steganography)
+
+       A distinctive feature of Operation DragonReturn is concealing the
+       DcRAT payload inside background.jpg using LSB (Least Significant Bit)
+       steganography. The installer drops background.jpg into the working
+       directory; a subsequent PowerShell stage reads the image using
+       System.Drawing.Bitmap, iterates pixel values, extracts LSB-encoded
+       bytes, and reconstructs the decrypted .NET assembly or shellcode.
+
+       System.Drawing bitmap operations in a PowerShell process commandLine
+       are highly anomalous in enterprise environments. Legitimate PowerShell
+       administration scripts almost never perform GetPixel operations or
+       load images via System.Drawing.FromFile. The presence of Bitmap/GetPixel
+       in a PowerShell commandLine is a reliable steganographic payload
+       extraction indicator.
+
+       False positives: rare. Some image processing automation scripts or
+       developer tools may invoke .NET imaging APIs from PowerShell. Correlate
+       with rule 104026 (fake tax installer parent) or rule 104030 (AMSI
+       bypass) on the same host within the preceding 5-10 minutes to elevate
+       confidence to a confirmed Operation DragonReturn execution.
+       =========================================================== -->
+  <rule id="104027" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(powershell|pwsh)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(GetPixel\(|System\.Drawing\.Bitmap|\.FromFile\b.*\.(jpg|jpeg|png|bmp|gif|ico)|FromStream.*[Ii]mage|background\.jpg|\.GetBitmap\()</field>
+    <description>DcRAT/DragonReturn: PowerShell bitmap/image API invocation on $(win.eventdata.computer) as $(win.eventdata.user) [$(win.eventdata.commandLine)] -- Operation DragonReturn conceals DcRAT payload in background.jpg via LSB steganography; PowerShell using System.Drawing.Bitmap or GetPixel to process image files is a strong steganographic payload extraction indicator; correlate with rule 104026 (tax installer parent) on the same host (T1027.003)</description>
+    <mitre>
+      <id>T1027.003</id>
+    </mitre>
+    <group>dcrat,dragonreturn,defense_evasion,steganography,bitmap_payload,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104028: DcRAT CreateRemoteThread injection into svchost.exe
+       Sysmon EventID 8 (CreateRemoteThread) - Wazuh SID 61644 + eventID=8
+       MITRE: T1055 (Process Injection)
+
+       After decrypting and loading the .NET assembly in memory (bypassing
+       AMSI), the DcRAT loader injects the payload into svchost.exe using
+       the classic VirtualAllocEx + WriteProcessMemory + CreateRemoteThread
+       sequence. Targeting svchost.exe allows the injected DcRAT code to
+       blend with legitimate Windows service host processes and evade
+       endpoint detection tools that monitor unusual standalone processes.
+
+       The injection chain:
+         1. CreateToolhelp32Snapshot() enumerates running processes
+         2. Locate an svchost.exe instance (multiple exist in normal Windows)
+         3. OpenProcess() with PROCESS_ALL_ACCESS to obtain a full handle
+         4. VirtualAllocEx() allocates executable memory in svchost's space
+         5. WriteProcessMemory() copies decrypted payload into allocated region
+         6. CreateRemoteThread() starts execution within svchost.exe
+
+       This rule catches step 6 (CreateRemoteThread from non-system source
+       into svchost.exe). The sourceImage negate excludes known-legitimate
+       Windows system binaries that legitimately create threads in svchost.
+
+       NOTE: Sysmon EventID 8 logging must be explicitly enabled in the
+       Sysmon configuration. Add <CreateRemoteThread onmatch="exclude"/>
+       with exclusions for known-good system processes to reduce noise.
+
+       False positives: security products (EDRs, AV engines) and some
+       Windows system components do inject threads into svchost.exe.
+       The negate pattern excludes the most common legitimate sources
+       from System32/SysWOW64. Tune by adding confirmed-benign source
+       paths (e.g., your EDR agent) to the negate list.
+       =========================================================== -->
+  <rule id="104028" level="14">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^8$</field>
+    <field name="win.eventdata.targetImage" type="pcre2">(?i)\\svchost\.exe$</field>
+    <field name="win.eventdata.sourceImage" negate="yes" type="pcre2">(?i)^C:\\Windows\\(System32|SysWOW64|WinSxS|Microsoft\.NET)\\|^C:\\Program Files\\Windows Defender\\</field>
+    <description>DcRAT/DragonReturn: CreateRemoteThread injection into svchost.exe from non-system process $(win.eventdata.sourceImage) on $(win.eventdata.computer) -- Operation DragonReturn DcRAT payload uses VirtualAllocEx + WriteProcessMemory + CreateRemoteThread to inject into svchost.exe for defense evasion; non-Windows-system source process creating remote thread in svchost.exe is near-certain process injection; isolate host immediately (T1055)</description>
+    <mitre>
+      <id>T1055</id>
+    </mitre>
+    <group>dcrat,dragonreturn,defense_evasion,process_injection,svchost_injection,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104029: MixedSvc Windows service persistence (DcRAT)
+       Windows System EventID 7045 (service install) - Wazuh SID 60103
+       MITRE: T1543.003 (Create/Modify System Process: Windows Service)
+              T1036.005 (Masquerading: Match Legitimate Name or Location)
+
+       Operation DragonReturn establishes DcRAT persistence by installing
+       a Windows service named "MixedSvc" with the display name "Windows
+       Mixed Reality Service". This mimics the legitimate Windows Mixed
+       Reality Portal service (MixedRealityPortal.exe in C:\Windows\System32)
+       to blend into the service list and avoid casual administrator
+       inspection.
+
+       The key differentiator: the legitimate Windows Mixed Reality Portal
+       service binary lives exclusively in C:\Windows\System32\ or
+       C:\Program Files\WindowsApps\MicrosoftCorporationII.MixedReality*\.
+       The DcRAT MixedSvc service binary runs from a non-Microsoft path
+       (user AppData, ProgramData, TEMP, or a disguised install path).
+
+       This rule triggers when:
+         - A new service named MixedSvc (or matching "Mixed Reality" variants)
+           is installed (EventID 7045)
+         - AND the service binary is NOT from a known-legitimate Microsoft path
+
+       False positives: virtually none. The legitimate Windows Mixed Reality
+       service is pre-installed by Windows Update; EventID 7045 is not
+       generated for pre-existing services. A fresh install from a non-system
+       path matching this service name pattern is a confirmed DcRAT indicator.
+       =========================================================== -->
+  <rule id="104029" level="14">
+    <if_sid>60103</if_sid>
+    <field name="win.system.eventID">^7045$</field>
+    <field name="win.eventdata.serviceName" type="pcre2">(?i)(MixedSvc|windows.*mixed.*reality|mixed.*reality.*serv)</field>
+    <field name="win.eventdata.imagePath" negate="yes" type="pcre2">(?i)(C:\\Windows\\System32\\MixedReality|C:\\Program Files\\WindowsApps\\MicrosoftCorporation.*MixedReality)</field>
+    <description>DcRAT/DragonReturn: Suspicious MixedSvc service installed on $(win.eventdata.computer) [binary: $(win.eventdata.imagePath)] -- Operation DragonReturn registers DcRAT as Windows service 'MixedSvc' masquerading as 'Windows Mixed Reality Service'; service binary located outside legitimate Microsoft paths is a confirmed DcRAT persistence mechanism; investigate $(win.eventdata.imagePath) immediately (T1543.003, T1036.005)</description>
+    <mitre>
+      <id>T1543.003</id>
+      <id>T1036.005</id>
+    </mitre>
+    <group>dcrat,dragonreturn,persistence,service_persistence,masquerading,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104030: DcRAT AMSI bypass via .NET reflection in PowerShell
+       Sysmon EventID 1 (ProcessCreate) - Wazuh SID 61603
+       MITRE: T1562.001 (Impair Defenses: Disable or Modify Tools)
+
+       Before loading the decrypted DcRAT .NET assembly in-memory,
+       Operation DragonReturn's PowerShell stage patches the Windows
+       Antimalware Scan Interface (AMSI) to prevent detection of the
+       in-memory payload. The AMSI bypass technique patches the
+       AmsiScanBuffer function in amsi.dll to always return AMSI_RESULT_CLEAN,
+       enabling the DcRAT .NET assembly to be loaded via
+       [System.Reflection.Assembly]::Load() without triggering AV scans.
+
+       Common AMSI bypass patterns observed in this and related campaigns:
+         - Direct reference to "AmsiScanBuffer" for function pointer resolution
+         - Reference to "amsi.dll" for GetProcAddress-style resolution
+         - Reference to System.Management.Automation.AmsiUtils (PowerShell's
+           internal class that wraps AMSI; patching its methods disables AMSI)
+         - Use of [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer
+           combined with amsi-related strings to patch the function in-place
+
+       PowerShell commands containing AMSI-related strings are virtually
+       never produced by legitimate PowerShell scripts or IT automation.
+       This is a high-confidence indicator requiring immediate investigation.
+
+       False positives: security awareness training tools that demonstrate
+       AMSI bypass techniques in a controlled lab. Tune by suppressing
+       known security lab hostnames.
+       =========================================================== -->
+  <rule id="104030" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(powershell|pwsh)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(AmsiScanBuffer|AmsiInitialize|amsi\.dll|System\.Management\.Automation\.AmsiUtils|GetDelegateForFunctionPointer.*amsi|Reflection\.Assembly\]::Load\(|UnsafeNativeMethods.*GetMethod.*['""]Amsi|Set-MpPreference.*DisableRealtimeMonitoring)</field>
+    <description>DcRAT/DragonReturn: AMSI bypass via .NET reflection in PowerShell on $(win.eventdata.computer) by $(win.eventdata.user) [$(win.eventdata.commandLine)] -- Operation DragonReturn patches AmsiScanBuffer via .NET reflection to load the DcRAT .NET assembly without antivirus detection; PowerShell referencing AmsiScanBuffer, AmsiUtils, or combined GetDelegateForFunctionPointer+amsi patterns is a near-certain AMSI bypass; correlate with rule 104026 (tax installer) on the same host (T1562.001)</description>
+    <mitre>
+      <id>T1562.001</id>
+    </mitre>
+    <group>dcrat,dragonreturn,defense_evasion,amsi_bypass,fileless_execution,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104031: DcRAT C2 connection to Operation DragonReturn IOCs
+       Network/firewall logs - Wazuh SID 103000
+       MITRE: T1071.001 (Application Layer Protocol: Web Protocols)
+
+       Operation DragonReturn runs two parallel C2 channels after successful
+       DcRAT deployment:
+
+       1. DcRAT primary C2 (encrypted TLS):
+          IP: 223.26.63.40, Port: 2671
+          Infrastructure: ChinaNet ASN; Chinese-language web management
+          panel exposed publicly at the time of discovery; attributed to
+          the DcRAT builder's administrative interface.
+
+       2. Gh0st RAT variant C2:
+          Domain: kkxqbh[.]top, Port: 6666
+          This component provides screen capture, file exfiltration,
+          and reverse shell capabilities via the Gh0st RAT protocol.
+
+       3. AsyncRAT/Quasar-family C2:
+          Domain: ouewop[.]com, Port: 6351
+          Second-stage implant providing additional persistence and
+          redundant C2 access.
+
+       4. Supplemental C2/staging:
+          Domain: 1kkkkddd[.]com
+          Used for payload staging and redundant C2 routing.
+
+       All four IOCs are attributed to Operation DragonReturn by Seqrite
+       as of 2026-06-17 with all submissions confirmed from India. Any
+       connection to these IOCs from a monitored host indicates a completed
+       DcRAT infection. Isolate the host and begin incident response.
+       =========================================================== -->
+  <rule id="104031" level="14">
+    <if_sid>103000</if_sid>
+    <match>223.26.63.40|kkxqbh\.top|ouewop\.com|1kkkkddd\.com</match>
+    <description>DcRAT/DragonReturn: connection to confirmed Operation DragonReturn C2 infrastructure from $(agent.name) -- DcRAT TLS C2 at 223.26.63.40:2671 (ChinaNet ASN; Chinese-language management panel) or Gh0st RAT domain kkxqbh.top:6666 or AsyncRAT domain ouewop.com:6351 or staging domain 1kkkkddd.com; China-nexus espionage targeting Indian tax professionals; isolate host and initiate IR immediately (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>dcrat,dragonreturn,ioc_match,ioc_c2,china_nexus,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104032: DcRAT sustained C2 beaconing — active RAT confirmed
+       Frequency rule on 104031 — 2 events in 120 seconds, same source
+       MITRE: T1071.001 (Application Layer Protocol: Web Protocols)
+
+       DcRAT beacons to its C2 at regular intervals (configurable in the
+       DcRAT builder; default is every 10-60 seconds). A single match on
+       rule 104031 could theoretically be a transient false positive (e.g.,
+       cached DNS, miscategorized URL), but two or more connections from the
+       same source host to Operation DragonReturn C2 infrastructure within
+       120 seconds is unambiguous evidence of an active, running DcRAT
+       implant performing regular C2 check-ins.
+
+       This rule confirms persistent beaconing and should trigger CRITICAL
+       response: immediate host isolation, memory forensic acquisition,
+       and escalation to incident response. Given the China-nexus attribution
+       and espionage motivation, sensitive documents and credentials on the
+       host should be treated as compromised.
+
+       Action: Isolate host from network. Capture volatile memory before
+       powering off. Preserve Sysmon and Windows Event logs. File an
+       incident and notify Security Operations Manager.
+       =========================================================== -->
+  <rule id="104032" level="15" frequency="2" timeframe="120">
+    <if_matched_sid>104031</if_matched_sid>
+    <same_source_ip />
+    <description>DcRAT/DragonReturn: ACTIVE RAT BEACONING CONFIRMED from $(agent.name) -- 2+ connections to Operation DragonReturn C2 infrastructure (223.26.63.40 / kkxqbh.top / ouewop.com / 1kkkkddd.com) within 120 seconds; DcRAT implant is running and performing regular C2 check-ins; China-nexus espionage against Indian tax sector; CRITICAL: isolate host NOW, capture memory, escalate to IR (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>dcrat,dragonreturn,ioc_c2,beaconing,active_rat,china_nexus,critical,</group>
+  </rule>
+
+</group>
