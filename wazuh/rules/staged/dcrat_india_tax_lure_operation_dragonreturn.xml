@@ -41,7 +41,7 @@
                 WriteProcessMemory + CreateRemoteThread).
        Stage 5: Persistence established via Windows service "MixedSvc"
                 masquerading as "Windows Mixed Reality Service".
-       Stage 6: Dual payloads beacon outbound -- DcRAT over encrypted
+       Stage 6: Dual payloads beacon outbound - DcRAT over encrypted
                 TLS to 223.26.63.40:2671 (ChinaNet ASN with Chinese-
                 language management panel) and a Gh0st RAT derivative
                 to kkxqbh[.]top:6666.
