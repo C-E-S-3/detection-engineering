@@ -1,0 +1,185 @@
+<!-- ============================================================
+     CrushFTP CVE-2025-54309 Unauthenticated Admin Bypass Detection Rules
+     MITRE ATT&amp;CK Techniques:
+       T1190     - Exploit Public-Facing Application
+       T1136     - Create Account (Local Account)
+       T1059     - Command and Scripting Interpreter
+       T1078     - Valid Accounts
+     Rule IDs: 104054-104057
+     Author: SecOps Engineer (ESKA-582)
+     Date: 2026-07-20
+     CVE: CVE-2025-54309
+     CVSS: 9.0 (Critical)
+     CISA KEV: Added July 2025 (federal deadline August 2025)
+
+     Vulnerability summary:
+       DMZ proxy AS2 protocol validation flaw in CrushFTP 10 < 10.8.5
+       and CrushFTP 11 < 11.3.4_23 allows an unauthenticated remote
+       attacker to obtain full administrative access. A single crafted
+       HTTPS POST to the /AS2 endpoint bypasses authentication and
+       returns an admin session token. Attackers use the resulting
+       access to create a rogue admin account with a distinctive
+       32-character hex username (pattern: [0-9a-f]{32}m) written
+       to MainUsers/default/user.XML, then enumerate and exfiltrate
+       files via CrushFTP protocols. Active exploitation confirmed
+       July 18, 2026 (re-exploitation wave of the 2025 CVE).
+
+     Detection approach:
+       104054 - AS2 endpoint POST returning HTTP 200/302 in CrushFTP logs
+       104055 - FIM alert: CrushFTP user.XML modified in MainUsers directory
+       104056 - Shell or recon binary executed from CrushFTP working directory
+       104057 - Authentication with 32-char hex username pattern (rogue admin)
+
+     PRECAUTIONARY NOTE:
+       These rules target CrushFTP application logs. If CrushFTP is not
+       deployed in the environment, rules 104054 and 104057 will not
+       produce alerts. Deploy them now so coverage is in place for any
+       CrushFTP instance, present or future.
+       Rule 104055 fires on Wazuh FIM events, which requires FIM monitoring
+       configured for the CrushFTP installation directory (see below).
+
+     Log source prerequisites:
+       104054, 104057:
+         CrushFTP access/event logs forwarded to Wazuh manager via localfile
+         block. In syslog forwarding mode the program_name tag will appear
+         as "CrushFTP" or "crushftp". Configure with log_format=syslog in
+         the localfile block pointing to CrushFTP log directory.
+       104055:
+         Wazuh FIM (syscheck) monitoring the CrushFTP installation directory
+         with realtime=yes and report_changes=yes. Add to ossec.conf:
+           Linux:   /opt/CrushFTP*/MainUsers
+           Windows: C:\CrushFTP*\MainUsers
+         FIM base rules 550 (integrity changed) and 554 (file added) must
+         be active (they are enabled by default in Wazuh).
+       104056:
+         Linux auditd with execve syscall auditing enabled (existing
+         homelab auditd configuration covers this). CrushFTP runs as a
+         Java process; child processes inherit the CrushFTP working directory.
+
+     Severity tiers:
+       High (12)    - Strong indicator, investigate promptly
+       High (13)    - Near-certain malicious activity, investigate immediately
+       Critical (14)- Confirmed rogue account creation, immediate response
+
+     References:
+       - NVD: https://nvd.nist.gov/vuln/detail/CVE-2025-54309
+       - CrushFTP advisory: https://www.crushftp.com/crush10wiki/Wiki.jsp?page=Update
+       - CISA KEV: CVE-2025-54309 (added July 2025)
+       - Threat intel: detections/initial_access/crushftp_cve_2025_54309_unauth_admin_bypass.md
+     ============================================================ -->
+
+<group name="crushftp,initial_access,cve_2025_54309,">
+
+  <!-- ===========================================================
+       T1190 - Exploit Public-Facing Application
+       Rule 104054: AS2 endpoint POST returning success
+       Log source: CrushFTP HTTP access log via syslog/localfile
+
+       CrushFTP logs each HTTP transaction. Legitimate AS2 business
+       traffic (EDI/B2B) is high-volume and originates from known
+       partner IPs. A successful POST to /AS2 from an unknown source
+       with no preceding partner session is the primary exploit signal.
+       The bypass requires only a single request; any 200 or 302
+       response to /AS2 from a non-partner source warrants triage.
+
+       False positive sources: authorized AS2 trading partners sending
+       EDI transactions. Tune by creating an allow-list rule chained
+       to this one for known partner source IPs.
+       =========================================================== -->
+
+  <rule id="104054" level="13">
+    <program_name type="pcre2">(?i)crushftp</program_name>
+    <regex type="pcre2">(?i)POST\s+/as2[/ \?].*\s(200|302)\b</regex>
+    <description>CrushFTP CVE-2025-54309: POST to AS2 endpoint returned HTTP success on $(hostname) - unauthenticated admin bypass exploitation (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>crushftp_as2_exploit,exploit_pubfacing,cve_2025_54309,</group>
+  </rule>
+
+
+  <!-- ===========================================================
+       T1136 - Create Account (Local Account)
+       Rule 104055: FIM alert on CrushFTP user.XML in MainUsers
+       Log source: Wazuh FIM (syscheck) - rules 550/554
+
+       The rogue admin account is persisted by writing a new user
+       entry to MainUsers/default/user.XML. This file is only
+       legitimately modified by CrushFTP's own user management UI.
+       Any FIM alert on a file whose path contains both "MainUsers"
+       and "user.XML" is a high-confidence indicator of rogue account
+       creation. The critical identifier is the 32-char hex username
+       pattern [0-9a-f]{32}m that appears in the change diff.
+
+       FIM prerequisite: syscheck block in ossec.conf must monitor
+       the CrushFTP installation root with realtime=yes.
+       =========================================================== -->
+
+  <rule id="104055" level="14">
+    <if_sid>550,554</if_sid>
+    <regex type="pcre2">(?i)MainUsers.{0,200}user\.XML</regex>
+    <description>CrushFTP CVE-2025-54309: FIM alert - user.XML modified in CrushFTP MainUsers directory on $(hostname) - rogue admin account creation post-exploitation (T1136)</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>crushftp_user_xml,create_account,persistence,cve_2025_54309,</group>
+  </rule>
+
+
+  <!-- ===========================================================
+       T1059 - Command and Scripting Interpreter
+       Rule 104056: Shell or recon binary executed from CrushFTP cwd
+       Log source: Linux auditd execve records
+
+       Post-exploitation: the attacker uses the admin session obtained
+       via CVE-2025-54309 to invoke shell commands through CrushFTP's
+       server-side scripting or event system. Child processes inherit
+       the CrushFTP Java process working directory (typically the
+       CrushFTP installation root). Shell and recon binaries executed
+       with a CrushFTP directory as cwd have no legitimate operational
+       justification in this deployment.
+
+       Auditd prerequisite: execve syscall auditing must be enabled
+       (existing homelab auditd ruleset satisfies this requirement).
+       =========================================================== -->
+
+  <rule id="104056" level="12">
+    <decoded_as>auditd</decoded_as>
+    <field name="full_log" type="pcre2">(?i)cwd=\S*crushftp</field>
+    <field name="audit.exe" type="pcre2">(?i)/(bash|sh|dash|python3?|perl|ruby|curl|wget|nc|ncat|socat|whoami|id|uname|cat|find)</field>
+    <description>CrushFTP CVE-2025-54309: shell or recon binary $(audit.exe) executed from CrushFTP working directory on $(hostname) - post-exploitation command execution (T1059)</description>
+    <mitre>
+      <id>T1059</id>
+      <id>T1190</id>
+    </mitre>
+    <group>crushftp_child_process,execution,cve_2025_54309,</group>
+  </rule>
+
+
+  <!-- ===========================================================
+       T1078 - Valid Accounts
+       Rule 104057: Authentication using 32-char hex username pattern
+       Log source: CrushFTP auth/event log via syslog/localfile
+
+       After creating the rogue admin account, attackers authenticate
+       with it for persistent access. The account username follows a
+       distinctive pattern: exactly 32 lowercase hex characters
+       followed by the letter "m" (e.g. 5f3d8a1c2e4b6789abcdef0123456789m).
+       This pattern is not generated by CrushFTP's normal provisioning
+       flow. Any auth event matching this pattern is a confirmed
+       post-exploitation indicator regardless of whether the initial
+       exploit was observed.
+       =========================================================== -->
+
+  <rule id="104057" level="13">
+    <program_name type="pcre2">(?i)crushftp</program_name>
+    <regex type="pcre2">(?i)(user|login|authenticated|account)[=:\s]+[0-9a-f]{32}m\b</regex>
+    <description>CrushFTP CVE-2025-54309: authentication using 32-char hex username (rogue admin pattern) on $(hostname) - confirmed post-exploitation persistence via created account (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+      <id>T1136</id>
+    </mitre>
+    <group>crushftp_hex_username,valid_accounts,persistence,cve_2025_54309,</group>
+  </rule>
+
+</group>
