@@ -1,0 +1,128 @@
+# CrushFTP CVE-2025-54309 Unauthenticated Admin Bypass
+
+## Description
+
+Detects exploitation of CVE-2025-54309, a CVSS 9.0 authentication bypass in CrushFTP's DMZ proxy AS2 protocol validation path that grants unauthenticated callers full administrative privilege. A single crafted HTTPS POST to the AS2 endpoint returns a valid admin session token without requiring credentials. Active exploitation confirmed July 18, 2026; attackers use the resulting admin access to create a rogue admin account in `MainUsers/default/user.XML` (with a distinctive 32-char hex username), enumerate accessible files, exfiltrate data via CrushFTP's own transfer protocols, and in some cases delete files. Affects CrushFTP 10 < 10.8.5 and CrushFTP 11 < 11.3.4_23. Expected false positives on the process-spawn query: CrushFTP admin scripts that legitimately invoke shell commands for maintenance; filter by known admin user accounts and expected maintenance windows.
+
+## MITRE ATT&CK Mapping
+
+| Field | Value |
+|-------|-------|
+| Tactic | Initial Access |
+| Tactic ID | TA0001 |
+| Technique | Exploit Public-Facing Application |
+| Technique ID | T1190 |
+
+Secondary techniques: T1136.001 (Create Account: Local Account — rogue admin creation), T1078.003 (Valid Accounts: Local Accounts — ongoing access via created account), T1485 (Data Destruction — post-exploitation file deletion observed)
+
+## Lockheed Martin Kill Chain
+
+| Phase |
+|-------|
+| Exploitation |
+
+## Splunk Detection Query
+
+```spl
+`crushftp`
+sourcetype=crushftp_access
+method=POST
+(uri="*/AS2*" OR uri="*/as2*")
+status IN ("200", "302")
+| eval src_ip=coalesce(src_ip, src, clientip)
+| stats count min(_time) as firstTime max(_time) as lastTime
+  values(uri) as uris values(status) as statuses values(user_agent) as user_agents
+  by src_ip dest
+| where count <= 3
+| `security_content_ctime(firstTime)`
+| `security_content_ctime(lastTime)`
+| eval risk_score=90
+| table firstTime lastTime src_ip dest uris statuses user_agents count risk_score
+```
+
+**Supplemental: Rogue Admin Account Creation (Hex Username Pattern)**
+
+```spl
+`crushftp`
+sourcetype=crushftp_audit
+(action="user_created" OR action="admin_created" OR message="*user.XML*" OR message="*useradded*")
+| regex username="^[0-9a-f]{32}m$"
+| eval src_ip=coalesce(src_ip, src, clientip)
+| `security_content_ctime(_time)`
+| eval risk_score=100
+| table _time src_ip username action dest risk_score
+```
+
+**Supplemental: CrushFTP Process Spawning CLI Child (Post-Exploitation)**
+
+```spl
+| tstats `security_content_summariesonly` count min(_time) as firstTime max(_time) as lastTime
+  from datamodel=Endpoint.Processes
+  where Processes.parent_process_name IN ("CrushFTP.exe", "CrushFTP9.exe",
+      "CrushFTPBeta.exe", "java.exe", "javaw.exe")
+    AND Processes.process_name IN ("cmd.exe", "powershell.exe", "pwsh.exe",
+        "sh", "bash", "python.exe", "python3", "curl.exe", "wget",
+        "certutil.exe", "mshta.exe", "wscript.exe", "cscript.exe",
+        "whoami.exe", "net.exe", "net1.exe", "ipconfig.exe", "systeminfo.exe")
+  by Processes.dest Processes.user Processes.parent_process_name
+     Processes.process_name Processes.process Processes.process_id
+| `drop_dm_object_name(Processes)`
+| eval risk_score=case(
+    match(process_name, "(?i)powershell|cmd")
+      AND match(process, "(?i)http|ftp|iex|downloadstring|encodedcommand|-enc"), 95,
+    match(process_name, "(?i)whoami|systeminfo|ipconfig"), 85,
+    match(process_name, "(?i)net user|net group|net localgroup"), 88,
+    1=1, 80)
+| where risk_score >= 80
+| `security_content_ctime(firstTime)`
+| `security_content_ctime(lastTime)`
+| table firstTime lastTime dest user parent_process_name process_name process risk_score
+```
+
+**Supplemental: Unauthorized Modification of CrushFTP user.XML**
+
+```spl
+| tstats `security_content_summariesonly` count min(_time) as firstTime max(_time) as lastTime
+  from datamodel=Endpoint.Filesystem
+  where Filesystem.file_path IN (
+      "*\\MainUsers\\default\\user.XML",
+      "*/MainUsers/default/user.XML"
+    )
+    AND Filesystem.action IN ("created", "modified", "written")
+    AND NOT Filesystem.process_name IN (
+      "CrushFTP.exe", "CrushFTP9.exe", "CrushFTPBeta.exe", "java.exe", "javaw.exe"
+    )
+  by Filesystem.dest Filesystem.user Filesystem.file_path Filesystem.file_name
+     Filesystem.process_name
+| `drop_dm_object_name(Filesystem)`
+| `security_content_ctime(firstTime)`
+| `security_content_ctime(lastTime)`
+| eval risk_score=100
+| table firstTime lastTime dest user file_path file_name process_name risk_score
+```
+
+## Risk Score Logic
+
+| Condition | Score | Rationale |
+|-----------|-------|-----------|
+| AS2 POST returning 200/302 with low request count from single IP | 90 | Exploit pattern: legitimate AS2 business traffic is high-volume and comes from known partners; single-shot success from an unknown IP is near-certain exploitation |
+| Username matching `[0-9a-f]{32}m` pattern in audit log | 100 | The rogue admin naming pattern is not generated by CrushFTP's normal account provisioning flows; any match is a confirmed post-exploitation indicator |
+| CrushFTP process spawning shell with download/exec flags | 95 | CrushFTP should never spawn powershell.exe or cmd.exe for legitimate operations; download+exec combination is definitive post-exploitation |
+| CrushFTP process spawning recon commands (whoami, systeminfo) | 85 | Attacker using admin access to enumerate the host; no legitimate CrushFTP operation spawns system recon tools |
+| user.XML modified by non-CrushFTP process | 100 | Attacker directly editing the user configuration file; should never occur outside of CrushFTP's own service process |
+
+## Associated Threat Actors
+
+| Actor | Relationship to Detection |
+|-------|--------------------------|
+| Opportunistic scanning groups (unattributed) | Active exploitation confirmed July 18, 2026; attribution not yet established; consistent with automated vulnerability scanner → exploit → credential harvester pipeline |
+| Prior CrushFTP campaigns | CVE-2024-4040 (April 2024) exploited by suspected nation-state actors; CVE-2025-31161 (March 2025) exploited by cybercrime groups; historical pattern suggests both financially motivated and state actors prioritize CrushFTP zero-days |
+
+## References
+
+- [BleepingComputer — CrushFTP Zero-Day Actively Exploited (2026-07-18)](https://www.bleepingcomputer.com/news/security/crushftp-zero-day-actively-exploited-unauthenticated-admin-access/)
+- [CrushFTP Security Advisory — CVE-2025-54309](https://www.crushftp.com/crush10wiki/Wiki.jsp?page=Update)
+- [NVD — CVE-2025-54309](https://nvd.nist.gov/vuln/detail/CVE-2025-54309)
+- [MITRE ATT&CK — T1190: Exploit Public-Facing Application](https://attack.mitre.org/techniques/T1190/)
+- [MITRE ATT&CK — T1136.001: Create Account: Local Account](https://attack.mitre.org/techniques/T1136/001/)
+- [Threat Intel Report — CrushFTP CVE-2025-54309 (2026-07-18)](../../threat-intel/2026-07-18_bleepingcomputer-crushftp-cve-2025-54309-zero-day.md)

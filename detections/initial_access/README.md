@@ -69,6 +69,7 @@ Detections for techniques adversaries use to gain an initial foothold in a netwo
 | [SharePoint Server Missing Authentication (CVE-2026-56164)](sharepoint_missing_auth_network_access_cve_2026_56164.md) | T1190 | CWE-306 missing authentication allows unauthenticated network access to a critical SharePoint function with no user interaction; affects SharePoint 2016/2019/SE; CISA KEV July 14 2026 |
 | [Miasma npm Import-Time Payload Delivery](miasma_npm_import_time_payload_delivery.md) | T1195.002, T1528 | MiasmStealer v6.4 import-time execution via poisoned @asyncapi/specs npm package; bypasses postinstall hook auditing; exfiltrates CI/CD secrets to 85.137.53[.]71; July 2026 AsyncAPI ecosystem compromise |
 | [WordPress Core wp2shell Pre-Auth RCE (CVE-2026-63030 / CVE-2026-60137)](wordpress_wp2shell_rce_cve_2026_63030.md) | T1190, T1505.003, T1059.004 | CVSS 9.8 two-CVE chain; REST API batch-route permission desync + WP_Query SQL injection enables unauthenticated RCE on default WordPress installs; public PoC July 18 2026; affects WP 6.9.0–6.9.4 and 7.0.0–7.0.1; patched in 6.9.5 and 7.0.2 |
+| [CrushFTP CVE-2025-54309 Unauthenticated Admin Bypass](crushftp_cve_2025_54309_unauth_admin_bypass.md) | T1190, T1136.001, T1078.003 | CVSS 9.0 AS2 validation bypass in CrushFTP DMZ proxy grants unauthenticated admin session; active exploitation July 18 2026; rogue admin accounts with `[0-9a-f]{32}m` username pattern; modification of `MainUsers/default/user.XML` |
 
 ---
 
