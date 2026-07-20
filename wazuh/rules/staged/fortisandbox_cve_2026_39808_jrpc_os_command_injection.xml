@@ -304,7 +304,6 @@
        fortisandbox daemon) that contain these command strings are a
        strong indicator of post-exploitation activity. -->
   <rule id="103992" level="14">
-    <decoded_as>syslog</decoded_as>
     <regex type="pcre2">(?i)(?:httpd|python[23]?|fortisandbox|fdsm)\[.*(?:wget\s+http|curl\s+-[a-z]*\s+http|nc\s+-[a-z]*\s+\d|bash\s+-i|python\s+-c|perl\s+-e|/bin/sh\s+-c|crontab\s+-[el]|chmod\s+[0-7]{3,4}\s+/|id\s*;|whoami\s*;|cat\s+/etc/(?:passwd|shadow)|uname\s+-[ar])</regex>
     <description>FortiSandbox CVE-2026-39808: Suspicious OS command in FortiSandbox web service process syslog on $(agent.name) -- web service process executed shell command consistent with post-CVE-2026-39808 exploitation; correlate with HTTP-layer events for confirmation (T1059.004/T1562.001)</description>
     <mitre>

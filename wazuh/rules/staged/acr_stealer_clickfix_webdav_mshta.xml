@@ -1,6 +1,6 @@
 <!-- ============================================================
      ACR Stealer Detection Rules
-     Threat: ACR Stealer — ClickFix delivery via WebDAV/MSHTA intrusion chains
+     Threat: ACR Stealer - ClickFix delivery via WebDAV/MSHTA intrusion chains
      Source: Microsoft Security Blog / BleepingComputer / The Hacker News, July 2026
      MITRE ATT&CK Techniques:
        T1566     - Phishing (ClickFix lure via malvertising/SEO) (TA0001)
@@ -115,7 +115,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\mshta\.exe$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(https?://|\\\\[^\\]+\\[^\\]+\\.*\.hta)</field>
-    <description>ACR Stealer/ClickFix: mshta.exe fetching remote HTA content [$(win.eventdata.commandLine)] on $(win.eventdata.computer) by $(win.eventdata.user) -- ACR Stealer Campaign 2 uses mshta.exe to fetch attacker-controlled HTA over HTTPS as the initial fileless payload stage; mshta.exe loading remote HTTP/HTTPS URLs is a near-certain indicator of ClickFix/HTA abuse (T1218.005)</description>
+    <description>ACR Stealer/ClickFix: mshta.exe fetching remote HTA content [$(win.eventdata.commandLine)] on $(win.eventdata.computer) by $(win.eventdata.user) - ACR Stealer Campaign 2 uses mshta.exe to fetch attacker-controlled HTA over HTTPS as the initial fileless payload stage; mshta.exe loading remote HTTP/HTTPS URLs is a near-certain indicator of ClickFix/HTA abuse (T1218.005)</description>
     <mitre>
       <id>T1218.005</id>
       <id>T1566</id>
@@ -158,7 +158,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\rundll32\.exe$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(https?://.*\.dll|https?://.*,[A-Za-z]+|\\\\[^\\]+\.[a-z]{2,}\\.+,\s*[A-Za-z]+)</field>
-    <description>ACR Stealer/ClickFix: rundll32.exe loading DLL from remote WebDAV/HTTPS path [$(win.eventdata.commandLine)] on $(win.eventdata.computer) by $(win.eventdata.user) -- ACR Stealer Campaign 1 uses rundll32.exe to load a DLL directly from an attacker-controlled WebDAV share over HTTPS, bypassing disk-based AV; rundll32 with HTTPS URL arguments is a confirmed signed-binary proxy execution indicator (T1218.011)</description>
+    <description>ACR Stealer/ClickFix: rundll32.exe loading DLL from remote WebDAV/HTTPS path [$(win.eventdata.commandLine)] on $(win.eventdata.computer) by $(win.eventdata.user) - ACR Stealer Campaign 1 uses rundll32.exe to load a DLL directly from an attacker-controlled WebDAV share over HTTPS, bypassing disk-based AV; rundll32 with HTTPS URL arguments is a confirmed signed-binary proxy execution indicator (T1218.011)</description>
     <mitre>
       <id>T1218.011</id>
       <id>T1566</id>
@@ -195,7 +195,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\mshta\.exe$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)(\\powershell\.exe$|\\pwsh\.exe$|\\cmd\.exe$|\\wscript\.exe$|\\cscript\.exe$|\\regsvr32\.exe$|\\rundll32\.exe$)</field>
-    <description>ACR Stealer/ClickFix: mshta.exe spawned child interpreter $(win.eventdata.image) [$(win.eventdata.commandLine)] on $(win.eventdata.computer) by $(win.eventdata.user) -- ACR Stealer Campaign 2 HTA VBScript uses COM objects to spawn PowerShell or cmd for in-memory payload execution; correlate with rule 104020 (mshta remote fetch) on the same host for high-confidence ACR Stealer confirmation (T1218.005, T1059.001)</description>
+    <description>ACR Stealer/ClickFix: mshta.exe spawned child interpreter $(win.eventdata.image) [$(win.eventdata.commandLine)] on $(win.eventdata.computer) by $(win.eventdata.user) - ACR Stealer Campaign 2 HTA VBScript uses COM objects to spawn PowerShell or cmd for in-memory payload execution; correlate with rule 104020 (mshta remote fetch) on the same host for high-confidence ACR Stealer confirmation (T1218.005, T1059.001)</description>
     <mitre>
       <id>T1218.005</id>
       <id>T1059.001</id>
@@ -237,7 +237,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(\\Google\\Chrome\\User Data\\[^\\]+\\Cookies|\\Microsoft\\Edge\\User Data\\[^\\]+\\Cookies|\\Mozilla\\Firefox\\Profiles\\[^\\]+\\cookies\.sqlite|\\BraveSoftware\\Brave-Browser\\User Data\\[^\\]+\\Cookies|\\Opera Software\\Opera[^\\]*\\Cookies)</field>
     <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)(\\chrome\.exe$|\\msedge\.exe$|\\firefox\.exe$|\\brave\.exe$|\\opera\.exe$|\\chromium\.exe$|\\vivaldi\.exe$|\\torch\.exe$)</field>
-    <description>ACR Stealer: non-browser process $(win.eventdata.image) referencing browser Cookies database path [$(win.eventdata.commandLine)] on $(win.eventdata.computer) -- ACR Stealer targets browser Cookies for session token theft (T1528); non-browser processes accessing Cookie stores are a strong infostealer indicator; correlate with rules 104020-104022 for delivery chain context (T1528, T1555.003)</description>
+    <description>ACR Stealer: non-browser process $(win.eventdata.image) referencing browser Cookies database path [$(win.eventdata.commandLine)] on $(win.eventdata.computer) - ACR Stealer targets browser Cookies for session token theft (T1528); non-browser processes accessing Cookie stores are a strong infostealer indicator; correlate with rules 104020-104022 for delivery chain context (T1528, T1555.003)</description>
     <mitre>
       <id>T1528</id>
       <id>T1555.003</id>
@@ -277,7 +277,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(\\Google\\Chrome\\User Data\\Local State|\\Microsoft\\Edge\\User Data\\Local State)</field>
     <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)(\\chrome\.exe$|\\msedge\.exe$|\\GoogleUpdate\.exe$|\\MicrosoftEdgeUpdate\.exe$|\\MicrosoftEdge\.exe$|\\elevation_service\.exe$)</field>
-    <description>ACR Stealer: non-browser process $(win.eventdata.image) accessing browser Local State file [$(win.eventdata.commandLine)] on $(win.eventdata.computer) -- Chrome/Edge Local State contains the DPAPI-encrypted AES key for all stored browser secrets; non-browser access is the DPAPI key extraction step preceding full credential/cookie harvest; high-confidence ACR Stealer or browser infostealer indicator (T1528, T1555.003)</description>
+    <description>ACR Stealer: non-browser process $(win.eventdata.image) accessing browser Local State file [$(win.eventdata.commandLine)] on $(win.eventdata.computer) - Chrome/Edge Local State contains the DPAPI-encrypted AES key for all stored browser secrets; non-browser access is the DPAPI key extraction step preceding full credential/cookie harvest; high-confidence ACR Stealer or browser infostealer indicator (T1528, T1555.003)</description>
     <mitre>
       <id>T1528</id>
       <id>T1555.003</id>
@@ -314,7 +314,7 @@
   <rule id="104025" level="14" frequency="3" timeframe="60">
     <if_matched_sid>104023</if_matched_sid>
     <same_field>win.eventdata.computer</same_field>
-    <description>ACR Stealer: BROWSER CREDENTIAL SWEEP detected on $(win.eventdata.computer) -- 3+ browser Cookies database access events in 60s by $(win.eventdata.image); active multi-browser session token and credential harvest in progress; isolate host immediately and begin forensic triage (T1555.003, T1528)</description>
+    <description>ACR Stealer: BROWSER CREDENTIAL SWEEP detected on $(win.eventdata.computer) - 3+ browser Cookies database access events in 60s by $(win.eventdata.image); active multi-browser session token and credential harvest in progress; isolate host immediately and begin forensic triage (T1555.003, T1528)</description>
     <mitre>
       <id>T1555.003</id>
       <id>T1528</id>
