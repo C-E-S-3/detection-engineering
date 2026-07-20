@@ -1,0 +1,589 @@
+<!-- ============================================================
+     ViteVenom / PolinRider npm Supply Chain Detection Rules
+     Threat: PolinRider (DPRK-attributed) DEV#POPPER RAT and OmniStealer
+             distributed via 7 malicious Tailwind/Vite npm packages using
+             TRON and Aptos blockchain dead-drop C2 for XOR key delivery.
+             Active June 29 - July 17, 2026.
+     Source: opensourcemalware.com ViteVenom analysis (2026-07-19)
+             PolinRider / Contagious Interview (G1052, DPRK)
+     MITRE ATT&CK Techniques:
+       T1195.001 - Compromise Software Supply Chain (TA0001)
+       T1059.007 - Command and Script Interpreter: JavaScript (TA0002)
+       T1102.003 - Web Service: One-Way Communication / blockchain C2 (TA0011)
+       T1008     - Fallback Channels (Aptos / BSC as TRON fallback) (TA0011)
+       T1027     - Obfuscated Files / XOR-encrypted in-memory payload (TA0005)
+       T1555.003 - Credentials from Web Browsers (OmniStealer) (TA0006)
+       T1552.001 - Credentials in Files - SSH/cloud/npmrc (TA0006)
+       T1547.011 - Plist Modification - LaunchAgent persistence (TA0003)
+       T1053.005 - Scheduled Task / crontab persistence (TA0003)
+       T1071.001 - Application Layer Protocol: Web Protocols / Socket.io C2 (TA0011)
+     Rule IDs: 104033-104043
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-20
+
+     Campaign Overview - ViteVenom (July 2026):
+
+     PolinRider published 7 malicious npm packages between June 29 and
+     July 3 2026, typosquatting Tailwind CSS animation and typography
+     libraries used in the React/Vite/Tailwind frontend stack. Each
+     package contains a postinstall hook that:
+
+       1. Connects to the TRON blockchain API (api.trongrid.io) and
+          queries wallet TMfKQEd7TJJa5xNZJZ2Lep838vrzrs7mAP for the
+          latest transaction memo field.
+       2. Extracts a base64-encoded XOR key from the memo.
+       3. XOR-decrypts an embedded payload blob using that key.
+       4. Passes the decrypted JS string to eval() for in-memory execution.
+       5. Falls back to Aptos (fullnode.mainnet.aptoslabs.com) if TRON fails.
+
+     The delivered payload is either:
+       - DEV#POPPER RAT: Node.js backdoor providing interactive remote
+         shell, file system enumeration, and secondary payload delivery
+       - OmniStealer: credential harvester targeting Chrome/Firefox/Edge/
+         Brave session cookies and login databases, SSH private keys, AWS
+         credentials, .npmrc auth tokens, kubeconfig, and .env files
+
+     Malicious packages (all removed from npm registry July 17-19 2026):
+       tailwindcss-style-animate 1.1.6
+       tailwind-mainanimation 2.3.3
+       tailwind-autoanimation 2.3.6
+       tailwind-animationbased (multiple versions)
+       tailwindcss-typography-style 0.8.2
+       tailwindcss-style-modify 0.8.3
+       tailwindcss-animate-style 1.2.5
+
+     Known C2 / Blockchain Infrastructure:
+       TRON wallet (primary):  TMfKQEd7TJJa5xNZJZ2Lep838vrzrs7mAP
+       TRON wallet (fallback): TXfxHUet9pJVU1BgVkBAbrES4YUc1nGzcG
+       Aptos address:          0xbe037400670fbf1c32364f762975908dc43eeb38759263e7dfcdabc76380811e
+       TRON RPC:               api.trongrid.io
+       Aptos RPC:              fullnode.mainnet.aptoslabs.com
+       BSC (second fallback):  bsc-dataseed.binance.org
+       Socket.io C2 IPs:       166.88.134.62, 198.105.127.210, 23.27.202.27
+       (Vercel C2 domains:     already tracked from June 2026 PolinRider campaign)
+
+     File / Package IOC hashes (SHA256):
+       9a541dffb7fc18dc71dbc8523ec6c3a71c224ffeb518ae3a8d7d16377aebee58
+       bb2a89001410fa5a11dea6477d4f5573130261badc67fe952cfad1174c2f0edd
+       7c5adef4b5aee7a4aa6e795a86f8b7d601618c3bc003f1326ca57d03ec7d6524
+
+     Log source prerequisites:
+       Rules 104033, 104038:
+         - Sysmon EventID 1 (ProcessCreate) -> Wazuh SID 61603
+         - Sysmon must capture CommandLine and Image fields.
+       Rules 104034, 104035, 104036, 104037:
+         - Network/firewall logs -> Wazuh SID 103000 (firewall group anchor)
+         - Destination hostname must appear in the raw log; FortiGate,
+           pfSense, Suricata, or Sysmon EventID 3 (NetworkConnect) are
+           all suitable sources. DNS proxy logs will also trigger these
+           rules if they include the destination hostname.
+       Rule 104036 (additional):
+         - Wazuh FIM syscheck (SID 550-593) on npm node_modules directories
+           or developer workspace paths; fires when the malicious package
+           JS source containing the wallet address is written to disk.
+       Rule 104039:
+         - Sysmon EventID 11 (FileCreate) -> Wazuh SID 61644
+         - Sysmon must log FileCreate events in AppData browser profile paths.
+       Rule 104040:
+         - Linux auditd execve+openat syscall rules forwarded to Wazuh.
+         - Recommended auditd rule: -a always,exit -F arch=b64
+           -S openat -F uid=0 -k credential_access
+           (also configure per-user rules for non-root environments)
+       Rule 104041:
+         - Wazuh FIM (syscheck) with who-data enabled on macOS, monitoring
+           /Users/*/Library/LaunchAgents/ and /Library/LaunchAgents/
+         - who-data requires macOS Endpoint Security Framework; available
+           in Wazuh 4.3+ with 'whodata' mode in ossec.conf syscheck config.
+       Rule 104042:
+         - Linux auditd execve rules forwarded to Wazuh.
+         - Sysmon for Linux EventID 1 also qualifies (if deployed).
+       Rule 104043:
+         - Frequency rule on 104034; inherits 104034 log source prerequisites.
+
+     Severity tiers:
+       11 - Informational FIM new LaunchAgent (possible legitimate software)
+       13 - npm/node inline eval execution pattern (high suspicion)
+       13 - npm/node attempting crontab or profile modification on Linux
+       14 - npm install of known ViteVenom package name (confirmed IOC)
+       14 - TRON/Aptos/BSC RPC connection (strong blockchain C2 indicator)
+       14 - PolinRider Socket.io C2 IP connection (confirmed C2 IOC)
+       14 - OmniStealer browser credential file access from node process
+       14 - OmniStealer SSH/cloud credential access from npm/node on Linux
+       14 - DEV#POPPER LaunchAgent plist written by npm/node on macOS
+       15 - TRON wallet dead-drop address confirmed in network or FIM log
+       15 - Sustained TRON C2 beaconing (active DEV#POPPER RAT confirmed)
+
+     References:
+       opensourcemalware.com ViteVenom analysis (2026-07-19):
+         https://opensourcemalware.com/
+       PolinRider / Contagious Interview prior campaign (2026-06-29):
+         https://thehackernews.com/2026/06/hijacked-npm-and-go-packages-use-vs.html
+       JFrog Security Research - Hijacked npm VSCode Tasks Blockchain:
+         https://research.jfrog.com/post/hijacked-npm-vscode-tasks-blockchain/
+       MITRE ATT&CK - Contagious Interview G1052:
+         https://attack.mitre.org/groups/G1052/
+       MITRE ATT&CK - T1102.003 Web Service One-Way Communication:
+         https://attack.mitre.org/techniques/T1102/003/
+       MITRE ATT&CK - T1195.001 Compromise Software Dependencies:
+         https://attack.mitre.org/techniques/T1195/001/
+     ============================================================ -->
+
+<group name="threat_intel,supply_chain,initial_access,execution,command_and_control,credential_access,persistence,windows,linux,macos,vitevenom,polinrider,dprk,">
+
+  <!-- ===========================================================
+       Rule 104033: Known ViteVenom malicious npm package name
+       Sysmon EventID 1 (ProcessCreate) - Wazuh SID 61603
+       MITRE: T1195.001 (Supply Chain Compromise)
+
+       This rule fires when the npm process is launched with one of the
+       7 known malicious ViteVenom package names as a command-line argument.
+       All 7 packages were removed from the npm registry July 17-19 2026
+       following security community disclosure.
+
+       This fires for direct npm install commands (e.g., "npm install
+       tailwindcss-style-animate") and also for npm commands that reference
+       a package.json where one of these names appears in the arguments.
+       It does NOT reliably fire when the package is pulled as a transitive
+       dependency (the package name may not appear in npm's spawned command
+       line in that case).
+
+       If this rule fires on a date AFTER July 17 2026, the install was
+       attempted against a version no longer in the registry or a cached
+       copy; investigate whether the cached package is a genuine old install
+       or an adversary replay. Either way, treat the host as potentially
+       compromised and audit for OmniStealer or DEV#POPPER artefacts.
+
+       False positives: none expected. These package names are not used by
+       any legitimate software. If a developer has a local package that
+       accidentally shares one of these names, it would indicate an unusual
+       naming collision that warrants investigation regardless.
+       =========================================================== -->
+  <rule id="104033" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\npm(?:\.cmd|\.exe)?$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(tailwindcss-style-animate|tailwind-mainanimation|tailwind-autoanimation|tailwind-animationbased|tailwindcss-typography-style|tailwindcss-style-modify|tailwindcss-animate-style)</field>
+    <description>ViteVenom/PolinRider: Known malicious Tailwind npm package name detected in npm command on $(win.eventdata.computer) by $(win.eventdata.user) [$(win.eventdata.commandLine)] -- 7 PolinRider supply chain packages (DEV#POPPER RAT or OmniStealer) delivered as Tailwind CSS typosquats; these packages were removed from the npm registry July 17-19 2026; treat the workstation as compromised and rotate all developer credentials (T1195.001)</description>
+    <mitre>
+      <id>T1195.001</id>
+      <id>T1059.007</id>
+    </mitre>
+    <group>vitevenom,polinrider,npm_supply_chain,tailwind_typosquat,ioc_match,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104034: TRON blockchain RPC connection from developer tooling
+       Network/firewall logs - Wazuh SID 103000
+       MITRE: T1102.003 (Web Service: One-Way Communication)
+
+       ViteVenom's postinstall hook contacts the public TRON blockchain
+       API (api.trongrid.io) to read the latest transaction memo from wallet
+       TMfKQEd7TJJa5xNZJZ2Lep838vrzrs7mAP. The memo contains the base64-
+       encoded XOR key used to decrypt the DEV#POPPER RAT or OmniStealer
+       payload blob embedded in the package. This dead-drop mechanism means
+       the decryption key can never be sinkholed or blocked without blocking
+       the entire TRON blockchain network.
+
+       On corporate endpoints, no legitimate process invoked during software
+       development (npm, node, CI runners) has a business reason to query the
+       TRON JSON-RPC API. Web3 TRON DApp developers would use this
+       legitimately, but the postinstall hook context (npm/node spawned as a
+       subprocess of the package manager) distinguishes malicious from
+       legitimate: a human TRON developer would invoke their DApp code from
+       their own application, not from within a Tailwind/Vite package
+       postinstall script.
+
+       False positives: TRON DApp developers using TronWeb in local scripts;
+       blockchain engineer CI pipelines that deploy TRON smart contracts.
+       Scope with asset groups to exclude designated TRON developer
+       workstations if needed.
+       =========================================================== -->
+  <rule id="104034" level="14">
+    <if_sid>103000</if_sid>
+    <match>api\.trongrid\.io|fullnode\.tron\.network|api\.tronstack\.io|fullnode\.shasta\.trongrid\.io|rpc\.trongrid\.io</match>
+    <description>ViteVenom/PolinRider: TRON blockchain RPC connection detected on $(agent.name) -- ViteVenom malicious npm postinstall hooks contact TronGrid public API (api.trongrid.io) to retrieve XOR decryption key from TRON wallet TMfKQEd7TJJa5xNZJZ2Lep838vrzrs7mAP transaction memo; no legitimate npm or CI process needs to query TRON blockchain infrastructure; high-confidence indicator of ViteVenom postinstall hook execution or active DEV#POPPER RAT check-in (T1102.003, T1195.001)</description>
+    <mitre>
+      <id>T1102.003</id>
+      <id>T1195.001</id>
+    </mitre>
+    <group>vitevenom,polinrider,blockchain_c2,tron_rpc,command_and_control,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104035: Aptos or BSC blockchain RPC connection (fallback C2)
+       Network/firewall logs - Wazuh SID 103000
+       MITRE: T1102.003 (Web Service: One-Way Communication), T1008 (Fallback Channels)
+
+       ViteVenom uses a three-chain dead-drop resolver: TRON is the primary
+       channel; if the TRON query fails (network block, API outage), the
+       postinstall hook falls back to querying the Aptos blockchain wallet
+       (fullnode.mainnet.aptoslabs.com) and then Binance Smart Chain (BSC,
+       bsc-dataseed.binance.org). This multi-chain fallback makes the C2
+       key delivery robust against defenders who block a single blockchain
+       RPC endpoint.
+
+       Note on rpc.ankr.com: this endpoint is shared with Solana (Glassworm)
+       and Ethereum (EtherHiding/EtherRAT) and may produce false positives.
+       The most specific indicators for ViteVenom are the Aptos endpoints
+       (fullnode.mainnet.aptoslabs.com, api.mainnet.aptoslabs.com); these
+       have virtually no legitimate use on non-Aptos-developer corporate
+       endpoints.
+
+       False positives: Aptos DApp developers; BSC (Binance Smart Chain)
+       DApp developers. BSC endpoints (bsc-dataseed.binance.org) are also
+       queried by crypto portfolio trackers and browser extensions. Scope
+       with asset groups for known blockchain developer workstations.
+       =========================================================== -->
+  <rule id="104035" level="14">
+    <if_sid>103000</if_sid>
+    <match>fullnode\.mainnet\.aptoslabs\.com|api\.mainnet\.aptoslabs\.com|rpc\.mainnet\.aptos\.dev|rpc\.aptos\.network|bsc-dataseed\.binance\.org|bsc-rpc\.publicnode\.com|bsc-dataseed1\.binance\.org|bsc-dataseed2\.binance\.org</match>
+    <description>ViteVenom/PolinRider: Aptos or BSC blockchain RPC connection detected on $(agent.name) -- ViteVenom postinstall hooks use Aptos (fullnode.mainnet.aptoslabs.com) and Binance Smart Chain (bsc-dataseed.binance.org) as fallback dead-drop channels when TRON is unreachable; this multi-chain fallback is a DPRK PolinRider fingerprint; developer tooling has no legitimate reason to query Aptos or BSC RPC from package install scripts (T1102.003, T1008)</description>
+    <mitre>
+      <id>T1102.003</id>
+      <id>T1008</id>
+      <id>T1195.001</id>
+    </mitre>
+    <group>vitevenom,polinrider,blockchain_c2,aptos_bsc_rpc,command_and_control,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104036: TRON wallet dead-drop address IOC in network or FIM log
+       Network/firewall logs (SID 103000) or FIM syscheck (SID 550-593)
+       MITRE: T1102.003 (Web Service: One-Way Communication)
+
+       The two TRON wallet addresses used by ViteVenom as blockchain C2
+       dead drops are confirmed IOCs. They appear in:
+
+         (a) NETWORK logs: as URL path components when the postinstall hook
+             queries TronGrid, e.g.:
+             GET /v1/accounts/TMfKQEd7TJJa5xNZJZ2Lep838vrzrs7mAP/transactions
+             These would appear in HTTP proxy logs, Suricata alerts, or
+             Sysmon EventID 3 network logs if deep packet inspection is enabled.
+
+         (b) FIM logs: when Wazuh syscheck scans node_modules and reads the
+             malicious package's postinstall script (which contains the wallet
+             address as a string literal), the address may appear in the FIM
+             alert content for newly-created or modified files.
+
+       Either sighting is a confirmed ViteVenom IOC. FIM detection requires
+       syscheck monitoring of node_modules directories or developer workspace
+       paths. The SHA256 file hashes (also known ViteVenom IOCs) are not
+       matched here to avoid overlap with generic IOC hash rules; add them
+       to the iocs/ CSV files for MISP/threat feed integration.
+
+       False positives: essentially none. These wallet addresses are unique
+       to the ViteVenom campaign and have no legitimate software use.
+       =========================================================== -->
+  <rule id="104036" level="15">
+    <if_sid>103000,550,553,554,593</if_sid>
+    <match>TMfKQEd7TJJa5xNZJZ2Lep838vrzrs7mAP|TXfxHUet9pJVU1BgVkBAbrES4YUc1nGzcG</match>
+    <description>ViteVenom/PolinRider: Confirmed TRON wallet dead-drop address IOC detected on $(agent.name) -- TRON wallets TMfKQEd7TJJa5xNZJZ2Lep838vrzrs7mAP and TXfxHUet9pJVU1BgVkBAbrES4YUc1nGzcG are the primary blockchain C2 dead-drop wallets used by ViteVenom to deliver XOR decryption keys for DEV#POPPER RAT and OmniStealer payloads; any sighting of these addresses in network traffic (TronGrid API requests) or FIM-scanned source files is a confirmed supply chain compromise indicator; isolate host and begin IR (T1102.003, T1195.001)</description>
+    <mitre>
+      <id>T1102.003</id>
+      <id>T1195.001</id>
+    </mitre>
+    <group>vitevenom,polinrider,ioc_match,tron_wallet,blockchain_c2,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104037: PolinRider Socket.io C2 server connection
+       Network/firewall logs - Wazuh SID 103000
+       MITRE: T1071.001 (Application Layer Protocol: Web Protocols)
+
+       After the ViteVenom postinstall hook decrypts and evals the
+       DEV#POPPER RAT payload, the RAT establishes a persistent Socket.io
+       WebSocket connection to one of three known PolinRider C2 servers:
+         166.88.134.62
+         198.105.127.210
+         23.27.202.27
+
+       These are the same C2 IPs documented in the June 2026 PolinRider
+       Contagious Interview campaign (html-to-gutenberg / fetch-page-assets
+       npm packages). Their reuse in ViteVenom confirms infrastructure
+       continuity between the two campaigns. A connection to any of these
+       IPs from a developer workstation indicates that the DEV#POPPER RAT
+       is running and has successfully established its C2 channel.
+
+       This is a critical-response indicator: the workstation is actively
+       under attacker control. Isolate the host immediately, capture volatile
+       memory, and escalate to incident response. The developer's npm tokens,
+       SSH keys, AWS credentials, and any code repositories they have write
+       access to should be treated as compromised.
+
+       False positives: none; these are not CDN, cloud, or shared hosting
+       IPs with legitimate multi-tenant use.
+       =========================================================== -->
+  <rule id="104037" level="14">
+    <if_sid>103000</if_sid>
+    <match>166\.88\.134\.62|198\.105\.127\.210|23\.27\.202\.27</match>
+    <description>ViteVenom/PolinRider: Connection to confirmed PolinRider Socket.io C2 server from $(agent.name) -- IPs 166.88.134.62, 198.105.127.210, and 23.27.202.27 are the DEV#POPPER RAT C2 servers from the PolinRider Contagious Interview campaign (DPRK-attributed); an active connection confirms the RAT is running and has established its C2 channel; isolate host immediately, capture memory, and begin incident response (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1195.001</id>
+    </mitre>
+    <group>vitevenom,polinrider,ioc_c2,socketio_c2,devpopper_rat,dprk,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104038: node.exe inline eval with XOR/base64 decode pattern
+       Sysmon EventID 1 (ProcessCreate) - Wazuh SID 61603
+       MITRE: T1027 (Obfuscated Files), T1059.007 (JavaScript)
+
+       When the ViteVenom postinstall hook decrypts its payload and runs it
+       via eval(), it typically invokes node with the -e flag (or the long
+       form: node -eval / node -e) combined with a decryption stub. The
+       commandLine captured by Sysmon EventID 1 would look like:
+
+         node -e "var k=Buffer.from('BASE64KEY','base64');eval(XOR(payload,k))"
+         node -e "eval(atob('OBFUSCATED_PAYLOAD'))"
+         node -e "require('./_payload')(Buffer.from('KEY','hex'))"
+
+       The pattern of node.exe called with an inline -e/-eval flag containing
+       eval(), Buffer.from(), atob(), or String.fromCharCode is a strong
+       indicator of in-memory payload execution from a malicious npm hook.
+       Legitimate developer use of node -e typically includes debugging
+       snippets, not eval(Buffer.from()) patterns.
+
+       This rule can also fire on other npm supply chain attacks that use
+       in-memory eval() delivery; it is not exclusive to ViteVenom. Correlate
+       with rules 104034-104036 (blockchain RPC connections) on the same host
+       within a short window to confirm ViteVenom specifically.
+
+       False positives: rare. Some developer tooling automation scripts use
+       node -e for one-liners. Investigate any node -e invocation that
+       references eval() combined with base64/hex decoding - legitimate
+       automation rarely needs runtime eval of decoded binary content.
+       =========================================================== -->
+  <rule id="104038" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\node(?:\.exe)?$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:(?:-e|--eval)\s+.{0,200}(?:eval\s*\(|Buffer\.from\s*\(|atob\s*\(|String\.fromCharCode\s*\(|fromCharCode)|eval\s*\(\s*(?:require|Buffer|atob|String))</field>
+    <description>ViteVenom/PolinRider: node.exe invoked with inline eval or decode pattern on $(win.eventdata.computer) by $(win.eventdata.user) [$(win.eventdata.commandLine)] -- ViteVenom postinstall hooks execute the XOR-decrypted DEV#POPPER RAT or OmniStealer payload via node -e eval() or --eval with Buffer.from()/atob() decoding; inline eval of decoded binary content is a strong indicator of in-memory supply chain payload execution; correlate with TRON/Aptos C2 connection rules 104034-104035 on this host (T1027, T1059.007)</description>
+    <mitre>
+      <id>T1027</id>
+      <id>T1059.007</id>
+      <id>T1195.001</id>
+    </mitre>
+    <group>vitevenom,polinrider,eval_execution,fileless_payload,obfuscated_js,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104039: OmniStealer - node.exe accessing browser credential files
+       Sysmon EventID 11 (FileCreate) - Wazuh SID 61644
+       MITRE: T1555.003 (Credentials from Web Browsers)
+
+       OmniStealer, the infostealer payload in the majority of ViteVenom
+       packages, harvests browser-stored credentials by locating and copying
+       the browser credential database files from the victim's AppData path:
+
+         Chrome/Chromium: ...Google\Chrome\User Data\Default\Login Data
+                          ...Google\Chrome\User Data\Default\Cookies
+                          ...Google\Chrome\User Data\Default\Local State
+         Microsoft Edge:  ...Microsoft\Edge\User Data\Default\Login Data
+                          ...Microsoft\Edge\User Data\Default\Cookies
+         Brave:           ...BraveSoftware\Brave-Browser\User Data\Default\Login Data
+         Firefox:         ...Mozilla\Firefox\Profiles\*\logins.json
+                          ...Mozilla\Firefox\Profiles\*\key4.db
+
+       Sysmon EventID 11 (FileCreate) fires when node.exe creates a file
+       at one of these paths - the most likely scenario is OmniStealer
+       creating a temporary copy of the database (since Chrome/Edge lock the
+       original file) before reading and exfiltrating its contents. Any file
+       creation by node.exe in a browser credential path is highly anomalous
+       since no npm package lifecycle step has a legitimate reason to write
+       files in browser credential directories.
+
+       False positives: extremely rare. Browser sync tools that integrate
+       with Node.js backends would be unusual. Validate the image path:
+       legitimate browser utilities run from Program Files, not from npm's
+       postinstall context.
+       =========================================================== -->
+  <rule id="104039" level="14">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\node(?:\.exe)?$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\\AppData\\(?:Local|Roaming)\\(?:Google\\Chrome|Microsoft\\Edge|BraveSoftware\\Brave-Browser|Mozilla\\Firefox\\Profiles\\[^\\]+)\\(?:(?:User\s+Data\\)?[^\\]*\\)?(?:Login\s+Data|Cookies|Local\s+State|Web\s+Data|Network\\Cookies|logins\.json|key4\.db)</field>
+    <description>ViteVenom/OmniStealer: node.exe created or copied a browser credential database file on $(win.eventdata.computer) by $(win.eventdata.user) [file: $(win.eventdata.targetFilename)] -- OmniStealer harvests Chrome, Edge, Brave, and Firefox credential databases (Login Data, Cookies, logins.json, key4.db) by copying them from the user profile; node.exe has no legitimate reason to create files in browser credential directories; this is a confirmed OmniStealer collection indicator (T1555.003)</description>
+    <mitre>
+      <id>T1555.003</id>
+      <id>T1195.001</id>
+    </mitre>
+    <group>vitevenom,omnistealer,credential_theft,browser_credentials,collection,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104040: OmniStealer - npm/node accessing SSH/cloud credentials
+       Linux auditd syscall events
+       MITRE: T1552.001 (Credentials in Files), T1555.003
+
+       On Linux (and macOS with auditd), OmniStealer accesses a broad set
+       of developer credential files to harvest authentication secrets:
+         ~/.ssh/id_rsa, id_ed25519, id_ecdsa, id_dsa (SSH private keys)
+         ~/.aws/credentials, ~/.aws/config (AWS CLI credentials)
+         ~/.npmrc (npm authentication tokens for private registries)
+         ~/.kube/config (Kubernetes cluster access credentials)
+         ~/.docker/config.json (Docker Hub and registry credentials)
+         ~/.config/gcloud/credentials (Google Cloud SDK credentials)
+         ~/.netrc (FTP/HTTP credentials in plaintext)
+         .env files (application-level secrets and API keys)
+         ~/.pypirc (PyPI upload credentials)
+
+       When npm/node opens any of these paths during package installation
+       or postinstall hook execution, it is almost certainly OmniStealer
+       harvesting credentials rather than a legitimate package install step.
+       npm install never has a legitimate reason to access SSH private keys,
+       cloud credentials, or auth tokens stored in ~/.npmrc outside of its
+       own npm-authentication context (the .npmrc access during install is to
+       READ registry tokens, not to exfiltrate them).
+
+       Requires auditd with openat syscall logging. To generate these events:
+         auditctl -a always,exit -F arch=b64 -S openat -k cred_access
+
+       False positives: developer tools that legitimately use cloud credentials
+       during postinstall (e.g., Terraform providers that run during install).
+       Known-good postinstall scripts that access ~/.aws/ for build artifact
+       retrieval may trigger this. Review and allowlist specific processes after
+       confirming legitimacy in your environment.
+       =========================================================== -->
+  <rule id="104040" level="14">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall">^open(at)?$</field>
+    <field name="audit.exe" type="pcre2">(?:^|/)(?:node|npm|npx)$</field>
+    <match>\.ssh/id_rsa|\.ssh/id_ed25519|\.ssh/id_ecdsa|\.ssh/id_dsa|\.aws/credentials|\.npmrc|\.kube/config|\.docker/config\.json|\.netrc|gcloud/credentials|\.pypirc</match>
+    <description>ViteVenom/OmniStealer: npm or node process opened a sensitive credential file on $(agent.name) [process: $(audit.exe)] -- OmniStealer targets SSH private keys, AWS credentials, .npmrc auth tokens, kubeconfig, Docker credentials, and GCP credentials for exfiltration; npm or node opening these files during package install context is a strong OmniStealer credential harvest indicator; check for concurrent TRON/Aptos C2 connections (rules 104034-104035) to confirm ViteVenom (T1552.001, T1555.003)</description>
+    <mitre>
+      <id>T1552.001</id>
+      <id>T1555.003</id>
+      <id>T1195.001</id>
+    </mitre>
+    <group>vitevenom,omnistealer,linux,credential_theft,ssh_keys,cloud_credentials,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104041: DEV#POPPER RAT - LaunchAgent plist created by npm/node
+       Wazuh FIM syscheck new file (SID 554) with who-data
+       MITRE: T1547.011 (Plist Modification - LaunchAgent persistence)
+
+       On macOS, DEV#POPPER RAT establishes persistence by writing a
+       LaunchAgent property list file to one of:
+         ~/Library/LaunchAgents/*.plist  (user-level, survives user login)
+         /Library/LaunchAgents/*.plist   (system-level, requires root)
+
+       The postinstall hook creates the plist from within the npm/node
+       process tree, so if Wazuh FIM is configured with who-data enabled
+       on macOS (requires Endpoint Security Framework; Wazuh 4.3+), the
+       creating process (node or npm) can be attributed directly.
+
+       The plist typically points to a long-running node.exe invocation or
+       shell script that reconnects to the PolinRider C2 on login. The plist
+       ServiceName in ViteVenom variants observed to date mimics system
+       service names (com.apple.sysupdate, com.apple.launchservices.sync, etc.)
+       to blend into the LaunchAgent list.
+
+       Requires Wazuh syscheck with whodata=yes monitoring:
+         /Users/*/Library/LaunchAgents
+         /Library/LaunchAgents
+
+       Without who-data, new plist files in LaunchAgents will still fire
+       SID 554 but the process attribution field (syscheck.audit.process.name)
+       will be absent and the rule will not match.
+
+       False positives: legitimate software (package managers like Homebrew,
+       app installers) does create LaunchAgents during installation. Tune by
+       allowlisting known-good plist names in your environment. The key
+       differentiator for DEV#POPPER is the creating process being node/npm.
+       =========================================================== -->
+  <rule id="104041" level="14">
+    <if_sid>554</if_sid>
+    <match>/Library/LaunchAgents/</match>
+    <field name="syscheck.path" type="pcre2">(?i)/Library/LaunchAgents/.*\.plist$</field>
+    <field name="syscheck.audit.process.name" type="pcre2">(?i)^(node|npm|npx)$</field>
+    <description>ViteVenom/DEV#POPPER RAT: New LaunchAgent plist created by node or npm process on $(agent.name) [file: $(syscheck.path), creator: $(syscheck.audit.process.name)] -- DEV#POPPER RAT establishes macOS persistence by writing a LaunchAgent plist to ~/Library/LaunchAgents/ from an npm postinstall hook; a LaunchAgent created by node or npm is a confirmed DEV#POPPER persistence mechanism; remove the plist, kill any running node processes, and begin full host investigation (T1547.011, T1195.001)</description>
+    <mitre>
+      <id>T1547.011</id>
+      <id>T1195.001</id>
+    </mitre>
+    <group>vitevenom,devpopper_rat,macos,launchagent,persistence,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104042: DEV#POPPER RAT - crontab or profile modification by npm/node
+       Linux auditd execve - Wazuh decoded_as auditd
+       MITRE: T1053.005 (Scheduled Task/Job: Cron), T1546.004 (Unix Shell Config)
+
+       On Linux, DEV#POPPER RAT establishes persistence by modifying the
+       user's crontab or by appending a loader command to shell profile
+       scripts (.bashrc, .zshrc, .profile, .bash_profile). This is done
+       from within the npm postinstall hook context (node or npm as the
+       parent process).
+
+       Observed persistence commands from the PolinRider / Contagious
+       Interview campaign:
+         crontab -l | { cat; echo "*/5 * * * * node /tmp/.update"; } | crontab -
+         echo 'node /tmp/.cache/.update &' >> ~/.bashrc
+         echo 'node /tmp/.config/update &' >> ~/.profile
+
+       The key behavioral signature is crontab(1) or tee/echo being invoked
+       as a child of npm or node during package installation. Legitimate npm
+       packages do not modify system crontabs or user shell profiles.
+
+       This rule also catches sed/awk usage against profile files from npm
+       context, as some variants use in-place file editing for profile
+       modification.
+
+       False positives: virtually none. Crontab modification during npm
+       install is not a legitimate package management operation.
+       =========================================================== -->
+  <rule id="104042" level="13">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall">execve</field>
+    <field name="audit.exe" type="pcre2">(?:^|/)(?:node|npm|npx)$</field>
+    <field name="audit.cmd" type="pcre2">(?i)(?:^|/)(?:crontab|tee|sed|awk|perl|python3?)\s|(?:\.bashrc|\.zshrc|\.profile|\.bash_profile|\.bash_login|\.xprofile)\b</field>
+    <description>ViteVenom/DEV#POPPER RAT: npm or node process spawned crontab/shell-profile modifier on $(agent.name) [cmd: $(audit.cmd)] -- DEV#POPPER RAT establishes Linux persistence by modifying crontab or appending loader commands to .bashrc/.zshrc/.profile from within an npm postinstall hook; crontab or profile modification from npm context has no legitimate use case; isolate host and check for concurrent TRON blockchain C2 activity (T1053.005, T1546.004)</description>
+    <mitre>
+      <id>T1053.005</id>
+      <id>T1546.004</id>
+      <id>T1195.001</id>
+    </mitre>
+    <group>vitevenom,devpopper_rat,linux,crontab_persistence,profile_modification,persistence,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104043: Sustained ViteVenom TRON C2 beaconing
+       Frequency rule on 104034 - same source IP, 2 hits in 120 seconds
+       MITRE: T1102.003 (Web Service: One-Way Communication)
+
+       A single match on rule 104034 (TRON RPC connection) could
+       theoretically be a ViteVenom postinstall execution that completed
+       without leaving a persistent implant, or a transient test by a
+       blockchain developer. Two or more connections from the same source
+       host to a TRON blockchain RPC endpoint within 120 seconds is a
+       strong indicator that DEV#POPPER RAT is running and performing
+       regular C2 key-refresh check-ins - the RAT periodically re-queries
+       the TRON wallet to receive updated XOR keys, new payload stages, or
+       updated C2 addresses published to the blockchain by the operator.
+
+       This rule should trigger CRITICAL incident response:
+         - Isolate host from network immediately
+         - Capture volatile memory before powering off
+         - Preserve npm, bash, and node process history
+         - Audit package.json and package-lock.json for ViteVenom packages
+         - Rotate ALL developer credentials accessible from this host
+           (npm tokens, SSH keys, AWS/GCP/Azure credentials, GitHub PATs)
+         - Notify Security Operations Manager and file incident
+
+       Given DPRK attribution, harvested credentials may be used for
+       downstream supply chain compromise (pushing malicious code to
+       repositories the developer has write access to).
+       =========================================================== -->
+  <rule id="104043" level="15" frequency="2" timeframe="120">
+    <if_matched_sid>104034</if_matched_sid>
+    <same_source_ip />
+    <description>ViteVenom/PolinRider: ACTIVE DEV#POPPER RAT BEACONING CONFIRMED from $(agent.name) -- 2+ connections to TRON blockchain RPC infrastructure (api.trongrid.io) within 120 seconds from the same host; DEV#POPPER RAT is actively running and performing C2 key-refresh check-ins; DPRK-attributed supply chain compromise confirmed; CRITICAL: isolate host NOW, capture memory, rotate all developer credentials, escalate to IR (T1102.003)</description>
+    <mitre>
+      <id>T1102.003</id>
+      <id>T1195.001</id>
+    </mitre>
+    <group>vitevenom,polinrider,devpopper_rat,blockchain_c2,beaconing,active_rat,dprk,critical,</group>
+  </rule>
+
+</group>
