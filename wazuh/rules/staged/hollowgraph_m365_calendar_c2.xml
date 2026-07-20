@@ -25,7 +25,7 @@
              (graph.microsoft.com), network controls keyed to
              attacker-owned destinations have nothing to flag.
              The covert channel is entirely within the tenant's
-             own audit log -- detectable only through M365 Unified
+             own audit log; detectable only through M365 Unified
              Audit Log analysis or proxy-layer URL inspection.
 
      Attribution: Group-IB (July 2026 discovery).
@@ -162,7 +162,7 @@
 
   <!-- ===========================================================
        Network - Graph API calendar URL containing "2050" IOC
-       (T1102.002) -- HIGH CONFIDENCE
+       (T1102.002) HIGH CONFIDENCE
        HollowGraph's specific C2 mechanism queries calendar events
        with a date filter targeting 2050:
          GET /v1.0/me/events?$filter=start/dateTime ge '2050-01-01'
@@ -245,9 +245,9 @@
        connections to graph.microsoft.com should come only from
        Outlook (OUTLOOK.EXE), Teams (ms-teams.exe), Edge
        (msedge.exe), or OneDrive (onedrive.exe). A non-M365-app
-       process -- especially one with a .NET runtime signature
+       process, especially one with a .NET runtime signature
        (clrjit.dll, mscorlib.dll ImageLoad preceding the
-       NetworkConnect) -- is a strong HollowGraph indicator.
+       NetworkConnect) is a strong HollowGraph indicator.
        =========================================================== -->
   <rule id="104070" level="13">
     <if_sid>61607</if_sid>
@@ -316,7 +316,7 @@
   <!-- ===========================================================
        Composite - Non-M365-client process AND Graph API calendar
        URL with 2050 date IOC in the same event (T1102.002)
-       HIGH CONFIDENCE -- FULL IR RESPONSE WARRANTED
+       HIGH CONFIDENCE - FULL IR RESPONSE WARRANTED
        When a single proxy log event simultaneously shows:
          (a) a non-M365-app process (negate on known M365 clients)
          (b) a Graph API URL with the HollowGraph 2050 date IOC
