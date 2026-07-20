@@ -114,6 +114,22 @@ by Filesystem.dest Filesystem.user Filesystem.process_name Filesystem.file_path 
 | SmartLoader Gang (financially motivated, attribution TBD) | [The Hacker News — SmartLoader Oura MCP (2026-02)](https://thehackernews.com/2026/02/smartloader-attack-uses-trojanized-oura.html), [Hexastrike Analysis](https://hexastrike.com/resources/blog/threat-intelligence/cloned-loaded-and-stolen-how-109-fake-github-repositories-delivered-smartloader-and-stealc/) |
 | StealC (MaaS infostealer, secondary payload) | [SOC Prime — SmartLoader Analysis](https://socprime.com/active-threats/smartloader-analysis/), [Bitsight — StealC Infrastructure](https://www.bitsight.com/blog/bitsight-aids-disruption-efforts-on-amadey-malware-and-stealc-malware) |
 
+## Wazuh Detection Rules
+
+**Rule file:** `wazuh/rules/staged/smartloader_fakegit_mcp_supply_chain.xml`
+**Rule IDs:** 104058–104065
+
+| Rule ID | Level | Description |
+|---------|-------|-------------|
+| 104058 | 14 | LuaJIT spawned by node.exe/npm on Windows (T1195.001, T1059.007) |
+| 104059 | 13 | LuaJIT spawned by python/pip on Windows (T1195.001, T1059.007) |
+| 104060 | 14 | LuaJIT writing file to %LOCALAPPDATA% masquerade path (T1036.005) |
+| 104061 | 14 | schtasks.exe spawned by LuaJIT — SmartLoader persistence (T1053.005) |
+| 104062 | 14 | Non-browser process connecting to Polygon JSON-RPC endpoint (T1102.002, T1568) |
+| 104063 | 15 | FIM: SmartLoader Lua script IOC hash match (SHA1) — confirmed compromise |
+| 104064 | 14 | Linux/macOS auditd: LuaJIT spawned by npm/node/pip (T1195.001, T1059.007) |
+| 104065 | 15 | FIM: LuaJIT binary created in LOCALAPPDATA AudioManager/OfficeUpdate path |
+
 ## References
 
 - [The Hacker News — SmartLoader Attack Uses Trojanized Oura MCP Server (2026-02)](https://thehackernews.com/2026/02/smartloader-attack-uses-trojanized-oura.html)

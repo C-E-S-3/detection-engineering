@@ -1,0 +1,272 @@
+<!-- ============================================================
+     SmartLoader / FakeGit MCP Supply Chain Detection Rules
+     Threat: SmartLoader gang created 7,600-9,330 malicious GitHub repos
+             impersonating MCP (Model Context Protocol) servers and AI skills
+             (FakeGit campaign, February-April 2026). Users who install these
+             trojanized packages via npm or pip trigger a postinstall hook that
+             invokes a LuaJIT interpreter with an obfuscated "resource.txt"
+             Lua script. The Lua stage deploys the SmartLoader downloader
+             to %LOCALAPPDATA% (masquerading as AudioManager or OfficeUpdate),
+             creates two scheduled tasks for persistence, queries a Polygon
+             smart contract (eth_call to polygon.drpc.org) to resolve the
+             current C2 server, then delivers StealC as its secondary payload.
+             StealC harvests browser credentials, API keys, cloud credentials,
+             SSH private keys, CI/CD tokens, and cryptocurrency wallet data.
+
+     Source: The Hacker News (2026-02), Hexastrike threat analysis,
+             SOC Prime SmartLoader analysis, Straiker blog
+     MITRE ATT&CK Techniques:
+       T1195.001 - Compromise Software Supply Chain (TA0001)
+       T1059.007 - Command and Script Interpreter: JavaScript (TA0002)
+       T1036.005 - Masquerading: Match Legitimate Name or Location (TA0005)
+       T1027     - Obfuscated Files or Information (TA0005)
+       T1053.005 - Scheduled Task/Job: Scheduled Task (TA0003)
+       T1102.002 - Web Service: Bidirectional Communication / Polygon C2 (TA0011)
+       T1568     - Dynamic Resolution: blockchain dead-drop (TA0011)
+       T1555.003 - Credentials from Web Browsers (StealC) (TA0006)
+       T1552.001 - Credentials in Files: API keys, cloud creds (TA0006)
+     Rule IDs: 104058-104065
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-20
+
+     Campaign overview:
+
+     The SmartLoader gang (attribution TBD, financially motivated) pivoted
+     from piracy-site distribution to targeting AI practitioners and
+     developers. They cloned legitimate MCP servers (notably the Oura Ring
+     MCP) and created networks of fake GitHub accounts to build social proof
+     for the malicious repos. Poisoned MCP registries directed developers
+     to install the trojanized packages.
+
+     Attack chain:
+       1. Developer installs MCP server or AI skill from malicious GitHub repo
+          via: npm install <github-url> OR pip install git+<github-url>
+       2. postinstall hook invokes: luajit.exe resource.txt
+          resource.txt is a heavily obfuscated LuaJIT Lua script
+       3. Lua stage deploys LuaJIT runtime to %LOCALAPPDATA%:
+            %LOCALAPPDATA%\AudioManager\luajit.exe   (copy 1)
+            %LOCALAPPDATA%\<OfficeUpdate-path>\luajit.exe   (copy 2)
+       4. Two scheduled tasks registered masquerading as system audio or
+          Office update helpers, pointing to the LOCALAPPDATA LuaJIT binaries
+       5. SmartLoader calls eth_call against a Polygon smart contract via
+          polygon.drpc.org; contract storage holds the current C2 IP
+       6. StealC infostealer payload downloaded and executed by SmartLoader
+       7. StealC sweeps: Chrome/Firefox/Edge/Brave Login Data, Cookies,
+          Local State (encryption key); .env files; AWS/GCP/Azure credentials;
+          npm auth tokens (.npmrc); kubeconfig; SSH private keys; crypto wallets
+       8. Harvested data exfiltrated to resolved bare IP via multipart POST
+
+     IOC hashes (SHA1 of malicious Lua scripts identified by Trend Micro):
+       c36e15f0532569d789ba9fdbfccf6a1bb5ac2c75 (Trojan.LUA.SMARTLOADER)
+       2a2ef9cd83bdb635bb3da2fe6b6a42c9b0cc657f (Trojan.LUA.SMARTLOADER)
+       43eae0fb588987107a4805ecd1cf5c301263643b (Trojan.LUA.SMARTLOADER)
+
+     Polygon C2 dead-drop endpoint: polygon.drpc.org
+     Also observed: polygon-rpc.com, matic-mainnet.chainstacklabs.com
+
+     Log source prerequisites (Windows):
+       - Sysmon EventID 1 (ProcessCreate) -> Wazuh decoder SID 61603
+         Required for rules 104058-104061
+       - Wazuh FIM (syscheck) monitoring %LOCALAPPDATA% and npm/pip
+         install paths; SHA1 hash computation enabled in ossec.conf
+         Required for rules 104063, 104065
+       - Windows EventID 4698 (Task Scheduler: task registered) or
+         Sysmon EventID 1 capturing schtasks.exe
+         Required for rule 104061
+
+     Log source prerequisites (Linux/macOS):
+       - auditd execve rules capturing process ancestry
+         Required for rule 104064
+       - Wazuh syscheck with SHA1 hashing on pip install paths and
+         /tmp, /var/tmp, ~/.local
+         Required for rule 104063
+
+     Log source prerequisites (network):
+       - Wazuh integration with network logs (firewall, DNS, proxy)
+         decoded to fields: dst_ip, dst_host, proto, url
+         Required for rule 104062
+
+     False positive guidance:
+       - LuaJIT spawned by npm: essentially zero FP rate; no legitimate
+         npm package ships and invokes a Lua runtime
+       - Polygon RPC connections: FP possible on dedicated blockchain
+         developer workstations; scope with asset group exclusions
+       - Scheduled task named AudioManager/OfficeUpdate pointing to
+         LOCALAPPDATA binary: low FP; legitimate installers use
+         Program Files or ProgramData paths, not AppData\Local
+       - IOC hash match (rules 104063, 104065): zero FP; known-bad hashes
+
+     Severity tiers:
+       13 - LuaJIT spawned from python/pip (higher FP than npm vector)
+       14 - LuaJIT spawned from npm/node; LuaJIT writing to LOCALAPPDATA;
+            Polygon RPC from non-browser; schtasks.exe from LuaJIT;
+            StealC-pattern credential sweep from Lua/non-browser process
+       15 - Confirmed IOC hash match for SmartLoader Lua scripts
+     ============================================================ -->
+
+<group name="supply_chain,initial_access,execution,persistence,c2,credential_access,smartloader,fakegit,stealc,windows,linux,">
+
+  <!-- ===========================================================
+       Windows - LuaJIT spawned by node.exe / npm.cmd (T1059.007, T1195.001)
+       The SmartLoader postinstall hook invokes LuaJIT with the obfuscated
+       resource.txt Lua stage as its argument. No legitimate npm package
+       ships a Lua interpreter or invokes an installed system lua binary.
+       This is a near-certain indicator of the SmartLoader dropper stage.
+       Covers: lua.exe, luajit.exe, lua52.exe, lua53.exe, lua54.exe
+       =========================================================== -->
+  <rule id="104058" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(?:node|npm|npx)(?:\.(?:exe|cmd))?$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\lua(?:jit|52|53|54)?(?:\.exe)?$</field>
+    <description>SmartLoader FakeGit: LuaJIT/Lua interpreter spawned by npm/node on $(win.eventdata.computer) by $(win.eventdata.user) -- postinstall hook executing SmartLoader Lua dropper stage (T1059.007, T1195.001)</description>
+    <mitre>
+      <id>T1195.001</id>
+      <id>T1059.007</id>
+    </mitre>
+    <group>smartloader,fakegit,lua_exec,npm_dropper,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Windows - LuaJIT spawned by python.exe / pip.exe (T1059.007, T1195.001)
+       Same dropper vector as rule 104058 but via pip install of a
+       trojanized Python package from a malicious GitHub repo. Lower
+       confidence than npm vector (some Python packages legitimately
+       use embedded Lua) but still unusual in enterprise environments.
+       =========================================================== -->
+  <rule id="104059" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(?:python3?|pip3?)(?:\.exe)?$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\lua(?:jit|52|53|54)?(?:\.exe)?$</field>
+    <description>SmartLoader FakeGit: LuaJIT/Lua interpreter spawned by python/pip on $(win.eventdata.computer) by $(win.eventdata.user) -- possible pip-delivered SmartLoader postinstall hook; investigate package source (T1059.007, T1195.001)</description>
+    <mitre>
+      <id>T1195.001</id>
+      <id>T1059.007</id>
+    </mitre>
+    <group>smartloader,fakegit,lua_exec,pip_dropper,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Windows - LuaJIT writing executable to LOCALAPPDATA (T1036.005, T1027)
+       After the initial postinstall hook fires, the Lua stage copies the
+       LuaJIT runtime to %LOCALAPPDATA%\AudioManager\luajit.exe (and a
+       second masquerade path). Sysmon EventID 11 (FileCreate) captures
+       this. LuaJIT writing a PE binary to AppData\Local is distinctive
+       and has no known legitimate use case.
+       =========================================================== -->
+  <rule id="104060" level="14">
+    <if_sid>61615</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\lua(?:jit|52|53|54)?(?:\.exe)?$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\\AppData\\Local\\.*\.(exe|dll|lua|txt)$</field>
+    <description>SmartLoader FakeGit: LuaJIT writing file to LOCALAPPDATA on $(win.eventdata.computer) -- SmartLoader deploying payload or runtime copy to masquerade path (T1036.005, T1027)</description>
+    <mitre>
+      <id>T1036.005</id>
+      <id>T1027</id>
+    </mitre>
+    <group>smartloader,fakegit,localappdata_write,masquerade,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Windows - schtasks.exe spawned by LuaJIT (T1053.005)
+       SmartLoader registers two scheduled tasks for persistence after
+       deploying to LOCALAPPDATA. schtasks.exe being invoked as a child
+       of luajit.exe is a unique and highly specific indicator - no
+       legitimate Lua application creates Windows scheduled tasks.
+       Covers both "schtasks.exe /create" and "schtasks /run" invocations.
+       =========================================================== -->
+  <rule id="104061" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\lua(?:jit|52|53|54)?(?:\.exe)?$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\schtasks\.exe$</field>
+    <description>SmartLoader FakeGit: schtasks.exe spawned by LuaJIT on $(win.eventdata.computer) by $(win.eventdata.user) -- SmartLoader registering scheduled task for persistence (AudioManager/OfficeUpdate masquerade) (T1053.005)</description>
+    <mitre>
+      <id>T1053.005</id>
+      <id>T1036.005</id>
+    </mitre>
+    <group>smartloader,fakegit,scheduled_task,persistence,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Network - LuaJIT or non-browser process connecting to Polygon RPC
+       (T1102.002, T1568)
+       SmartLoader resolves its active C2 IP by calling eth_call against
+       a Polygon smart contract via polygon.drpc.org or related Polygon
+       JSON-RPC endpoints. Non-browser processes have no legitimate reason
+       to query Polygon blockchain nodes. Requires network log integration
+       with fields dst_host or url decoded from proxy/firewall logs.
+
+       Note: if_group is not used here; rule matches on network log data
+       decoded to dst_host or dns.question.name fields.
+       =========================================================== -->
+  <rule id="104062" level="14">
+    <decoded_as>json</decoded_as>
+    <field name="dst_host|dns.question.name|network.destination.domain" type="pcre2">(?i)(?:polygon\.drpc\.org|polygon-rpc\.com|matic-mainnet\.chainstacklabs\.com|polygon-mainnet\.infura\.io|polygon-bor\.publicnode\.com|polygon\.llamarpc\.com)</field>
+    <field name="process.name|src_process|application" negate="yes" type="pcre2">(?i)(?:chrome|firefox|msedge|brave|safari|chromium|opera|vivaldi|iexplore)</field>
+    <description>SmartLoader FakeGit: non-browser process connecting to Polygon JSON-RPC endpoint on $(agent.name) -- SmartLoader resolving C2 via Polygon smart contract eth_call dead-drop; blockchain-based C2 is unsinkholable via DNS (T1102.002, T1568)</description>
+    <mitre>
+      <id>T1102.002</id>
+      <id>T1568</id>
+    </mitre>
+    <group>smartloader,fakegit,polygon_c2,blockchain_c2,</group>
+  </rule>
+
+  <!-- ===========================================================
+       FIM - Known SmartLoader Lua script IOC hashes (T1195.001)
+       Wazuh syscheck detects the three known SmartLoader Lua script
+       hashes (classified as Trojan.LUA.SMARTLOADER.THBBDBE by Trend
+       Micro). These are SHA1 hashes of resource.txt variants found
+       across the 109+ malicious GitHub repos. Fires on any path.
+       Requires syscheck SHA1 hash computation enabled in ossec.conf:
+         <hash_algorithm>sha1</hash_algorithm>
+       =========================================================== -->
+  <rule id="104063" level="15">
+    <if_sid>550,553,554,593</if_sid>
+    <regex>c36e15f0532569d789ba9fdbfccf6a1bb5ac2c75|2a2ef9cd83bdb635bb3da2fe6b6a42c9b0cc657f|43eae0fb588987107a4805ecd1cf5c301263643b</regex>
+    <description>SmartLoader FakeGit: IOC hash match for SmartLoader Lua dropper script (Trojan.LUA.SMARTLOADER) detected by FIM on $(agent.name) -- confirmed SmartLoader supply chain compromise; full IR response warranted (T1195.001)</description>
+    <mitre>
+      <id>T1195.001</id>
+      <id>T1059.007</id>
+    </mitre>
+    <group>smartloader,fakegit,ioc_hash,lua_dropper,critical_ioc,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Linux/macOS - LuaJIT spawned by npm/node/pip/python via auditd
+       (T1059.007, T1195.001)
+       Same LuaJIT postinstall hook vector as Windows rules 104058-104059
+       but captured via Linux auditd execve syscalls. The lua/luajit binary
+       being executed with npm, node, or pip as the parent process is
+       equally anomalous on Linux/macOS as on Windows.
+       =========================================================== -->
+  <rule id="104064" level="14">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.syscall">execve</field>
+    <field name="audit.exe" type="pcre2">(?i)(?:^|/)(?:npm|node|npx|python3?|pip3?)$</field>
+    <field name="audit.cmd" type="pcre2">(?i)(?:^|/)lua(?:jit|5\.[1-4])?(?:\s|$)</field>
+    <description>SmartLoader FakeGit: LuaJIT/Lua spawned by npm/node/pip on $(agent.name) -- postinstall hook invoking Lua interpreter; likely SmartLoader supply chain compromise (T1059.007, T1195.001)</description>
+    <mitre>
+      <id>T1195.001</id>
+      <id>T1059.007</id>
+    </mitre>
+    <group>smartloader,fakegit,lua_exec,linux,</group>
+  </rule>
+
+  <!-- ===========================================================
+       FIM - LuaJIT binary written to LOCALAPPDATA AudioManager path
+       (T1036.005) - Windows
+       Detects Wazuh syscheck alerts where a file named luajit.exe or
+       lua*.exe is created in a path containing AudioManager, AudioService,
+       OfficeUpdate, or MicrosoftOffice (SmartLoader's known masquerade dirs).
+       Requires FIM monitoring of %LOCALAPPDATA% (%USERPROFILE%\AppData\Local).
+       =========================================================== -->
+  <rule id="104065" level="15">
+    <if_sid>550,553,554,593</if_sid>
+    <field name="file" type="pcre2">(?i)\\AppData\\Local\\(?:AudioManager|AudioService|SoundCore|MicrosoftOffice|OfficeUpdate)\\lua(?:jit|52|53|54)?(?:\.exe)?$</field>
+    <description>SmartLoader FakeGit: LuaJIT binary created in LOCALAPPDATA masquerade directory (AudioManager/OfficeUpdate) on $(agent.name) -- confirmed SmartLoader payload deployment to persistence path (T1036.005)</description>
+    <mitre>
+      <id>T1036.005</id>
+      <id>T1053.005</id>
+    </mitre>
+    <group>smartloader,fakegit,localappdata_lua,masquerade,critical_ioc,</group>
+  </rule>
+
+</group>
