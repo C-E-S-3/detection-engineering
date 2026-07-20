@@ -1,0 +1,303 @@
+<!-- ============================================================
+     WordPress Core wp2shell Pre-Auth RCE
+     CVE-2026-63030: REST API batch-route permission desync
+     CVE-2026-60137: WP_Query author__not_in SQL injection
+
+     Threat:
+       Two-vulnerability chain achieving unauthenticated RCE on
+       default WordPress installs with no plugins required.
+
+     CVE-2026-63030 (CVSS 9.8):
+       The /wp-json/batch/v1 endpoint processes an array of
+       sub-requests. When the first sub-request path is an
+       unparseable URL (e.g., http://:), it is added to the
+       error list but omitted from the permission-validation
+       matches list. Subsequent sub-requests are then evaluated
+       against the wrong permission callback, allowing an
+       unauthenticated caller to invoke authenticated REST API
+       handlers. This permission desync is the root of the
+       wp2shell attack name.
+
+     CVE-2026-60137 (chained SQL injection):
+       The author__not_in parameter of WP_Query is passed
+       unsanitized into the SQL query when accessed via REST API.
+       Chained with CVE-2026-63030, an unauthenticated attacker
+       extracts all WordPress user password hashes from the
+       database via the /wp-json/wp/v2/ REST namespace.
+
+     Full exploit chain (public PoC live July 18, 2026):
+       Step 1: POST malformed batch request to /wp-json/batch/v1
+               to trigger CVE-2026-63030 permission desync.
+       Step 2: Embed author__not_in SQLi payload in a sub-request
+               to extract admin password hash (CVE-2026-60137).
+       Step 3: Crack hash offline; authenticate as admin.
+       Step 4: POST malicious PHP plugin ZIP to
+               /wp-admin/update.php?action=upload-plugin.
+       Step 5: Activate plugin to achieve code execution as the
+               web server user.
+
+     Affected: WordPress 6.9.0-6.9.4, 7.0.0-7.0.1 (full RCE)
+               WordPress 6.8.0-6.8.5 (SQLi only, no RCE path)
+     Patched:  6.9.5 and 7.0.2
+     Public PoC: live July 18, 2026
+
+     MITRE ATT&CK Techniques:
+       T1190     - Exploit Public-Facing Application
+       T1505.003 - Server Software Component: Web Shell
+       T1059.004 - Command and Scripting Interpreter: Unix Shell
+       T1078.003 - Valid Accounts: Local Accounts (cracked admin)
+
+     Rule IDs: 104074-104081
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-20
+
+     Log source prerequisites:
+       Rules 104074-104076, 104078-104081:
+         Traefik access log in JSON format forwarded to Wazuh.
+         Required fields: RequestMethod, RequestPath, RequestHost,
+         DownstreamStatus, ClientHost.
+         Decoder: built-in Wazuh JSON decoder (decoded_as=json).
+       Rule 104077:
+         Full URI including query string must appear in RequestPath.
+         Traefik logs the full request URI in RequestPath by default
+         in this deployment. If a WAF or separate proxy is used as
+         the log source, adjust the field name to match that
+         source's full-URI field (e.g., url.full, cs-uri-query).
+
+     Severity tiers:
+       0  - POST to /wp-json/batch/v1 (chaining anchor; no alert)
+       12 - Any POST to WordPress batch REST endpoint (probe)
+       14 - Batch endpoint returned HTTP 2xx (desync may be active)
+       14 - author__not_in SQLi pattern in WP REST API (CVE-2026-60137)
+       13 - 3 or more batch probes from same source in 60 s (scanner)
+       13 - POST to wp-admin plugin upload endpoint (post-exploitation)
+       15 - Plugin upload returned 2xx (webshell deployment confirmed)
+       15 - PHP file accessed in wp-content upload or mu-plugins path
+
+     References:
+       BleepingComputer - WordPress Core wp2shell RCE flaws get
+         public exploits, patch now (2026-07-18)
+       Rapid7 ETR - CVE-2026-63030 wp2shell Critical RCE in
+         WordPress Core (2026-07-18)
+       Hadrian - wp2shell: Pre-Auth RCE in WordPress Core REST API
+       Aikido Security - Unauthenticated RCE in WordPress (wp2shell)
+       NVD CVE-2026-63030:
+         https://nvd.nist.gov/vuln/detail/CVE-2026-63030
+       NVD CVE-2026-60137:
+         https://nvd.nist.gov/vuln/detail/CVE-2026-60137
+     ============================================================ -->
+
+<group name="initial_access,exploit_pubfacing,wordpress,wp2shell,webshell,cve_2026_63030,cve_2026_60137,">
+
+  <!-- ===========================================================
+       Rule 104074: Base anchor - POST to /wp-json/batch/v1
+       Traefik access log (JSON decoder)
+       Level 0: no alert; chains to rules 104075, 104076, 104078.
+
+       The WordPress REST API batch endpoint at /wp-json/batch/v1
+       is rarely exercised in normal WordPress operation. It was
+       introduced for Gutenberg editor block requests but no
+       first-party WordPress feature sends unauthenticated batch
+       REST requests in production. It is the specific
+       exploitation target of CVE-2026-63030. Any POST to this
+       path warrants investigation and serves as the chaining
+       anchor for frequency and success-response rules below.
+       =========================================================== -->
+  <rule id="104074" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)/wp-json/batch/v\d+</field>
+    <description>wp2shell CVE-2026-63030: POST to WordPress REST API batch endpoint from $(ClientHost) (base anchor, chains to rules 104075-104076, 104078) (CVE-2026-63030)</description>
+    <group>wordpress,wp2shell,initial_access,cve_2026_63030,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104075: CVE-2026-63030 batch-route exploitation probe
+       Traefik access log (JSON decoder)
+       MITRE: T1190 (Exploit Public-Facing Application)
+       Child of rule 104074 (POST to /wp-json/batch/v1).
+
+       The /wp-json/batch/v1 endpoint has no legitimate use case
+       in standard WordPress deployments. CVE-2026-63030 is the
+       only known mass-exploitation vector targeting this path.
+       Level 12 reflects moderate confidence: authenticated
+       Gutenberg editor traffic to this path is theoretically
+       possible but extremely rare, whereas exploit attempts
+       arrive from unauthenticated external IPs.
+       Correlate with rule 104077 (author__not_in SQLi) from the
+       same source IP to escalate confidence before blocking.
+       =========================================================== -->
+  <rule id="104075" level="12">
+    <if_sid>104074</if_sid>
+    <description>wp2shell CVE-2026-63030: POST to WordPress /wp-json/batch/v1 from $(ClientHost) to $(RequestHost)$(RequestPath) - batch REST endpoint is rarely used legitimately and is the specific CVE-2026-63030 permission desync target; unauthenticated callers can invoke authenticated REST handlers via sub-request array index misalignment; investigate source IP and correlate with SQLi rule 104077 (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,wp2shell,initial_access,exploit_pubfacing,cve_2026_63030,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104076: CVE-2026-63030 batch endpoint returned 2xx
+       Traefik access log (JSON decoder)
+       MITRE: T1190 (Exploit Public-Facing Application)
+       Child of rule 104074 (POST to /wp-json/batch/v1).
+
+       A successful HTTP 2xx response from /wp-json/batch/v1
+       indicates WordPress accepted the batch request array.
+       In the CVE-2026-63030 exploitation flow, the batch
+       request returns HTTP 200 even when the first sub-request
+       URL is malformed, because WordPress returns partial
+       results for valid sub-requests while silently skipping
+       the permission check on subsequent ones. A 2xx response
+       is necessary but not sufficient to confirm exploitation;
+       escalate when combined with SQLi or plugin upload
+       activity from the same source IP within the same window.
+       =========================================================== -->
+  <rule id="104076" level="14">
+    <if_sid>104074</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>wp2shell CVE-2026-63030: WordPress batch REST API returned $(DownstreamStatus) to $(ClientHost) at $(RequestHost) - successful response from /wp-json/batch/v1 may confirm CVE-2026-63030 permission desync; correlate with author__not_in SQLi (rule 104077) and plugin upload (rule 104079) from same source to confirm RCE chain (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,wp2shell,initial_access,exploit_pubfacing,batch_success,cve_2026_63030,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104077: CVE-2026-60137 SQL injection via author__not_in
+       Traefik access log (JSON decoder)
+       MITRE: T1190 (Exploit Public-Facing Application)
+
+       CVE-2026-60137 is an SQL injection in the WordPress
+       WP_Query class author__not_in parameter, accessible via
+       the REST API. The parameter is passed unsanitized into the
+       SQL query. Exploiters append SQL keywords after the array
+       value in the query string, e.g.:
+         /wp-json/wp/v2/posts?author__not_in[]=1+UNION+SELECT...
+       This regex requires both the author__not_in parameter and
+       a SQL injection keyword or encoding pattern in the same
+       request URI. Requires Traefik (or proxy) to log the full
+       request URI including query string in RequestPath.
+       Note: URL-encoded SQL keywords (e.g., %55NION for UNION)
+       may bypass this regex; tune with WAF rules for full
+       coverage of encoding variants.
+       =========================================================== -->
+  <rule id="104077" level="14">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)/wp-json/wp/v\d+/(?:posts|users|pages|media|comments|tags|categories)[^"]*author(?:__|_)not_in[^"]*(?:UNION|SELECT|FROM|SLEEP|BENCHMARK|information_schema|0x[0-9a-fA-F]{4,}|%27|%22|EXTRACTVALUE|UPDATEXML|LOAD_FILE|INTO\+OUTFILE|char\()</field>
+    <description>wp2shell CVE-2026-60137: SQL injection via author__not_in parameter in WordPress REST API from $(ClientHost) to $(RequestHost)$(RequestPath) - WP_Query author__not_in is injectable and accessible unauthenticated when chained with CVE-2026-63030 batch desync; attacker extracts admin password hashes from wp_users; correlate with batch endpoint access (rules 104075-104076) from same source (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,wp2shell,initial_access,exploit_pubfacing,sqli,cve_2026_60137,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104078: Automated scanner - 3 or more batch/v1 probes
+       from same source IP within 60 seconds
+       MITRE: T1190 (Exploit Public-Facing Application)
+
+       Automated wp2shell exploit tools send rapid repeated
+       POST requests to /wp-json/batch/v1 to probe endpoint
+       availability, verify CVE-2026-63030 response behavior,
+       and iterate over sub-request payloads for the SQLi
+       extraction. Three or more POST requests from the same
+       source within 60 seconds is a strong automated-tool
+       indicator. Recommend immediate WAF or firewall block
+       on the source IP and review of any 2xx responses in
+       the preceding window.
+       =========================================================== -->
+  <rule id="104078" level="13" frequency="3" timeframe="60">
+    <if_matched_sid>104074</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>wp2shell CVE-2026-63030: 3+ POST requests to WordPress /wp-json/batch/v1 from $(ClientHost) within 60 s - automated exploit tool scanning for CVE-2026-63030 batch permission desync; recommend blocking source IP at WAF; $(RequestHost) is actively targeted (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,wp2shell,initial_access,exploit_pubfacing,scanner,cve_2026_63030,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104079: Post-exploitation - wp-admin plugin upload POST
+       Traefik access log (JSON decoder)
+       MITRE: T1505.003 (Web Shell), T1078.003 (Valid Accounts)
+
+       After cracking the extracted wp_users password hash, the
+       attacker authenticates as an admin and uploads a malicious
+       PHP plugin ZIP containing a webshell via the WordPress
+       admin plugin upload form. The POST body carries
+       action=upload-plugin and the ZIP payload; the Traefik
+       access log captures the path and response code. Level 13
+       reflects that legitimate admins also install plugins;
+       escalate on automated user-agents, unexpected source IPs,
+       large request bodies, or when preceded by batch/v1 probe
+       activity from the same source within the same session.
+       =========================================================== -->
+  <rule id="104079" level="13">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)/wp-admin/(?:update|plugin-install)\.php</field>
+    <description>wp2shell post-exploitation: POST to WordPress wp-admin plugin endpoint from $(ClientHost) to $(RequestHost)$(RequestPath) - step 4 of wp2shell chain; after cracking admin hash via CVE-2026-60137 SQLi, attacker uploads malicious PHP plugin ZIP webshell; correlate with preceding batch/v1 and SQLi activity (rules 104075-104077) from same source (T1505.003/T1078.003)</description>
+    <mitre>
+      <id>T1505</id>
+      <id>T1078</id>
+    </mitre>
+    <group>wordpress,wp2shell,post_exploitation,plugin_upload,webshell,cve_2026_63030,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104080: Plugin upload returned 2xx - webshell deployed
+       Traefik access log (JSON decoder)
+       MITRE: T1505.003 (Web Shell)
+       Child of rule 104079 (wp-admin plugin upload POST).
+
+       A successful HTTP 2xx response from the WordPress plugin
+       upload endpoint means the PHP plugin ZIP was accepted
+       and extracted into /wp-content/plugins/. The webshell PHP
+       file is now web-accessible and ready for command execution.
+       Level 15: webshell deployment is confirmed at this point.
+       Immediate incident response is required: isolate the host,
+       revoke wp-admin credentials, locate and delete the
+       malicious plugin directory under wp-content/plugins/.
+       =========================================================== -->
+  <rule id="104080" level="15">
+    <if_sid>104079</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>wp2shell CRITICAL: WordPress plugin upload returned $(DownstreamStatus) to $(ClientHost) at $(RequestHost) - PHP plugin ZIP accepted and extracted to wp-content/plugins; webshell deployment CONFIRMED via wp2shell chain (CVE-2026-63030/CVE-2026-60137); initiate immediate incident response: isolate host, revoke wp-admin credentials, remove malicious plugin (T1505.003)</description>
+    <mitre>
+      <id>T1505</id>
+      <id>T1190</id>
+    </mitre>
+    <group>wordpress,wp2shell,post_exploitation,webshell,upload_success,critical,cve_2026_63030,cve_2026_60137,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104081: PHP webshell access in wp-content upload paths
+       Traefik access log (JSON decoder)
+       MITRE: T1505.003 (Web Shell), T1059.004 (Unix Shell)
+
+       PHP files in /wp-content/uploads/ or /wp-content/mu-plugins/
+       should never be directly web-accessible or executable under
+       normal WordPress operation. WordPress restricts PHP execution
+       in the uploads directory by design (via .htaccess and
+       web server config). A PHP file served from those paths
+       indicates a webshell placed via a file upload vulnerability.
+       This rule also matches PHP files in any wp-content/plugins/
+       sub-directory accessed with webshell command parameters
+       (cmd=, exec=, system=, etc.), covering the wp2shell plugin
+       upload webshell activation step. Access to such a URL means
+       the webshell is active and the host is fully compromised.
+       =========================================================== -->
+  <rule id="104081" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)(?:/wp-content/(?:uploads|mu-plugins)/[^"]*\.ph(?:p[3-8]?|tml)(?:\?|$|/)|/wp-content/plugins/[^/]+/[^"]*\.ph(?:p[3-8]?|tml)[^"]*(?:cmd=|command=|exec=|shell=|[?&]c=|run=|system=|pass=|passwd=|whoami=|id=))</field>
+    <description>wp2shell: PHP webshell access in WordPress wp-content directory from $(ClientHost) to $(RequestHost)$(RequestPath) - PHP files in wp-content/uploads or mu-plugins should not be web-accessible; PHP files in wp-content/plugins accessed with shell command parameters indicate active webshell execution from wp2shell CVE-2026-63030/CVE-2026-60137 chain; initiate incident response and audit wp-content directory (T1505.003/T1059.004)</description>
+    <mitre>
+      <id>T1505</id>
+      <id>T1059</id>
+    </mitre>
+    <group>wordpress,wp2shell,webshell,post_exploitation,cve_2026_63030,cve_2026_60137,critical,</group>
+  </rule>
+
+</group>
