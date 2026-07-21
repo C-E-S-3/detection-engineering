@@ -1,0 +1,270 @@
+<!-- ============================================================
+     ServiceNow CVE-2026-6875 Pre-Authentication RCE
+     Glide Scripting Engine Sandbox Escape
+
+     Threat:
+       Pre-authentication remote code execution in the ServiceNow
+       AI Platform Glide scripting engine sandbox (CVSS 9.5). An
+       unauthenticated attacker sends a crafted request to
+       /assessment_thanks.do to escape the Glide/Rhino JavaScript
+       sandbox and execute arbitrary code in the context of the
+       ServiceNow application server (Tomcat/JVM).
+
+       ServiceNow Advisory: KB3137947
+       Hosted instances: auto-patched early July 2026
+       Self-hosted patch date: July 13, 2026
+       CISA KEV: Added July 15, 2026
+
+       Second bypass chain: Defused researchers confirmed active
+       in-the-wild exploitation on July 19, 2026 and disclosed a
+       second gadget chain that bypasses initial workarounds. Both
+       chains target /assessment_thanks.do; rules here detect both
+       based on the shared entry point and response behavior.
+
+     Exploit anatomy:
+       A crafted POST/PUT/PATCH to /assessment_thanks.do with a
+       Glide script injection payload triggers the sandbox escape.
+       Payload patterns may include Java reflection via Rhino
+       (Packages.java.lang.Runtime, getRuntime().exec), GraalVM
+       polyglot context abuse, or prototype chain pollution. No
+       confirmed public PoC payload strings at time of authoring;
+       detection anchors on method and response code.
+
+     Post-exploitation indicators:
+       Following successful RCE the attacker can spawn OS processes
+       from the JVM context. Auditd execve records show shell and
+       network tool invocations with the ServiceNow installation
+       directory as cwd.
+
+     MITRE ATT&amp;CK Techniques:
+       T1190     - Exploit Public-Facing Application
+       T1059     - Command and Scripting Interpreter
+       T1071     - Application Layer Protocol (C2)
+       T1041     - Exfiltration over C2 Channel
+
+     Rule IDs: 104082-104088
+     Author: SecOps Engineer (Purple Team)
+     Issue: ESKA-593
+     Date: 2026-07-21
+
+     Log source prerequisites:
+       Rules 104082-104086 (web detection):
+         Traefik access log in JSON format forwarded to Wazuh.
+         Required fields: RequestMethod, RequestPath, RequestHost,
+         DownstreamStatus, ClientHost.
+         Decoder: built-in Wazuh JSON decoder (decoded_as=json).
+       Rules 104087-104088 (post-exploitation):
+         Linux auditd with execve syscall auditing enabled.
+         Wazuh must receive auditd events (auditd.log forwarded
+         via localfile block or auditd plugin). ServiceNow cwd
+         patterns cover common Linux installation paths:
+           /opt/servicenow  /home/servicenow
+           /srv/servicenow  /glide  /usr/share/glide
+         Adjust the cwd pattern if your installation differs.
+
+     Severity tiers:
+       0  - Any request to /assessment_thanks.do (anchor only)
+       14 - POST/PUT/PATCH to vulnerable endpoint (exploit attempt)
+       15 - HTTP 2xx response to exploit request (RCE may be live)
+       13 - 3+ requests from same source in 60 s (scanner)
+       14 - Glide/Java sandbox escape payload patterns in request URI
+       13 - Shell or recon binary from ServiceNow JVM cwd
+       15 - Network or encoding tool from ServiceNow JVM cwd (C2/exfil)
+
+     References:
+       Help Net Security (2026-07-20): ServiceNow CVE-2026-6875
+         Pre-Auth RCE Actively Exploited, Second Bypass Chain
+       ServiceNow Advisory KB3137947:
+         https://support.servicenow.com/kb?id=kb_article_view&amp;sysparm_article=KB3137947
+       CISA KEV: https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+       NVD CVE-2026-6875:
+         https://nvd.nist.gov/vuln/detail/CVE-2026-6875
+       MITRE ATT&amp;CK T1190:
+         https://attack.mitre.org/techniques/T1190/
+     ============================================================ -->
+
+<group name="initial_access,exploit_pubfacing,servicenow,cve_2026_6875,">
+
+  <!-- ===========================================================
+       Rule 104082: Base anchor - any request to /assessment_thanks.do
+       Traefik access log (JSON decoder)
+       Level 0: no alert; chains to rules 104083-104085.
+
+       /assessment_thanks.do is the ServiceNow endpoint targeted
+       by CVE-2026-6875. In normal operation this endpoint serves
+       a static thank-you page to survey respondents via GET. No
+       legitimate automated system sends POST, PUT, or PATCH to
+       this path. Any access to this path from an external or
+       unexpected source warrants investigation.
+       =========================================================== -->
+  <rule id="104082" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)/assessment_thanks\.do\b</field>
+    <description>ServiceNow CVE-2026-6875: request to /assessment_thanks.do from $(ClientHost) (base anchor, chains to 104083-104085)</description>
+    <group>servicenow,initial_access,cve_2026_6875,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104083: POST/PUT/PATCH to /assessment_thanks.do
+       Traefik access log (JSON decoder)
+       MITRE: T1190 (Exploit Public-Facing Application)
+       Child of rule 104082.
+
+       /assessment_thanks.do only accepts GET in legitimate
+       ServiceNow use. POST, PUT, and PATCH to this path are not
+       part of any ServiceNow workflow and represent the primary
+       exploit delivery mechanism for CVE-2026-6875. The Glide
+       sandbox escape is triggered by a crafted request body or
+       parameter injection delivered via these methods. This rule
+       fires on both the original chain and the second bypass chain
+       disclosed by Defused on July 19, 2026, since both target
+       the same endpoint with mutating HTTP methods.
+       =========================================================== -->
+  <rule id="104083" level="14">
+    <if_sid>104082</if_sid>
+    <field name="RequestMethod" type="pcre2">^(?:POST|PUT|PATCH)$</field>
+    <description>ServiceNow CVE-2026-6875: $(RequestMethod) to /assessment_thanks.do from $(ClientHost) to $(RequestHost)$(RequestPath) - active exploitation attempt; this endpoint serves only GET in normal operation; mutating HTTP methods trigger Glide scripting engine sandbox escape (CVSS 9.5 pre-auth RCE, CISA KEV July 15 2026); investigate source IP and correlate with response code (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>servicenow,initial_access,exploit_pubfacing,cve_2026_6875,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104084: HTTP 2xx response to exploit attempt
+       Traefik access log (JSON decoder)
+       MITRE: T1190 (Exploit Public-Facing Application)
+       Child of rule 104083 (POST/PUT/PATCH to endpoint).
+
+       A successful HTTP 2xx response to a mutating method on
+       /assessment_thanks.do indicates the ServiceNow application
+       processed the crafted request body. In the CVE-2026-6875
+       exploitation chain the Glide sandbox evaluates the injected
+       script before returning the response; a 2xx at this stage
+       means arbitrary code may have executed in the JVM context.
+       Level 15: immediate incident response required. Isolate the
+       ServiceNow instance, preserve logs, and check for child
+       process spawning and network connections from the JVM.
+       =========================================================== -->
+  <rule id="104084" level="15">
+    <if_sid>104083</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>ServiceNow CVE-2026-6875 CRITICAL: $(RequestMethod) to /assessment_thanks.do returned HTTP $(DownstreamStatus) to $(ClientHost) at $(RequestHost) - successful response to exploit request; Glide sandbox escape may be confirmed; arbitrary code may be executing in the JVM context; initiate immediate incident response: isolate instance, preserve logs, audit child processes and outbound connections (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>servicenow,initial_access,exploit_pubfacing,rce_confirmed,critical,cve_2026_6875,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104085: Automated scanner - 3+ requests in 60 seconds
+       MITRE: T1190 (Exploit Public-Facing Application)
+
+       Automated exploit frameworks and scanning tools probe
+       /assessment_thanks.do with rapid repeated requests to
+       fingerprint endpoint availability and iterate over payload
+       variants for both the original and second bypass gadget
+       chains. Three or more requests from the same source within
+       60 seconds is a strong automated-tool signal. Recommend
+       immediate firewall block on the source IP.
+       =========================================================== -->
+  <rule id="104085" level="13" frequency="3" timeframe="60">
+    <if_matched_sid>104082</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>ServiceNow CVE-2026-6875: 3+ requests to /assessment_thanks.do from $(ClientHost) within 60 s - automated exploit scanner or tool probing CVE-2026-6875 pre-auth RCE; $(RequestHost) is actively targeted; recommend blocking source IP at firewall (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>servicenow,initial_access,exploit_pubfacing,scanner,cve_2026_6875,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104086: Glide/Java sandbox escape payload in request URI
+       Traefik access log (JSON decoder)
+       MITRE: T1190 (Exploit Public-Facing Application)
+
+       CVE-2026-6875 sandbox escape exploits Rhino (Mozilla JS
+       engine embedded in the ServiceNow Glide scripting engine)
+       or GraalVM polyglot context to reach the underlying JVM.
+       Common gadget patterns visible in URI query strings include:
+         Packages.java      - Rhino Java package namespace prefix
+         java.lang.Runtime  - JVM process execution class
+         getRuntime         - Runtime instance getter used in exec chain
+         ProcessBuilder     - alternative JVM process execution class
+         polyglot           - GraalVM polyglot context escape API
+         __proto__          - prototype chain pollution patterns
+       This rule fires on any ServiceNow path (not only
+       assessment_thanks.do) to catch variant payloads that attempt
+       to route through other .do endpoints after the second bypass
+       chain was published. Correlate with rule 104082 to confirm
+       the canonical CVE-2026-6875 target path.
+       =========================================================== -->
+  <rule id="104086" level="14">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)/[^"]+\.do[^"]*(?:Packages\.java|java\.lang\.(?:Runtime|ProcessBuilder|Thread|Class)|getRuntime|\.exec\(|polyglot\.eval|__proto__|constructor\[|java%2Elang|java%2flang)</field>
+    <description>ServiceNow CVE-2026-6875: Glide or Java sandbox escape payload detected in request URI from $(ClientHost) to $(RequestHost)$(RequestPath) - Rhino/GraalVM gadget pattern in .do endpoint query string; consistent with CVE-2026-6875 first or second bypass chain exploitation; immediate investigation required (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>servicenow,initial_access,exploit_pubfacing,payload_detected,cve_2026_6875,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104087: Shell or recon binary from ServiceNow JVM cwd
+       Log source: Linux auditd execve records
+       MITRE: T1059 (Command and Scripting Interpreter)
+
+       Following a successful CVE-2026-6875 sandbox escape the
+       attacker executes OS commands through the compromised JVM
+       process. Child processes inherit the ServiceNow installation
+       directory as their working directory (cwd). Shell, scripting,
+       and reconnaissance binaries executed with a ServiceNow cwd
+       have no legitimate justification and confirm post-exploitation
+       code execution. Covers common ServiceNow installation paths
+       on Linux (/opt/servicenow, /glide, /srv/servicenow, etc.).
+       Adjust the cwd pattern to match the actual installation path
+       if your deployment uses a non-standard directory.
+       =========================================================== -->
+  <rule id="104087" level="13">
+    <decoded_as>auditd</decoded_as>
+    <field name="full_log" type="pcre2">(?i)cwd=(?:/opt/servicenow|/home/servicenow|/srv/servicenow|/glide|/usr/share/glide|/var/servicenow)</field>
+    <field name="audit.exe" type="pcre2">(?i)/(?:bash|sh|dash|ksh|csh|tcsh|zsh|python3?|perl|ruby|php|whoami|id|uname|hostname|cat|ls|find|ps|netstat|ss|ifconfig|ip|awk|sed|sort|cut)</field>
+    <description>ServiceNow CVE-2026-6875: shell or recon binary $(audit.exe) executed from ServiceNow working directory on $(hostname) - post-exploitation command execution following Glide sandbox RCE; investigate JVM process ancestry and audit system for additional payloads dropped (T1059)</description>
+    <mitre>
+      <id>T1059</id>
+      <id>T1190</id>
+    </mitre>
+    <group>servicenow,post_exploitation,execution,cve_2026_6875,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104088: Network or encoding tool from ServiceNow JVM cwd
+       Log source: Linux auditd execve records
+       MITRE: T1059, T1071, T1041
+
+       Network tools (curl, wget, nc, ncat) and encoding utilities
+       (base64, xxd) executed from the ServiceNow JVM working
+       directory indicate active C2 channel establishment or
+       payload staging following the initial RCE. These binaries
+       have no legitimate operational role in the ServiceNow JVM
+       process context. Level 15: immediate incident response
+       required - the attacker is actively operating within the
+       compromised ServiceNow host and may be staging lateral
+       movement or exfiltrating ServiceNow ITSM data (service
+       tickets, asset records, employee records, credentials).
+       =========================================================== -->
+  <rule id="104088" level="15">
+    <decoded_as>auditd</decoded_as>
+    <field name="full_log" type="pcre2">(?i)cwd=(?:/opt/servicenow|/home/servicenow|/srv/servicenow|/glide|/usr/share/glide|/var/servicenow)</field>
+    <field name="audit.exe" type="pcre2">(?i)/(?:curl|wget|nc|ncat|nmap|masscan|socat|ssh|scp|sftp|rsync|base64|xxd|openssl|python3?|perl)</field>
+    <description>ServiceNow CVE-2026-6875 CRITICAL: network or encoding tool $(audit.exe) executed from ServiceNow working directory on $(hostname) - active C2 establishment or data exfiltration following CVE-2026-6875 pre-auth RCE; ServiceNow contains high-value ITSM, HR, and asset data; initiate immediate incident response: isolate host, revoke all ServiceNow sessions, preserve auditd logs, and audit network connections from the JVM process (T1059/T1071/T1041)</description>
+    <mitre>
+      <id>T1059</id>
+      <id>T1071</id>
+      <id>T1041</id>
+    </mitre>
+    <group>servicenow,post_exploitation,c2,exfiltration,critical,cve_2026_6875,</group>
+  </rule>
+
+</group>
