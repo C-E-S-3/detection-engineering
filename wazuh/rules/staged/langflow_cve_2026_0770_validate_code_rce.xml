@@ -1,0 +1,274 @@
+<!-- ============================================================
+     Langflow CVE-2026-0770: Unauthenticated RCE via Code Validation
+     Inclusion of Functionality from Untrusted Control Sphere (CWE-829)
+
+     Threat:
+       Remote code execution (CVSS 9.8 CRITICAL, CVSSv4 8.9 HIGH) in
+       Langflow versions prior to 1.3.0. The validate_code() function
+       in src/lfx/src/lfx/custom/validate.py calls Python exec() on
+       user-supplied code without sandboxing. An attacker POSTs a
+       crafted Python function to /api/v1/validate/code; Python
+       evaluates default argument expressions at function definition
+       time within exec(), triggering immediate OS command execution.
+       Command output is exfiltrated via raised exceptions in the HTTP
+       error response body (prefix "OUTPUT:").
+
+       CISA KEV: Added July 21, 2026. Federal deadline July 24, 2026.
+       Public PoC (EDB-52597, GitHub: 0xgh057r3c0n, affix, diamorphine666)
+       available since May 2026; mass exploitation began within hours.
+
+     Attack flow:
+       1. (Optional) POST /api/v1/login with default credentials
+          username=langflow password=langflow when AUTO_LOGIN is enabled,
+          to obtain a JWT for the authenticated code injection path.
+       2. POST /api/v1/validate/code with JSON {"code": "<payload>"}
+          where <payload> is a Python function using default argument
+          expressions that embed __import__('subprocess').run().
+       3. exec() compiles the function definition, evaluating default
+          args and running the OS command immediately.
+       4. Generator .throw() raises an exception carrying "OUTPUT:\n
+          <command_result>", which propagates as an HTTP 5xx error body.
+
+     Exploit kernel (simplified from EDB-52597):
+       {"code": "def x(_=(lambda r: (_ for _ in ()).throw(
+         Exception(f'OUTPUT:{r.stdout}')))(
+         __import__('subprocess').run('id',
+           shell=True, capture_output=True))):\n  pass"}
+
+     Post-exploitation:
+       Active campaigns (related CVE-2026-33017, Trend Micro / SOC Prime
+       July 2026) deploy XMRig Monero cryptominers via stratum+tcp pools
+       and steal AI API credentials (.env, ANTHROPIC_API_KEY, OPENAI_API_KEY,
+       .aws/credentials). auditd-based post-exploitation indicators are
+       partially covered by existing Langflow rules 101710-101711 and 103917;
+       see also 103915 for AI API key file access detection.
+
+     MITRE ATT&amp;CK Techniques:
+       T1190     - Exploit Public-Facing Application
+       T1059.006 - Command and Scripting Interpreter: Python
+       T1552.001 - Unsecured Credentials: Credentials in Files
+       T1496     - Resource Hijacking (cryptominer deployment)
+
+     Rule IDs: 104121-104127
+     Author: SecOps Engineer (Purple Team)
+     Issue: ESKA-610
+     Date: 2026-07-21
+
+     Log source prerequisites:
+       All rules (web/access log detection):
+         Traefik access log in JSON format forwarded to Wazuh.
+         Required fields: RequestMethod, RequestPath, RequestHost,
+         DownstreamStatus, ClientHost.
+         Decoder: built-in Wazuh JSON decoder (decoded_as=json).
+       No host-agent rules in this file; post-exploitation coverage
+       provided by existing Langflow auditd rules 101710, 101711,
+       103917 (Python subprocess spawning from web process parent).
+
+     Severity tiers:
+       0  - POST to /api/v1/validate/code (anchor, chains to children)
+       12 - POST to validate/code (may be legitimate dev use)
+       15 - POST to validate/code returned HTTP 2xx (exec() succeeded)
+       14 - POST to validate/code returned HTTP 5xx (exec() exception;
+              consistent with generator .throw() payload exfiltrating
+              OS command output as "OUTPUT:" in error body)
+       13 - 3+ requests from same IP in 60 s (scanner/automated tool)
+       0  - POST to /api/v1/login (anchor for chain correlation)
+       14 - Login followed by validate/code from same IP within 120 s
+              (complete default-credential auth bypass + RCE chain)
+
+     References:
+       CISA KEV Catalog:
+         https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+       NVD CVE-2026-0770:
+         https://nvd.nist.gov/vuln/detail/CVE-2026-0770
+       GitHub Security Advisory (GHSA-v8hw-mh8c-jxfc):
+         https://github.com/langflow-ai/langflow/security/advisories/GHSA-v8hw-mh8c-jxfc
+       GitHub Security Advisory (GHSA-vwmf-pq79-vjvx):
+         https://github.com/langflow-ai/langflow/security/advisories/GHSA-vwmf-pq79-vjvx
+       Exploit-DB EDB-52597:
+         https://www.exploit-db.com/exploits/52597
+       Trend Micro - CVE-2026-33017 Cryptominer Campaign:
+         https://www.trendmicro.com/en_us/research/26/f/from-langflow-to-monero-inside-cve-2026-33017-cryptominer.html
+       MITRE ATT&amp;CK T1190:
+         https://attack.mitre.org/techniques/T1190/
+       MITRE ATT&amp;CK T1059.006:
+         https://attack.mitre.org/techniques/T1059/006/
+     ============================================================ -->
+
+<group name="initial_access,execution,langflow,cve_2026_0770,cisa_kev,">
+
+  <!-- ===========================================================
+       Rule 104121: Base anchor - POST to /api/v1/validate/code
+       Traefik access log (JSON decoder)
+       Level 0: no alert; chains to rules 104122-104125.
+
+       /api/v1/validate/code is the sole exploitation vector for
+       CVE-2026-0770. The endpoint accepts user-supplied Python code
+       and passes it directly to validate_code() which calls exec()
+       for syntax and structure validation. Legitimate use exists
+       only during custom component development; production deployments
+       that do not expose the Langflow IDE should have no traffic on
+       this path. All hits on this anchor warrant investigation.
+       =========================================================== -->
+  <rule id="104121" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)/api/v1/validate/code\b</field>
+    <description>Langflow CVE-2026-0770: POST to /api/v1/validate/code from $(ClientHost) (base anchor, chains to 104122-104125)</description>
+    <group>langflow,cve_2026_0770,code_validation,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104122: POST to /api/v1/validate/code - endpoint monitor
+       Traefik access log (JSON decoder)
+       MITRE: T1190 (Exploit Public-Facing Application)
+       Child of rule 104121.
+
+       Any POST to /api/v1/validate/code is a potential CVE-2026-0770
+       exploitation attempt and should be reviewed by analysts. The
+       endpoint calls exec() on the request body; no additional payload
+       pattern is required to achieve RCE. Level 12: suspicious in
+       production environments, especially from external or unexpected
+       source IPs. Correlate with response code rules 104123-104124
+       and login chain rule 104127.
+       =========================================================== -->
+  <rule id="104122" level="12">
+    <if_sid>104121</if_sid>
+    <description>Langflow CVE-2026-0770: POST to /api/v1/validate/code from $(ClientHost) to $(RequestHost) - code validation endpoint accessed; CVE-2026-0770 achieves RCE by passing exec()-evaluated Python to this endpoint; CVSS 9.8 pre-auth; review source IP and response code (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>langflow,cve_2026_0770,code_validation,exploit_attempt,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104123: HTTP 2xx response to POST /api/v1/validate/code
+       MITRE: T1190, T1059.006
+       Child of rule 104122.
+
+       A successful HTTP 2xx response means exec() compiled and ran
+       the submitted Python code without raising an unhandled
+       exception. In the CVE-2026-0770 exploitation context this can
+       indicate: (a) the attacker submitted benign code to confirm
+       endpoint availability before the real payload, or (b) the
+       exec() payload ran without raising a detectable exception
+       (e.g. used os.system() side-effects rather than .throw()).
+       Either case warrants immediate investigation of the Langflow
+       host for child process spawning and outbound connections.
+       Level 15: initiate incident response.
+       =========================================================== -->
+  <rule id="104123" level="15">
+    <if_sid>104122</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>Langflow CVE-2026-0770 CRITICAL: POST to /api/v1/validate/code returned HTTP $(DownstreamStatus) from $(ClientHost) to $(RequestHost) - exec() accepted and evaluated submitted code; possible silent RCE via Python default argument injection; initiate incident response: inspect Langflow host for subprocess spawning (rules 101710, 103917), outbound connections, cryptominer activity, and .env or AI API key access (T1190, T1059.006)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.006</id>
+    </mitre>
+    <group>langflow,cve_2026_0770,rce_possible,execution_success,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104124: HTTP 5xx response to POST /api/v1/validate/code
+       MITRE: T1190, T1059.006
+       Child of rule 104122.
+
+       The canonical CVE-2026-0770 PoC (EDB-52597) uses Python's
+       generator .throw() mechanism to raise an exception whose
+       message contains "OUTPUT:\n<os command result>". exec()
+       propagates this exception to the Langflow API handler, which
+       returns an HTTP 5xx Internal Server Error with the exception
+       body. A 5xx from /api/v1/validate/code is therefore the
+       primary HTTP-layer fingerprint of exploit payload execution
+       and command output exfiltration in the response body.
+       Level 14: high-confidence exploit attempt; investigate host.
+       =========================================================== -->
+  <rule id="104124" level="14">
+    <if_sid>104122</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^5\d{2}$</field>
+    <description>Langflow CVE-2026-0770: POST to /api/v1/validate/code returned HTTP $(DownstreamStatus) from $(ClientHost) to $(RequestHost) - server-side exception from exec(); consistent with EDB-52597 generator .throw() payload; command output likely exfiltrated as "OUTPUT:" in error body; treat as active RCE attempt and audit Langflow host for subprocess spawning and outbound connections (T1190, T1059.006)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.006</id>
+    </mitre>
+    <group>langflow,cve_2026_0770,rce_attempt,exploit_exception,high_fidelity,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104125: Scanner - 3+ requests to validate/code in 60 s
+       MITRE: T1190
+       Frequency rule on base anchor 104121.
+
+       Automated exploit frameworks and mass-scanning tools probe
+       /api/v1/validate/code with rapid repeated requests: first to
+       confirm endpoint availability, then to iterate over payload
+       variants. Active CVE-2026-0770 campaigns have been observed
+       using python-requests/2.25.1 as the user agent. Three or
+       more requests from the same source within 60 seconds is
+       inconsistent with interactive developer use and indicates
+       automated tooling. Recommend immediate firewall block on
+       the source IP and inspection of all prior requests from it.
+       =========================================================== -->
+  <rule id="104125" level="13" frequency="3" timeframe="60">
+    <if_matched_sid>104121</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>Langflow CVE-2026-0770: 3+ POST requests to /api/v1/validate/code from $(ClientHost) within 60 s - automated exploit scanner probing CVE-2026-0770 RCE endpoint on $(RequestHost); block source IP at perimeter and inspect prior requests for successful exec() responses (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>langflow,cve_2026_0770,scanner,automated_attack,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104126: Base anchor - POST to /api/v1/login
+       Traefik access log (JSON decoder)
+       Level 0: no alert; used for correlation in rule 104127.
+
+       POST /api/v1/login is the Langflow authentication endpoint.
+       Default installations ship with credentials username=langflow
+       password=langflow when AUTO_LOGIN is enabled. Public PoC tools
+       for CVE-2026-0770 attempt these default credentials to obtain
+       a JWT before posting the exec() payload to validate/code. This
+       anchor fires on all login attempts; rule 104127 provides the
+       high-confidence correlation: login followed by validate/code
+       from the same source within 120 seconds.
+       =========================================================== -->
+  <rule id="104126" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)/api/v1/login\b</field>
+    <description>Langflow CVE-2026-0770: POST to /api/v1/login from $(ClientHost) (base anchor for unauth RCE chain correlation, chains to 104127)</description>
+    <group>langflow,auth,cve_2026_0770,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104127: Login then validate/code from same IP within 120 s
+       MITRE: T1190, T1059.006
+       Correlation: if_matched_sid 104126, current event 104121.
+
+       The documented CVE-2026-0770 unauthenticated RCE chain from
+       public PoC tools (EDB-52597, 0xgh057r3c0n, affix) is:
+         1. POST /api/v1/login with langflow:langflow (rule 104126)
+            to obtain a JWT from an AUTO_LOGIN-enabled instance.
+         2. POST /api/v1/validate/code with exec() RCE payload
+            (rule 104121 fires for the validate/code request).
+       Correlation of both events from the same source IP within
+       120 seconds is high-confidence default-credential auth bypass
+       followed by Python exec() code injection. Level 14: initiate
+       incident response immediately; isolate Langflow host and rotate
+       all credentials stored in the deployment environment.
+       =========================================================== -->
+  <rule id="104127" level="14" timeframe="120">
+    <if_matched_sid>104126</if_matched_sid>
+    <if_sid>104121</if_sid>
+    <same_field>ClientHost</same_field>
+    <description>Langflow CVE-2026-0770 EXPLOITATION CHAIN: $(ClientHost) POSTed to /api/v1/login then /api/v1/validate/code on $(RequestHost) within 2 min - high-confidence default-credential auth bypass followed by Python exec() RCE; canonical attack chain from EDB-52597 PoC; isolate Langflow host immediately, block source IP, audit for subprocess spawning and .env or AI API key exfiltration (T1190, T1059.006)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.006</id>
+    </mitre>
+    <group>langflow,cve_2026_0770,exploitation_chain,auth_bypass,rce,critical,high_fidelity,</group>
+  </rule>
+
+</group>
