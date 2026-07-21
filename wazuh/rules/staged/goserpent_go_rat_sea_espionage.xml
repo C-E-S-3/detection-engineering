@@ -1,0 +1,243 @@
+<!-- ============================================================
+     GoSerpent: Go-Based RAT — Southeast Asia Government Espionage
+     MITRE ATT&CK Techniques:
+       T1573.001 - Encrypted Channel: Symmetric Cryptography (ChaCha20, SHA256-keyed)
+       T1560     - Archive Collected Data (ThumbcacheService -> thumbcache_605a.db)
+       T1003.001 - OS Credential Dumping: LSASS Memory (Mimikatz + QuarksDumpLocalHash)
+       T1090     - Proxy (Stowaway SOCKS5 port-forward / reverse tunnel C2 chain)
+       T1036     - Masquerading (ThumbcacheService DLL masquerades as Windows component)
+       T1574     - Hijack Execution Flow (TmcLoader stages payloads via DLL loading)
+       T1003     - OS Credential Dumping (QuarksDumpLocalHash targets local account hashes)
+     Rule IDs: 104098-104106
+     Author: SecOps Engineer
+     Date: 2026-07-21
+     References:
+       - Kaspersky Securelist (2026-07-17): securelist.com/goserpent-backdoor-in-southeast-asia/120687/
+       - threat-intel/2026-07-17_securelist-goserpent-backdoor-southeast-asia-espionage.md
+       - detections/collection/goserpent_thumbcacheservice_file_collection.md
+     Attribution: Unattributed; China-nexus indicators (Alibaba Cloud / UCLOUD HK C2,
+                  Stowaway SOCKS5 widely used by China-nexus groups, SEA gov targeting)
+     Log source prerequisites:
+       - Sysmon EventID 1  (ProcessCreate)  -> Wazuh SID 61603
+         Required for rules 104099-104105
+       - Sysmon EventID 11 (FileCreate)     -> Wazuh SID 61644
+         Required for rule 104098 (thumbcache_605a.db artifact)
+       - Sysmon EventID 10 (ProcessAccess) -> wins.eventdata via SID 61603 with eventID filter
+         Required for rule 104106 (LSASS handle open by Go RAT process)
+       - Firewall/network logs (firewall group) with data.dest_ip
+         Required for rule 104103 (Alibaba Cloud / UCLOUD HK egress)
+     Coverage notes:
+       - thumbcache_605a.db at C:\Users\Public\ is a HIGHLY SPECIFIC GoSerpent IOC —
+         any host with this file should be treated as compromised immediately
+       - C2 IPs are hosted exclusively on Alibaba Cloud and UCLOUD HK (11 IPs total;
+         specific values not publicly released by Kaspersky); alert on those IP ranges
+         from Windows servers with no business relationship to Chinese cloud providers
+       - Stowaway, McMx, and TmcLoader are standalone Go binaries — they do not appear
+         in standard Windows software inventories; any execution should be investigated
+       - GoSerpent uses AES-CBC to decrypt its embedded configuration (C2 address +
+         ChaCha20 session password) at runtime; binary analysis required for C2 extraction
+     Severity tiers:
+       15 - thumbcache_605a.db file creation (confirmed GoSerpent IOC; immediate response)
+       13 - QuarksDumpLocalHash or Mimikatz execution for credential dumping
+       13 - Stowaway SOCKS5 proxy execution (C2 chaining tool)
+       12 - TmcLoader or McMx execution (GoSerpent staging components)
+       11 - Outbound from Windows host to Alibaba/UCLOUD HK ranges (possible GoSerpent C2)
+     ============================================================ -->
+
+<group name="threat_intel,espionage,goserpent,go_rat,sea_targeting,china_nexus,">
+
+  <!-- ===========================================================
+       Sysmon EventID 11 (FileCreate): ThumbcacheService artifact
+       Rule ID: 104098
+       C:\Users\Public\thumbcache_605a.db is the output file of the
+       GoSerpent-deployed ThumbcacheService DLL. This path is unique:
+       it masquerades as a Windows thumbnail cache database (thumbcache_*.db)
+       but the 605a suffix and Public location do not correspond to any
+       legitimate Windows thumbnail cache file. Any creation of a file
+       matching this pattern at C:\Users\Public\ by any process is a
+       confirmed GoSerpent ThumbcacheService indicator.
+       Severity 15 (critical): treat this as a confirmed compromise IOC.
+       =========================================================== -->
+
+  <!-- ThumbcacheService drops GoSerpent collection archive (confirmed IOC) -->
+  <rule id="104098" level="15">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^11$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)C:\\Users\\Public\\thumbcache_605a\.db$</field>
+    <description>CRITICAL: GoSerpent ThumbcacheService IOC -- file C:\Users\Public\thumbcache_605a.db created by $(win.eventdata.image) on $(win.eventdata.computer). Password-protected archive of harvested files; confirmed GoSerpent collection artifact (T1560, T1036). Treat as active compromise; initiate IR immediately.</description>
+    <mitre>
+      <id>T1560</id>
+      <id>T1036</id>
+    </mitre>
+    <group>goserpent,thumbcacheservice,collection,confirmed_ioc,isolate_host,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Sysmon EventID 1 (ProcessCreate): GoSerpent toolset execution
+       Rule IDs: 104099-104102
+       The GoSerpent actor deploys a multi-component framework:
+         - QuarksDumpLocalHash: dumps local account NTLM hashes;
+           a less common credential dumper that generates a process
+           named QuarksDumpLocalHash.exe or ql.exe
+         - Stowaway: open-source Go SOCKS5 proxy / reverse tunnel;
+           used to chain C2 through compromised hosts; binaries may
+           be named stowaway.exe, stowaway, or custom variants
+         - TmcLoader: Go loader that stages and executes other payloads;
+           typically named tmcloader.exe or similar
+         - McMx: simpler Go implant (proxy or secondary RAT); may appear
+           as mcmx.exe or with legitimate-looking service names
+       All are standalone Go binaries with large binary sizes (~3-10 MB)
+       and CGO-linked characteristics; none are standard Windows software.
+       =========================================================== -->
+
+  <!-- QuarksDumpLocalHash credential dumper execution -->
+  <rule id="104099" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(QuarksDumpLocalHash|quarksdump|ql)\.exe$</field>
+    <description>GoSerpent: QuarksDumpLocalHash credential dumper executed as $(win.eventdata.image) on $(win.eventdata.computer) -- GoSerpent actor deploys this tool to harvest local NTLM account hashes (T1003). Investigate process tree and parent process $(win.eventdata.parentImage).</description>
+    <mitre>
+      <id>T1003</id>
+    </mitre>
+    <group>goserpent,credential_dumping,quarks_dump,</group>
+  </rule>
+
+  <!-- Stowaway SOCKS5 proxy / reverse tunnel execution -->
+  <rule id="104100" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\stowaway(\.exe)?$</field>
+    <description>GoSerpent: Stowaway SOCKS5 reverse tunnel proxy executed as $(win.eventdata.image) on $(win.eventdata.computer) -- GoSerpent actor chains C2 through compromised hosts using Stowaway to obscure traffic routing; widely used by China-nexus APT groups (T1090). Isolate host and trace upstream C2 chain.</description>
+    <mitre>
+      <id>T1090</id>
+      <id>T1573.001</id>
+    </mitre>
+    <group>goserpent,stowaway,c2_proxy,china_nexus,</group>
+  </rule>
+
+  <!-- TmcLoader payload staging component -->
+  <rule id="104101" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(tmcloader|tmc_loader|TmcLoader)(\.exe)?$</field>
+    <description>GoSerpent: TmcLoader staging component executed as $(win.eventdata.image) on $(win.eventdata.computer) -- Go-based loader that stages and executes GoSerpent, McMx, ThumbcacheService, and Stowaway payloads (T1574). Active GoSerpent intrusion underway; investigate immediately.</description>
+    <mitre>
+      <id>T1574</id>
+    </mitre>
+    <group>goserpent,tmcloader,loader,</group>
+  </rule>
+
+  <!-- McMx secondary Go implant execution -->
+  <rule id="104102" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(mcmx|McMx)(\.exe)?$</field>
+    <description>GoSerpent: McMx secondary Go implant executed as $(win.eventdata.image) on $(win.eventdata.computer) -- simpler Go proxy or secondary RAT deployed alongside GoSerpent primary RAT; used for C2 failover or lateral movement relay (T1090, T1573.001). Investigate full process tree.</description>
+    <mitre>
+      <id>T1090</id>
+      <id>T1573.001</id>
+    </mitre>
+    <group>goserpent,mcmx,secondary_rat,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Sysmon EventID 1 with EventID filter: LSASS handle open
+       Rule ID: 104103
+       GoSerpent actor deploys Mimikatz for plaintext credential
+       harvesting and NTLM hash theft via LSASS memory reads.
+       This rule detects any process opening a read handle to lsass.exe
+       and is wider than just GoSerpent — it catches the Mimikatz and
+       QuarksDumpLocalHash pattern without requiring a specific process name,
+       making it resilient to binary renaming.
+       Note: Windows Security EventID 4663 / Sysmon EventID 10 are the
+       canonical process access log; here we use the Sysmon EventID 10
+       filter via the 61603 parent SID with win.system.eventID check
+       (pattern established in purple_team_phase1.xml rule 100770).
+       =========================================================== -->
+
+  <!-- LSASS handle open (Mimikatz / QuarksDumpLocalHash pattern) -->
+  <rule id="104103" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.system.eventID">^10$</field>
+    <field name="win.eventdata.targetImage" type="pcre2">(?i)\\lsass\.exe$</field>
+    <field name="win.eventdata.sourceImage" negate="yes" type="pcre2">(?i)\\(MsMpEng|svchost|csrss|wininit|services|lsass|winlogon|NisSrv|MsSense|SenseCnfg|SecurityHealthService|AggregatorHost|spoolsv|dwm|System)\.exe$</field>
+    <description>GoSerpent/Mimikatz: $(win.eventdata.sourceImage) opened handle to lsass.exe on $(win.eventdata.computer) -- credential harvesting attempt; GoSerpent actor uses Mimikatz and QuarksDumpLocalHash for NTLM hash and plaintext credential theft (T1003.001). Investigate source process immediately.</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+    <group>goserpent,mimikatz,credential_dumping,lsass,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Firewall: Outbound from Windows hosts to Chinese cloud providers
+       Rule ID: 104104
+       GoSerpent C2 nodes are hosted exclusively on Alibaba Cloud and
+       UCLOUD HK. For homelab/enterprise environments with no business
+       relationship to Chinese cloud providers, outbound connections
+       from Windows servers (especially east-west or server-to-external)
+       to Alibaba Cloud (AS37963, 47.0.0.0/8, 8.210.0.0/16, etc.)
+       or UCLOUD HK (AS135377, 103.74.0.0/15) warrant investigation.
+       This rule triggers on Alibaba Cloud's primary CIDR blocks;
+       expand to full AS37963/AS135377 prefix list if available.
+       NOTE: Trigger also by Stowaway SOCKS5 relay hops — internal
+       east-west connections from non-C2-hosts to these ranges after
+       initial compromise may indicate Stowaway lateral relay.
+       =========================================================== -->
+
+  <!-- Outbound to Alibaba Cloud / UCLOUD HK ranges (GoSerpent C2 hosting) -->
+  <rule id="104104" level="11">
+    <if_group>firewall</if_group>
+    <field name="data.dest_ip" type="pcre2">^(47\.\d+\.\d+\.\d+|8\.210\.\d+\.\d+|8\.211\.\d+\.\d+|8\.212\.\d+\.\d+|8\.213\.\d+\.\d+|47\.74\.\d+\.\d+|103\.74\.\d+\.\d+|103\.75\.\d+\.\d+)$</field>
+    <description>GoSerpent C2 candidate: outbound from $(data.src_ip) to Alibaba Cloud / UCLOUD HK IP $(data.dest_ip) -- GoSerpent actor hosts all 11 C2 nodes exclusively on Alibaba Cloud and UCLOUD HK; Chinese-provider egress from Windows hosts with no business relationship warrants investigation (T1573.001, T1090). Cross-reference with Stowaway execution events.</description>
+    <mitre>
+      <id>T1573.001</id>
+      <id>T1090</id>
+    </mitre>
+    <group>goserpent,c2_egress,alibaba_cloud,ucloud,china_nexus,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Composite indicator: ThumbcacheService parent spawning known
+       credential dumping or proxy tool (high-confidence chain)
+       Rule ID: 104105
+       If ThumbcacheService (the GoSerpent collection DLL host process)
+       spawns QuarksDumpLocalHash or Stowaway, the intrusion is confirmed
+       with very high confidence across two distinct TTPs (T1560 + T1003
+       or T1560 + T1090). This two-event chain is too specific to be
+       coincidental.
+       =========================================================== -->
+
+  <!-- ThumbcacheService process spawning credential dump or SOCKS5 proxy tool -->
+  <rule id="104105" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(ThumbcacheService|thumbcache)(\.exe|\.dll)?$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(QuarksDumpLocalHash|quarksdump|ql|stowaway|tmcloader|tmc_loader|mcmx|McMx)(\.exe)?$</field>
+    <description>CRITICAL: GoSerpent multi-stage toolchain confirmed -- ThumbcacheService ($(win.eventdata.parentImage)) spawned $(win.eventdata.image) on $(win.eventdata.computer). Two-TTP chain (collection + credential dump/proxy) is definitive GoSerpent IOC. Initiate IR immediately (T1560, T1003/T1090).</description>
+    <mitre>
+      <id>T1560</id>
+      <id>T1003</id>
+      <id>T1090</id>
+    </mitre>
+    <group>goserpent,confirmed_ioc,multi_stage,isolate_host,</group>
+  </rule>
+
+  <!-- ===========================================================
+       ThumbcacheService DLL-host process anomaly (broad detection)
+       Rule ID: 104106
+       ThumbcacheService is not a standard Windows service or component
+       name. Any process executing under this name from a non-Windows
+       system directory is inherently suspicious. This broad rule fires
+       for any ThumbcacheService execution that hasn't already matched
+       the more specific 104098 (file drop) or 104105 (child spawn).
+       =========================================================== -->
+
+  <!-- ThumbcacheService process created outside Windows system directories -->
+  <rule id="104106" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\ThumbcacheService(\.exe|\.dll)?$</field>
+    <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)^C:\\Windows\\(System32|SysWOW64|WinSxS)\\</field>
+    <description>GoSerpent: ThumbcacheService process $(win.eventdata.image) executed from non-standard path on $(win.eventdata.computer) -- GoSerpent deploys a malicious DLL masquerading as a Windows thumbnail cache service; legitimate Windows has no ThumbcacheService component outside System32 (T1036, T1574). Investigate parent $(win.eventdata.parentImage) and loaded DLLs.</description>
+    <mitre>
+      <id>T1036</id>
+      <id>T1574</id>
+    </mitre>
+    <group>goserpent,thumbcacheservice,masquerading,</group>
+  </rule>
+
+</group>
