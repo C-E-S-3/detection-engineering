@@ -291,7 +291,7 @@
        =========================================================== -->
   <rule id="104081" level="15">
     <decoded_as>json</decoded_as>
-    <field name="RequestPath" type="pcre2">(?i)(?:/wp-content/(?:uploads|mu-plugins)/[^"]*\.ph(?:p[3-8]?|tml)(?:\?|$|/)|/wp-content/plugins/[^/]+/[^"]*\.ph(?:p[3-8]?|tml)[^"]*(?:cmd=|command=|exec=|shell=|[?&]c=|run=|system=|pass=|passwd=|whoami=|id=))</field>
+    <field name="RequestPath" type="pcre2">(?i)(?:/wp-content/(?:uploads|mu-plugins)/[^"]*\.ph(?:p[3-8]?|tml)(?:\?|$|/)|/wp-content/plugins/[^/]+/[^"]*\.ph(?:p[3-8]?|tml)[^"]*(?:cmd=|command=|exec=|shell=|[?&amp;]c=|run=|system=|pass=|passwd=|whoami=|id=))</field>
     <description>wp2shell: PHP webshell access in WordPress wp-content directory from $(ClientHost) to $(RequestHost)$(RequestPath) - PHP files in wp-content/uploads or mu-plugins should not be web-accessible; PHP files in wp-content/plugins accessed with shell command parameters indicate active webshell execution from wp2shell CVE-2026-63030/CVE-2026-60137 chain; initiate incident response and audit wp-content directory (T1505.003/T1059.004)</description>
     <mitre>
       <id>T1505</id>
