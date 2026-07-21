@@ -68,7 +68,6 @@
 
   <!-- LiteSpeed config reload / restart triggered by non-root user (syslog) -->
   <rule id="102302" level="10">
-    <decoded_as>osyslog</decoded_as>
     <match>lshttpd|litespeed|lsws</match>
     <regex>config.*reload|vhost.*rebuild|graceful.*restart</regex>
     <description>LiteSpeed config reload triggered -- may indicate attacker triggering LSWrap to follow a planted symlink (CVE-2026-54420 T1068)</description>
@@ -123,7 +122,6 @@
 
   <!-- Unexpected root login (or su to root) after LiteSpeed config reload -->
   <rule id="102306" level="13">
-    <decoded_as>osyslog</decoded_as>
     <match>session opened for user root</match>
     <description>Root session opened on LiteSpeed/cPanel host -- may follow CVE-2026-54420 SSH key injection (T1068/T1078.003)</description>
     <mitre>
