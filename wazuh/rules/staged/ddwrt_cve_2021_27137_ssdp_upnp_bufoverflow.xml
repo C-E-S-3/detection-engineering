@@ -1,0 +1,322 @@
+<!-- ============================================================
+     DD-WRT CVE-2021-27137: SSDP/UPnP Stack Buffer Overflow
+     C0XMO Gafgyt Variant — Multi-Architecture IoT Botnet
+
+     Threat:
+       CVE-2021-27137 is a stack-based buffer overflow in the UPnP
+       SSDP parser of DD-WRT router firmware versions prior to
+       changeset 45724. The vulnerability exists in
+       router/upnp/src/ssdp.c where an unsafe strcpy() copies
+       user-supplied ST:uuid: header values from SSDP M-SEARCH
+       requests into a fixed-size stack buffer without bounds
+       checking. An unauthenticated attacker can trigger the overflow
+       by sending a crafted UDP M-SEARCH packet to port 1900 with an
+       oversized ST:uuid: value, resulting in denial of service or
+       arbitrary code execution under the security context of the
+       upnpd process.
+
+       CISA KEV: Added July 2026. Federal deadline July 24, 2026.
+       Active exploitation attributed to C0XMO, a cross-platform
+       Gafgyt-family botnet (FortiGuard Labs, BleepingComputer 2026)
+       targeting ARM, MIPS, PowerPC, SuperH, MC68000, and x86_64
+       architectures. C0XMO separates scanning from propagation into
+       distinct components and kills rival malware processes after
+       infection to maintain exclusive control of the device.
+
+       UPnP is disabled by default on DD-WRT and when enabled only
+       listens on internal interfaces; exploitation therefore requires
+       LAN-side access, making the primary risk a compromised LAN host
+       or direct physical access to the internal network.
+
+     Attack chain (C0XMO):
+       1. Python scanner from 217.160.125.125:15527 probes LAN for
+          hosts with UDP 1900 open (DD-WRT UPnP enabled).
+       2. Crafted M-SEARCH packet with oversized ST:uuid: value
+          overflows the stack buffer in ssdp_msearch().
+       3. Shellcode executes and fetches the C0XMO ELF dropper from
+          217.160.125.125:15527 via HTTP GET.
+       4. Dropper is written to /tmp/.cache and executed; architecture-
+          specific binaries (e.g. mipsel, armv7l) are staged there.
+       5. C0XMO kills rival botnet processes (Mirai, Gafgyt variants)
+          and initiates DDoS attack campaigns and further SSDP scanning.
+
+     MITRE ATT&amp;CK Techniques:
+       T1190     - Exploit Public-Facing Application
+       T1105     - Ingress Tool Transfer (ELF dropper download)
+       T1498     - Network Denial of Service (Gafgyt DDoS capability)
+       T1496     - Resource Hijacking (botnet enrollment)
+       T1071     - Application Layer Protocol (C0XMO C2 over HTTP)
+       T1584.005 - Compromise Infrastructure: Botnet
+
+     Rule IDs: 104128-104134
+     Author: SecOps Engineer (Purple Team)
+     Issue: ESKA-611
+     Date: 2026-07-21
+
+     Log source prerequisites:
+       Rules 104128-104129 (inbound SSDP scanning):
+         Firewall logs (firewall group) with data.dest_port and
+         data.src_ip fields. OPNsense/pfSense syslog forwarded to
+         Wazuh covers this via the firewall group decoder.
+       Rule 104130 (C0XMO dropper IOC - firewall):
+         Firewall logs with data.dest_ip and data.dest_port fields.
+         Any outbound connection from a LAN host to 217.160.125.125
+         indicates compromise; DD-WRT itself does not run a Wazuh
+         agent and will not generate this alert directly.
+       Rule 104131 (C0XMO dropper IOC - Suricata):
+         Suricata EVE JSON logs forwarded to Wazuh (parent SID 86601).
+         Suricata must have network visibility on the LAN segment
+         where DD-WRT devices reside to observe exploitation traffic.
+       Rule 104132 (endpoint wget/curl to dropper port):
+         Wazuh agent on Linux host (command monitoring or auditd).
+         Detects the wget/curl process that fetches the C0XMO ELF
+         binary from the dropper server on port 15527; relevant if
+         a compromised Linux host is being used as the pivot for
+         SSDP scanning and dropper delivery.
+       Rule 104133 (endpoint /tmp/.cache dropper staging):
+         Wazuh agent with syscheck FIM configured to monitor /tmp/.
+         Covers the ELF binary drop location used by C0XMO on
+         compromised Linux/embedded devices accessible to Wazuh.
+       Rule 104134 (internal SSDP scanning from LAN host):
+         Firewall logs showing internal-to-internal UDP 1900 traffic.
+         Compromised DD-WRT devices and Linux hosts enrolled in
+         C0XMO will scan LAN subnets for additional UPnP targets
+         using the embedded Python scanner.
+
+     Severity tiers:
+       0  - Inbound UDP 1900 from external IP (anchor for scanner rule)
+       11 - Inbound UDP 1900 scanner: 5+ probes from same external IP
+              within 60 s (automated SSDP reconnaissance)
+       14 - Outbound to C0XMO dropper IP 217.160.125.125 (confirmed IOC;
+              LAN host contacted dropper server after exploit shellcode ran)
+       14 - Suricata: Traffic to/from C0XMO dropper IP 217.160.125.125
+       12 - Endpoint: wget/curl outbound to port 15527 (C0XMO dropper port)
+       11 - Endpoint: File creation in /tmp/.cache (C0XMO dropper staging)
+       12 - Internal host sending SSDP M-SEARCH to UDP 1900 LAN targets
+              (C0XMO lateral spread from compromised device)
+
+     Coverage notes:
+       DD-WRT routers do not run Wazuh agents; no endpoint rules can
+       fire on the router itself. Detection relies on:
+         (a) Firewall/IDS observing the exploitation traffic on the LAN;
+         (b) Any Linux pivot host that runs the C0XMO scanner generating
+             detectable network and endpoint artifacts; and
+         (c) Post-compromise: LAN hosts contacting the dropper server.
+       If UPnP is disabled on all DD-WRT devices (recommended hardening),
+       the attack surface is eliminated and these rules become monitoring
+       for misconfiguration re-enablement.
+
+     References:
+       CISA KEV Catalog:
+         https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+       NVD CVE-2021-27137:
+         https://nvd.nist.gov/vuln/detail/CVE-2021-27137
+       SSD Secure Disclosure - DD-WRT UPnP Buffer Overflow:
+         https://ssd-disclosure.com/ssd-advisory-dd-wrt-upnp-buffer-overflow/
+       FortiGuard IPS Signature 56117:
+         https://www.fortiguard.com/encyclopedia/ips/56117
+       FortiGuard Labs - C0XMO Gafgyt Variant Analysis:
+         https://www.fortinet.com/blog/threat-research/inside-cross-platform-propagation-of-new-gafgyt-variant-c0xmo
+       BleepingComputer - C0XMO Botnet Spreads via DD-WRT Flaw:
+         https://www.bleepingcomputer.com/news/security/c0xmo-botnet-spreads-via-dd-wrt-router-flaw-kills-rival-malware/
+       SOC Prime - C0XMO Gafgyt Variant:
+         https://socprime.com/active-threats/c0xmo-a-new-gafgyt-variant-with-cross-platform-propagation/
+       MITRE ATT&amp;CK T1190:
+         https://attack.mitre.org/techniques/T1190/
+       MITRE ATT&amp;CK T1105:
+         https://attack.mitre.org/techniques/T1105/
+       MITRE ATT&amp;CK T1498:
+         https://attack.mitre.org/techniques/T1498/
+     ============================================================ -->
+
+<group name="initial_access,impact,ddwrt,cve_2021_27137,cisa_kev,c0xmo,gafgyt,iot_botnet,">
+
+  <!-- ===========================================================
+       Rule 104128: Base anchor - inbound UDP 1900 from external IP
+       Firewall log (firewall group)
+       Level 0: no alert; chains to scanner rule 104129.
+
+       UDP port 1900 is the SSDP/UPnP discovery port. DD-WRT with
+       UPnP enabled listens on this port on internal interfaces.
+       Inbound connections from external IPs are unexpected in a
+       correctly configured network and indicate either a misconfigured
+       firewall exposing UPnP to the internet, or a LAN-side attacker
+       scanning for vulnerable routers. This anchor captures all
+       external-sourced UDP 1900 activity for correlation by rule
+       104129 (frequency-based scanner detection).
+       =========================================================== -->
+  <rule id="104128" level="0">
+    <if_group>firewall</if_group>
+    <field name="data.dest_port">^1900$</field>
+    <description>DD-WRT CVE-2021-27137: Inbound UDP 1900 (SSDP/UPnP) from $(data.src_ip) - base anchor for SSDP scanner detection (chains to 104129)</description>
+    <group>ddwrt,cve_2021_27137,ssdp,upnp,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104129: SSDP M-SEARCH scanner - 5+ probes in 60 s
+       Firewall log (firewall group), frequency rule on 104128.
+       MITRE: T1190 (Exploit Public-Facing Application)
+
+       The C0XMO Python scanner probes LAN hosts in rapid succession
+       to identify DD-WRT devices with UPnP enabled before delivering
+       the CVE-2021-27137 exploit payload. Five or more SSDP probes
+       from the same source IP within 60 seconds indicates automated
+       UPnP reconnaissance, not a single device discovery event.
+       In a correctly firewalled environment, external UDP 1900 should
+       be blocked entirely; any such traffic reaching internal hosts
+       warrants immediate investigation of the source IP and the
+       DD-WRT devices it is targeting.
+       =========================================================== -->
+  <rule id="104129" level="11" frequency="5" timeframe="60">
+    <if_matched_sid>104128</if_matched_sid>
+    <same_field>data.src_ip</same_field>
+    <description>DD-WRT CVE-2021-27137: SSDP scanner -- 5+ UDP port 1900 probes from $(data.src_ip) within 60 s; automated UPnP reconnaissance consistent with C0XMO Gafgyt Python scanner probing for DD-WRT routers vulnerable to stack buffer overflow; block source IP and audit internal UPnP exposure (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>ddwrt,cve_2021_27137,ssdp,upnp,scanner,automated_attack,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104130: IOC - Outbound to C0XMO dropper IP 217.160.125.125
+       Firewall log (firewall group)
+       MITRE: T1105 (Ingress Tool Transfer)
+
+       217.160.125.125 (hosted in Germany) is the C0XMO dropper and
+       scanner distribution server identified by FortiGuard Labs. It
+       hosts the Python SSDP scanner and multi-architecture ELF botnet
+       binaries (ARM, MIPS, MIPSEL, PowerPC, SuperH, MC68000, x86_64)
+       served on port 15527 via HTTP. Any outbound connection from a
+       LAN host to this IP strongly indicates that the CVE-2021-27137
+       exploit shellcode ran on a DD-WRT router and the router is now
+       fetching the C0XMO payload, OR that a compromised Linux pivot
+       host is downloading the dropper package. Initiate incident
+       response: isolate affected hosts and inspect for C0XMO processes
+       and /tmp/.cache artifacts.
+       =========================================================== -->
+  <rule id="104130" level="14">
+    <if_group>firewall</if_group>
+    <field name="data.dest_ip">^217\.160\.125\.125$</field>
+    <description>IOC: C0XMO Gafgyt dropper contact -- outbound to 217.160.125.125 (Germany; CVE-2021-27137 DD-WRT exploit dropper; port 15527; multi-arch ELF payloads for ARM/MIPS/PowerPC); a DD-WRT router or LAN host is downloading the C0XMO botnet payload after successful exploit; isolate affected device and inspect for /tmp/.cache artifacts (T1105, T1496)</description>
+    <mitre>
+      <id>T1105</id>
+      <id>T1496</id>
+    </mitre>
+    <group>ioc_c2,ddwrt,cve_2021_27137,c0xmo,gafgyt,dropper,iot_botnet,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104131: Suricata - C0XMO dropper IP traffic
+       Suricata EVE JSON (parent SID 86601)
+       MITRE: T1105 (Ingress Tool Transfer)
+
+       Suricata with LAN visibility will observe the TCP connection
+       from the compromised DD-WRT router or pivot host to the C0XMO
+       dropper at 217.160.125.125:15527. This rule fires on any
+       Suricata alert involving that destination IP, covering both
+       the initial HTTP dropper fetch and subsequent C2 check-ins.
+       FortiGuard IPS signature 56117 (DD-WRT.UPNP.CVE-2021-27137.
+       uuid.Buffer.Overflow) may also generate a Suricata-forwarded
+       alert when the oversized ST:uuid: M-SEARCH packet is observed
+       on the wire; this rule captures the dropper download phase
+       that follows.
+       =========================================================== -->
+  <rule id="104131" level="14">
+    <if_sid>86601</if_sid>
+    <field name="alert.dest_ip" type="pcre2">^217\.160\.125\.125$</field>
+    <description>Suricata: C0XMO Gafgyt dropper traffic -- connection to 217.160.125.125 (CVE-2021-27137 DD-WRT exploit dropper/scanner server; port 15527); network IDS confirms dropper fetch from compromised DD-WRT or Linux pivot host; inspect /tmp/.cache on all reachable LAN devices and block IOC IP at perimeter (T1105, T1496)</description>
+    <mitre>
+      <id>T1105</id>
+      <id>T1496</id>
+    </mitre>
+    <group>ioc_c2,ddwrt,cve_2021_27137,c0xmo,gafgyt,suricata,dropper,iot_botnet,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104132: Endpoint - wget/curl to C0XMO dropper port 15527
+       Wazuh agent command monitoring / auditd (command group)
+       MITRE: T1105 (Ingress Tool Transfer)
+
+       The C0XMO shellcode executes wget or curl on the compromised
+       DD-WRT router (which runs BusyBox) to fetch the architecture-
+       appropriate ELF binary from 217.160.125.125:15527. The same
+       command pattern is used by the Python scanner when deployed
+       on a compromised Linux pivot host. An outbound wget or curl
+       process targeting port 15527 is highly anomalous on any host
+       in the environment; this port has no legitimate use case and
+       is specific to C0XMO dropper delivery. This rule fires on
+       Wazuh-monitored Linux endpoints that may serve as compromise
+       pivots for the SSDP scanning campaign.
+       =========================================================== -->
+  <rule id="104132" level="12">
+    <if_group>command</if_group>
+    <match>wget|curl</match>
+    <field name="data.command" type="pcre2">(?i)(wget|curl).{0,200}:15527\b</field>
+    <description>DD-WRT CVE-2021-27137 / C0XMO: $(data.command) -- wget or curl fetching from port 15527, the C0XMO Gafgyt dropper distribution port (217.160.125.125:15527); host is likely a Linux pivot used to deliver the DD-WRT exploit or has itself been compromised; inspect /tmp/.cache for ELF binaries and terminate suspicious processes (T1105)</description>
+    <mitre>
+      <id>T1105</id>
+    </mitre>
+    <group>ddwrt,cve_2021_27137,c0xmo,gafgyt,dropper,ingress_tool_transfer,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104133: Endpoint - /tmp/.cache ELF dropper staging
+       Wazuh syscheck FIM (syscheck group, parent SID 554)
+       MITRE: T1105 (Ingress Tool Transfer)
+
+       C0XMO stages its multi-architecture ELF botnet binaries in
+       /tmp/.cache on compromised devices before executing them. The
+       .cache subdirectory within /tmp is the specific staging
+       location observed across C0XMO samples (FortiGuard Labs 2026).
+       File creation events under /tmp/.cache on any Wazuh-monitored
+       Linux host indicate either: (a) the host itself was compromised
+       by C0XMO exploitation and is staging its own botnet payload, or
+       (b) the host received the C0XMO dropper as a result of the
+       DD-WRT SSDP exploitation spreading to adjacent Linux systems.
+       FIM monitoring of /tmp is recommended in syscheck configuration
+       to ensure this rule fires on new file additions.
+       =========================================================== -->
+  <rule id="104133" level="11">
+    <if_sid>554</if_sid>
+    <field name="file" type="pcre2">(?i)/tmp/\.cache/</field>
+    <description>DD-WRT CVE-2021-27137 / C0XMO: New file created in /tmp/.cache [$(file)] on $(agent.name) - C0XMO Gafgyt botnet stages multi-architecture ELF payloads (ARM, MIPS, PowerPC) in /tmp/.cache after exploiting CVE-2021-27137 or other IoT vulnerabilities; inspect file type and hash, terminate any spawned processes, and check for BusyBox-stripped binaries consistent with cross-compiled IoT malware (T1105)</description>
+    <mitre>
+      <id>T1105</id>
+      <id>T1496</id>
+    </mitre>
+    <group>ddwrt,cve_2021_27137,c0xmo,gafgyt,dropper,syscheck,tmp_staging,iot_botnet,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104134: Firewall - Internal SSDP scanning (LAN propagation)
+       Firewall log (firewall group)
+       MITRE: T1584.005 (Compromise Infrastructure: Botnet)
+
+       Once C0XMO infects a DD-WRT router or Linux host, it deploys
+       an embedded Python scanner that probes the local LAN for
+       additional UPnP-enabled devices vulnerable to CVE-2021-27137
+       and other IoT exploits. Internal SSDP scanning — where a LAN
+       host sends UDP M-SEARCH to multiple other internal IPs on
+       port 1900 — is abnormal behavior for most homelab devices.
+       Routers and IoT devices should not initiate M-SEARCH probes
+       across subnets; only UPnP control point software (e.g. media
+       servers) would legitimately query port 1900, and only within
+       a single subnet. Cross-subnet or high-frequency internal UDP
+       1900 traffic indicates a compromised device running the C0XMO
+       scanner for lateral propagation within the network.
+       =========================================================== -->
+  <rule id="104134" level="12">
+    <if_group>firewall</if_group>
+    <field name="data.dest_port">^1900$</field>
+    <field name="data.src_ip" type="pcre2">^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)</field>
+    <field name="data.dest_ip" type="pcre2">^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)</field>
+    <description>DD-WRT CVE-2021-27137 / C0XMO: Internal host $(data.src_ip) sending SSDP M-SEARCH to $(data.dest_ip):1900 -- LAN-to-LAN UDP 1900 scanning is the C0XMO Gafgyt propagation pattern; compromised DD-WRT router or Linux host is running the embedded Python SSDP scanner to recruit additional vulnerable UPnP devices; isolate source host and audit all internal DD-WRT devices for UPnP exposure (T1584.005, T1190)</description>
+    <mitre>
+      <id>T1584.005</id>
+      <id>T1190</id>
+    </mitre>
+    <group>ddwrt,cve_2021_27137,c0xmo,gafgyt,ssdp,upnp,lateral_spread,iot_botnet,</group>
+  </rule>
+
+</group>
