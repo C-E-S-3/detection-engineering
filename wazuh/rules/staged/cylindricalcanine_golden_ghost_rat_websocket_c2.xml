@@ -1,0 +1,339 @@
+<!-- ============================================================
+     CylindricalCanine Golden Gh0st RAT Detection Rules
+     Threat: CylindricalCanine (GoldenEyeDog subgroup, APT-Q-27 /
+             Dragon Breath / Miuuti Group); China-nexus cybercrime
+             and espionage collective. Golden Gh0st RAT uses a
+             dual-port WebSocket C2 architecture:
+               TCP 5188: unencrypted command-and-control channel
+               TCP 5198: encrypted data exfiltration channel
+
+             DigiCert certificate breach (April 2026): 60 stolen
+             code-signing certificates linked to 27+ signed malware
+             specimens (Golden Gh0st Loader and Golden Gh0st RAT),
+             defeating signature-based AV detection at deployment.
+
+     Known C2 Domains:
+       uu.goldeyeuu[.]io   (primary, unencrypted commands, TCP 5188)
+       api.keensie[.]com   (encrypted exfiltration, TCP 5198)
+
+     Known IOC SHA256 Hash:
+       81e276aaa3eb9b3f595663c316b3c6414cc3dde5e6cc3a82856b7276acabb7de
+
+     MITRE ATT&amp;CK Techniques:
+       T1071.001 - Application Layer Protocol: Web Protocols (TA0011)
+       T1573     - Encrypted Channel (TCP 5198 exfil) (TA0011)
+       T1041     - Exfiltration over C2 Channel (TA0010)
+       T1553.002 - Code Signing (stolen DigiCert certificates) (TA0005)
+
+     Rule IDs: 104089-104095
+     Author: SecOps Engineer (Purple Team)
+     Issue: ESKA-595
+     Date: 2026-07-21
+
+     Log source prerequisites:
+       Rules 104089, 104090, 104091, 104092, 104093 (network):
+         Firewall or network appliance logs in the Wazuh firewall
+         group (SID 103000). FortiGate, pfSense, Suricata, and
+         UniFi all qualify. Rule 104089 matches on destination
+         hostname; rules 104091-104093 match on destination port
+         in the raw firewall log. The port patterns dstport=5188
+         and dstport=5198 cover FortiGate CEF key-value format;
+         adjust the match string if your firewall uses a different
+         key (dport=, destination_port=, DestPort=, or similar).
+       Rule 104094 (process-level, Windows):
+         Sysmon EventID 3 (NetworkConnect) forwarded to Wazuh.
+         EventID 3 logging must be enabled in the Sysmon config
+         and the Wazuh agent on the Windows host must forward the
+         Microsoft-Windows-Sysmon/Operational event channel.
+         Provides process attribution (which binary initiated the
+         outbound connection) in addition to IP and port.
+       Rule 104095 (FIM):
+         Wazuh syscheck with SHA-256 checksums enabled
+         (check_sha256sum="yes" in ossec.conf syscheck block).
+         Fires when a file matching the known Golden Gh0st RAT
+         binary hash appears as a new or modified file on any
+         monitored host. Requires Wazuh 4.3+ for the
+         syscheck.sha256_after decoded field.
+
+     Severity tiers:
+        0  - (none; no anchor rule needed for this ruleset)
+       12  - Outbound TCP 5188 (low-confidence port-only match)
+       13  - Outbound TCP 5198 (encrypted exfil channel)
+       14  - Connection to known C2 domain (single event, high conf)
+       14  - Sysmon EventID 3: non-browser connecting to 5188/5198
+       15  - C2 domain beaconing: 2+ in 120 s, active implant
+       15  - TCP 5188 beaconing: 3+ in 120 s, active RAT confirmed
+       15  - Known Golden Gh0st RAT SHA256 hash detected via FIM
+
+     References:
+       Expel (2026-07-20): https://expel.com/blog/introducing-cylindricalcanine/
+       The Hacker News (2026-07):
+         https://thehackernews.com/2026/07/goldeneyedog-subgroup-linked-to.html
+       MITRE ATT&amp;CK Dragon Breath G1071:
+         https://attack.mitre.org/groups/G1071/
+       MITRE ATT&amp;CK T1071.001:
+         https://attack.mitre.org/techniques/T1071/001/
+       MITRE ATT&amp;CK T1553.002:
+         https://attack.mitre.org/techniques/T1553/002/
+     ============================================================ -->
+
+<group name="threat_intel,command_and_control,windows,linux,macos,cylindricalcanine,golden_ghost_rat,dragon_breath,china_nexus,">
+
+  <!-- ===========================================================
+       Rule 104089: Known C2 domain match in network/firewall logs
+       Network/firewall logs - Wazuh SID 103000
+       MITRE: T1071.001 (Application Layer Protocol: Web Protocols)
+
+       Golden Gh0st RAT connects to two confirmed C2 domains:
+         uu.goldeyeuu[.]io  (TCP 5188, unencrypted command channel)
+         api.keensie[.]com  (TCP 5198, encrypted exfil channel)
+
+       Both domains are registered CylindricalCanine infrastructure.
+       They appear in outbound DNS queries and network connections
+       from infected endpoints. CylindricalCanine used 60 stolen
+       DigiCert code-signing certificates to sign the RAT and its
+       loader, meaning AV may have allowed execution at time of
+       infection. A connection to either domain indicates a running
+       Golden Gh0st RAT implant.
+
+       False positives: essentially none. These domains exist only
+       as CylindricalCanine C2 infrastructure; any sighting is a
+       confirmed infection. Isolate the originating host and begin
+       incident response immediately.
+       =========================================================== -->
+  <rule id="104089" level="14">
+    <if_sid>103000</if_sid>
+    <match>uu\.goldeyeuu\.io|api\.keensie\.com</match>
+    <description>CylindricalCanine Golden Gh0st RAT: outbound connection to confirmed C2 domain from $(agent.name) -- C2 domains uu.goldeyeuu[.]io (TCP 5188, unencrypted command channel) and api.keensie[.]com (TCP 5198, encrypted exfil channel) are attributed to CylindricalCanine, a GoldenEyeDog (APT-Q-27/Dragon Breath) China-nexus subgroup; 27+ malware specimens signed with 60 stolen DigiCert certificates bypass AV at deployment; isolate originating host and initiate IR immediately (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1553.002</id>
+    </mitre>
+    <group>cylindricalcanine,golden_ghost_rat,ioc_c2,ioc_domain,china_nexus,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104090: Sustained C2 domain beaconing (active RAT)
+       Frequency rule on 104089 - 2+ events in 120 s, same source
+       MITRE: T1071.001 (Application Layer Protocol: Web Protocols)
+              T1573 (Encrypted Channel)
+
+       Golden Gh0st RAT maintains persistent WebSocket connections
+       to its C2 on TCP 5188 and TCP 5198 and reconnects at regular
+       intervals. Two or more connections from the same source host
+       to either C2 domain within 120 seconds is unambiguous
+       confirmation of a running Golden Gh0st RAT implant performing
+       active C2 check-ins.
+
+       Response: Isolate the host immediately. Capture volatile
+       memory before powering off. Review all data accessible from
+       the endpoint and treat it as potentially staged for exfiltration.
+       Given China-nexus attribution, escalate to CISO and IR.
+       =========================================================== -->
+  <rule id="104090" level="15" frequency="2" timeframe="120">
+    <if_matched_sid>104089</if_matched_sid>
+    <same_source_ip />
+    <description>CylindricalCanine Golden Gh0st RAT CRITICAL: active C2 beaconing confirmed from $(agent.name) -- 2+ connections to Golden Gh0st C2 infrastructure (uu.goldeyeuu[.]io or api.keensie[.]com) within 120 seconds from the same host; Golden Gh0st RAT implant is running and performing regular C2 check-ins; China-nexus CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) espionage campaign; CRITICAL: isolate host NOW, capture memory, escalate to IR (T1071.001, T1573)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1573</id>
+    </mitre>
+    <group>cylindricalcanine,golden_ghost_rat,ioc_c2,beaconing,active_rat,china_nexus,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104091: Outbound connection to TCP 5188 (command channel)
+       Network/firewall logs - Wazuh SID 103000
+       MITRE: T1071.001 (Application Layer Protocol: Web Protocols)
+
+       TCP 5188 is the unencrypted WebSocket command channel used by
+       Golden Gh0st RAT. The attacker sends commands over this port:
+       keylogging tasks, file enumeration, process execution, and
+       screenshot capture. TCP 5188 is IANA unassigned and not used
+       by any recognized enterprise application. Outbound connections
+       to external hosts on TCP 5188 from corporate endpoints are
+       highly anomalous.
+
+       This rule is the base anchor for the TCP 5188 family. Frequency
+       rule 104093 fires when sustained beaconing on TCP 5188 is
+       detected (3+ connections in 120 seconds from the same host).
+
+       Port matching covers FortiGate CEF format (dstport=), common
+       alternative log key names, and colon-prefixed port notation.
+       Adjust if your firewall log uses a different field name.
+       Blocked outbound connections still indicate an infection attempt.
+
+       False positives: legitimate software using TCP 5188 (rare;
+       IANA unassigned). Investigate any hit: check source process,
+       destination, and correlate with domain rules 104089-104090.
+       =========================================================== -->
+  <rule id="104091" level="12">
+    <if_sid>103000</if_sid>
+    <match>dstport=5188|dport=5188|dst_port=5188|destination_port=5188|DestinationPort=5188|:5188 |:5188$</match>
+    <description>CylindricalCanine Golden Gh0st RAT: outbound TCP 5188 connection from $(agent.name) -- TCP 5188 is the unencrypted WebSocket command channel for Golden Gh0st RAT attributed to CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath); the attacker sends keylogging, file enumeration, and remote execution commands over this channel; TCP 5188 is IANA unassigned with no known legitimate enterprise use; triage source host and correlate with C2 domain rules 104089-104090 (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>cylindricalcanine,golden_ghost_rat,tcp_5188,command_channel,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104092: Outbound connection to TCP 5198 (encrypted exfil)
+       Network/firewall logs - Wazuh SID 103000
+       MITRE: T1573 (Encrypted Channel), T1041 (Exfiltration over C2)
+
+       TCP 5198 is the encrypted WebSocket data exfiltration channel
+       used by Golden Gh0st RAT. This channel carries encrypted
+       payloads: harvested credentials, keylog data, screenshots,
+       and file contents exfiltrated to CylindricalCanine C2
+       infrastructure. The encryption means DPI will not reveal
+       the content; detection must rely on the port number and
+       destination host.
+
+       TCP 5198 is IANA unassigned and used by no known legitimate
+       enterprise application. Any outbound connection to an external
+       host on TCP 5198 is a strong indicator of Golden Gh0st RAT
+       exfiltration activity. The elevated severity (level 13 vs.
+       level 12 for TCP 5188) reflects that data already flowing on
+       the exfil channel means collection has occurred and exfiltration
+       is in progress, increasing urgency for host isolation.
+
+       Correlate with TCP 5188 activity (rule 104091) and known C2
+       domain hits (rule 104089) on the same host to confirm the
+       Golden Gh0st dual-port C2 pattern.
+       =========================================================== -->
+  <rule id="104092" level="13">
+    <if_sid>103000</if_sid>
+    <match>dstport=5198|dport=5198|dst_port=5198|destination_port=5198|DestinationPort=5198|:5198 |:5198$</match>
+    <description>CylindricalCanine Golden Gh0st RAT: outbound TCP 5198 encrypted exfil connection from $(agent.name) -- TCP 5198 is the encrypted WebSocket exfiltration channel for Golden Gh0st RAT; CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) uses this channel to exfiltrate keylog data, credentials, screenshots, and files to C2 infrastructure; TCP 5198 is IANA unassigned with no legitimate enterprise use; isolate host and check for correlated TCP 5188 activity (rule 104091) and C2 domain hits (rule 104089) (T1573, T1041)</description>
+    <mitre>
+      <id>T1573</id>
+      <id>T1041</id>
+    </mitre>
+    <group>cylindricalcanine,golden_ghost_rat,tcp_5198,exfil_channel,encrypted_channel,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104093: Sustained TCP 5188 beaconing (active RAT confirmed)
+       Frequency rule on 104091 - 3+ events in 120 s, same source
+       MITRE: T1071.001 (Application Layer Protocol: Web Protocols)
+
+       Golden Gh0st RAT maintains a persistent WebSocket connection
+       on TCP 5188 and reconnects when the session is dropped.
+       Three or more outbound connections from the same source host
+       to external TCP 5188 within 120 seconds is strong evidence of
+       an active Golden Gh0st RAT implant maintaining its unencrypted
+       command channel and awaiting attacker instructions.
+
+       Sustained beaconing means the host is under active adversary
+       control. Given China-nexus attribution (CylindricalCanine /
+       Dragon Breath / APT-Q-27), the target may be subject to
+       ongoing espionage operations. All data accessible from the
+       host should be treated as potentially staged for exfiltration
+       via the TCP 5198 channel.
+
+       Response: Isolate host immediately. Capture volatile memory.
+       Preserve process list, open connections, and endpoint logs
+       before powering off. Notify CISO and begin IR.
+       =========================================================== -->
+  <rule id="104093" level="15" frequency="3" timeframe="120">
+    <if_matched_sid>104091</if_matched_sid>
+    <same_source_ip />
+    <description>CylindricalCanine Golden Gh0st RAT CRITICAL: active C2 beaconing confirmed via TCP 5188 from $(agent.name) -- 3+ outbound connections to TCP 5188 (Golden Gh0st unencrypted command channel) within 120 seconds; active Golden Gh0st RAT implant is maintaining its C2 channel awaiting attacker commands; China-nexus CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) espionage; CRITICAL: isolate host NOW, capture memory, treat all accessible data as potentially exfiltrated via TCP 5198, escalate to IR (T1071.001)</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>cylindricalcanine,golden_ghost_rat,tcp_5188,beaconing,active_rat,china_nexus,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104094: Sysmon EventID 3 connection to TCP 5188 or 5198
+       Sysmon EventID 3 (NetworkConnect) - Wazuh SID 61644
+       MITRE: T1071.001 (Application Layer Protocol: Web Protocols)
+              T1573 (Encrypted Channel)
+
+       Sysmon EventID 3 (NetworkConnect) records process-level
+       attribution for outbound TCP connections on Windows. This
+       rule fires when a non-browser process initiates a connection
+       to TCP 5188 (Golden Gh0st command channel) or TCP 5198
+       (Golden Gh0st encrypted exfil channel) on any destination.
+
+       The browser negate eliminates the rare edge case of a browser
+       connecting to these ports via a WebSocket-based web app.
+       No known legitimate browser extension uses TCP 5188 or 5198
+       externally. The connecting process name and image path
+       captured by Sysmon provide a direct path to identifying the
+       Golden Gh0st RAT binary on disk for hash verification and
+       quarantine.
+
+       Important: Golden Gh0st RAT binaries are signed with stolen
+       DigiCert certificates. The file will appear digitally signed
+       by a plausible-looking vendor. Do not dismiss this alert
+       because the binary is signed; verify the signing certificate
+       serial number against the 60 stolen DigiCert certs from the
+       April 2026 breach. Escalate if the issuer is DigiCert but
+       the subject organization is unfamiliar.
+
+       Requires Sysmon EventID 3 logging enabled in the Sysmon
+       configuration and the Wazuh agent forwarding the
+       Microsoft-Windows-Sysmon/Operational channel.
+       =========================================================== -->
+  <rule id="104094" level="14">
+    <if_sid>61644</if_sid>
+    <field name="win.system.eventID">^3$</field>
+    <field name="win.eventdata.destinationPort" type="pcre2">^(?:5188|5198)$</field>
+    <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)\\(?:chrome|firefox|msedge|safari|opera|brave|iexplore|chromium|Electron)\.exe$</field>
+    <description>CylindricalCanine Golden Gh0st RAT: non-browser process $(win.eventdata.image) initiated TCP $(win.eventdata.destinationPort) connection to $(win.eventdata.destinationIp) on $(win.eventdata.computer) by $(win.eventdata.user) -- Sysmon EventID 3 provides process attribution for Golden Gh0st RAT WebSocket C2 connection; TCP 5188 is the unencrypted command channel and TCP 5198 is the encrypted exfiltration channel; Golden Gh0st RAT binaries are signed with stolen DigiCert certificates (April 2026 breach) so the signing certificate will appear valid; verify signing cert subject and serial number against the stolen DigiCert cert list (T1071.001, T1573)</description>
+    <mitre>
+      <id>T1071.001</id>
+      <id>T1573</id>
+    </mitre>
+    <group>cylindricalcanine,golden_ghost_rat,windows,sysmon,tcp_5188,tcp_5198,process_attribution,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Rule 104095: FIM SHA256 match for known Golden Gh0st RAT binary
+       Wazuh FIM syscheck - SID 550,553,554,593
+       MITRE: T1553.002 (Code Signing - defense evasion via stolen cert)
+
+       This rule detects the confirmed SHA256 hash of a known Golden
+       Gh0st RAT binary specimen:
+         81e276aaa3eb9b3f595663c316b3c6414cc3dde5e6cc3a82856b7276acabb7de
+
+       CylindricalCanine signed Golden Gh0st RAT and its loaders
+       using 60 code-signing certificates stolen from DigiCert
+       in April 2026. Standard AV engines that trust Authenticode
+       signatures may have allowed the binary to execute without
+       alerting. The SHA256 IOC provides a hash-based detection path
+       independent of the signing certificate: if Wazuh FIM syscheck
+       is configured with SHA-256 checksums, it will alert when this
+       binary is written to or detected on any monitored path.
+
+       The syscheck.sha256_after field contains the SHA-256 of the
+       file at the time of the FIM event. A match on this hash is a
+       confirmed Golden Gh0st RAT binary. This is a CRITICAL alert
+       regardless of file location, signing status, or whether the
+       binary has been executed yet. Quarantine the file and isolate
+       the host before checking whether the RAT is actively running.
+
+       Requires Wazuh 4.3+ with check_sha256sum="yes" in the ossec.conf
+       syscheck block. Recommended monitored paths:
+         Windows: C:\Windows\Temp, C:\Users\*\AppData, C:\ProgramData,
+                  C:\Windows\System32 (with appropriate scope limits)
+         Linux:   /tmp, /var/tmp, /opt, /usr/local/bin
+         macOS:   /tmp, /Users/*/Library, /usr/local
+
+       False positives: none. This is a confirmed malicious file hash.
+       =========================================================== -->
+  <rule id="104095" level="15">
+    <if_sid>550,553,554,593</if_sid>
+    <field name="syscheck.sha256_after">81e276aaa3eb9b3f595663c316b3c6414cc3dde5e6cc3a82856b7276acabb7de</field>
+    <description>CylindricalCanine Golden Gh0st RAT CRITICAL: confirmed malicious binary hash detected via FIM on $(agent.name) at $(syscheck.path) -- SHA256 hash 81e276aaa3eb9b3f595663c316b3c6414cc3dde5e6cc3a82856b7276acabb7de is a known Golden Gh0st RAT specimen signed with a DigiCert certificate stolen in the April 2026 CylindricalCanine breach; the file appears digitally signed and AV may have permitted its execution; do not dismiss because the file appears signed; CRITICAL: quarantine file immediately, isolate host, and initiate IR (T1553.002, T1071.001)</description>
+    <mitre>
+      <id>T1553.002</id>
+      <id>T1071.001</id>
+    </mitre>
+    <group>cylindricalcanine,golden_ghost_rat,ioc_hash,fim_hash_match,code_signing,critical,</group>
+  </rule>
+
+</group>
