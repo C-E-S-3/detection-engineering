@@ -1,0 +1,22 @@
+- id: a1190006-0000-4000-8006-000000000006
+  name: T1190 Nuclei Scanner User-Agent Probe
+  description: >
+    Sends an HTTP request to the web target with the Nuclei project-discovery
+    User-Agent string. Intended to trigger Wazuh rule 100829 (known
+    exploit/scanner tool user-agent pattern). This simulates Nuclei scanner
+    traffic without running a full scan; the UA string alone drives the detection.
+  tactic: initial_access
+  technique:
+    attack_id: T1190
+    name: Exploit Public-Facing Application
+  platforms:
+    linux:
+      sh:
+        command: |
+          curl -sk -o /dev/null -w "nuclei_ua status=%{http_code}\n" \
+            "http://#{app.web_target}/" \
+            -A "Nuclei - Open-source project (github.com/projectdiscovery/nuclei)" \
+            -H "X-Purple-Team-Exercise: phase2-t1190-nuclei-ua" \
+            --max-time 10 2>&1 || true
+        cleanup: |
+          true

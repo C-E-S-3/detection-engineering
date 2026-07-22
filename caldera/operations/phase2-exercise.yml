@@ -1,0 +1,109 @@
+# Phase 2 Purple Team Exercise — Caldera Operation Template
+#
+# Use this document as the body for POST /api/v2/operations (authenticated with
+# the Caldera API KEY header). Import the adversary and abilities first via the
+# Caldera plugin/REST API before creating the operation.
+#
+# MITRE ATT&CK coverage: T1190, T1055, T1078, T1136
+# Expected Wazuh detection rules: 100820-100859
+
+name: Phase 2 Purple Team Exercise
+adversary_id: adv00002-0000-4000-8000-000000000002
+
+# --- Execution settings ---
+# 'sequential' planner runs abilities one at a time in atomic_ordering order.
+# Use 'atomic' for unordered execution if order doesn't matter.
+planner: sequential
+
+# Agent group containing the exercise host(s).
+# All hosts in the group must have the Caldera sandcat agent installed.
+group: purple-team-phase2
+
+# Jitter between ability executions (min/max seconds).
+# Keeps traffic patterns from being perfectly periodic.
+jitter: 3/10
+
+# Fact source providing #{app.web_target}, #{host.target}, #{host.ssh.keyfile},
+# #{host.ssh.svcacct.keyfile}. Create a Caldera source named 'phase2-facts'
+# and populate it with host-specific values before running the operation.
+source: phase2-facts
+
+# Obfuscator: 'plain-text' for detection testing (no encoding; makes detections
+# easier to verify). Change to 'base64' if testing evasion of detection gaps.
+obfuscator: plain-text
+
+# Auto-close the operation when all abilities have run.
+auto_close: true
+
+# Visibility: 51 = default (show all ability output in UI).
+visibility: 51
+
+# State: 'running' starts the operation immediately on POST.
+state: running
+
+# --- Fact / Variable Reference ---
+# Populate these in the 'phase2-facts' Caldera source before running:
+#
+#   app.web_target      <IP or hostname:port of web target accessible to the agent>
+#   host.target         <IP or hostname of SSH target>
+#   host.target.user    <non-root SSH user on target for T1078-001/002>
+#   host.ssh.keyfile    <path to private key file on agent host for target SSH>
+#   host.ssh.svcacct.keyfile  <path to private key for svc_purpleteam on target>
+#
+# NOTE: Do not put internal hostnames or IPs directly in this file.
+# Caldera resolves #{...} variables at operation runtime from the source above.
+
+# --- Pre-exercise Checklist ---
+#
+# 1. Traefik / web target:
+#    - Confirm Traefik is running and forwarding JSON access logs to Wazuh agent
+#    - Confirm #{app.web_target} is reachable from the Caldera agent host
+#    - Verify Wazuh rules 100820-100829 load without errors
+#
+# 2. SSH / T1078 setup:
+#    - Deploy #{host.target.user} SSH authorized key on #{host.target}
+#    - Create svc_purpleteam account on #{host.target} with authorized key
+#    - Confirm Wazuh rules 100840-100849 load on the target Wazuh agent
+#
+# 3. auditd / T1055 setup:
+#    - Confirm auditd rules are deployed (see phase2_t1055_process_injection.xml
+#      prerequisites section) and the Wazuh auditd decoder is active
+#    - Verify rules 100830-100839 load without errors
+#
+# 4. Wazuh FIM / T1136 setup:
+#    - Confirm Wazuh FIM is monitoring /etc/passwd, /etc/shadow, /etc/group,
+#      /etc/sudoers, /etc/sudoers.d/ with real-time: yes
+#    - Verify rules 100850-100859 load without errors
+#
+# 5. Off-hours window (T1078-002):
+#    - To validate rule 100842/100843, schedule the operation to START between
+#      23:45-00:15 UTC (Saturday/Sunday window covers rules 100843 any time)
+#
+# --- Post-exercise Verification ---
+#
+# For each ability, confirm the corresponding Wazuh alert fired in Wazuh Discover:
+#
+#   Ability                     Expected rule(s)
+#   -------------------------   -------------------------
+#   t1190-007-traefik-admin     100820, 100821 (if 200), 100825 (burst)
+#   t1190-006-nuclei-ua         100829
+#   t1190-001-sqli              100822
+#   t1190-002-path-traversal    100823
+#   t1190-003-command-injection 100824
+#   t1190-004-ssti              100827
+#   t1190-005-xxe               100828
+#   t1078-001-ssh-login         100840
+#   t1078-002-offhours          100842 or 100843 (time-dependent)
+#   t1078-003-svcacct           100844
+#   t1055-001-ptrace            100830, 100831
+#   t1055-002-ldpreload         100833, 100835
+#   t1055-003-proc-mem          100834
+#   t1055-004-memfd             100837
+#   t1055-005-vm-writev         100838
+#   t1136-001-useradd           100850, 100858
+#   t1136-002-passwd-echo       100852, 100857 (if non-root)
+#   t1136-003-usermod-sudo      100856, 100855
+#   t1136-004-sudoers-write     100854
+#
+# Document any rules that did NOT fire as detection gaps.
+# Open a detection-engineering issue for each gap found.

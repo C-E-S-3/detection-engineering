@@ -1,0 +1,34 @@
+- id: a1055005-0000-4000-8005-000000000005
+  name: T1055 process_vm_writev Cross-Process Memory Write
+  description: >
+    Calls process_vm_writev(2) targeting the parent process. This syscall allows
+    direct cross-process memory writes without ptrace and is a common process
+    injection technique. The call will fail with EPERM unless ptrace_scope allows
+    it, but the syscall itself is logged by auditd. Intended to trigger Wazuh
+    rule 100838 (process_vm_writev called). No memory is successfully modified
+    in the expected permission-denied case.
+  tactic: defense_evasion
+  technique:
+    attack_id: T1055
+    name: Process Injection
+  platforms:
+    linux:
+      sh:
+        command: |
+          python3 -c "
+          import ctypes, ctypes.util, os
+          libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
+          target_pid = os.getppid()
+          buf = ctypes.create_string_buffer(b'PT_PHASE2_TEST', 16)
+          class iovec(ctypes.Structure):
+              _fields_ = [('iov_base', ctypes.c_void_p), ('iov_len', ctypes.c_size_t)]
+          local_iov = iovec(ctypes.addressof(buf), 16)
+          remote_iov = iovec(ctypes.c_void_p(0x1000), 16)
+          ret = libc.process_vm_writev(target_pid,
+                                       ctypes.byref(local_iov), 1,
+                                       ctypes.byref(remote_iov), 1, 0)
+          err = ctypes.get_errno()
+          print(f'process_vm_writev(pid={target_pid}) ret={ret} errno={err}')
+          " 2>&1 || true
+        cleanup: |
+          true

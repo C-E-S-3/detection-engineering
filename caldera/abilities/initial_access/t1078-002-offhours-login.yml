@@ -1,0 +1,35 @@
+- id: a1078002-0000-4000-8002-000000000002
+  name: T1078 Off-Hours SSH Login
+  description: >
+    Performs an SSH login from the Caldera implant host to the target during the
+    off-hours window (00:00-06:00 UTC), intended to trigger Wazuh rules 100842
+    and 100843. The ability checks the current UTC hour and records whether the
+    login occurred in the detection window; the actual SSH session is identical
+    to t1078-001. NOTE: Rule 100842/100843 only fires during 00:00-06:00 UTC
+    or on weekends — schedule the operation accordingly to validate the detection.
+    Requires #{host.target.user} with an authorized key on #{host.target}.
+  tactic: initial_access
+  technique:
+    attack_id: T1078
+    name: Valid Accounts
+  platforms:
+    linux:
+      sh:
+        command: |
+          utc_hour=$(date -u +%H)
+          utc_day=$(date -u +%u)
+          echo "T1078_OFFHOURS_CHECK utc_hour=${utc_hour} utc_weekday=${utc_day}"
+          if [ "$utc_hour" -lt 6 ] || [ "$utc_day" -ge 6 ]; then
+            echo "T1078_OFFHOURS_WINDOW=yes - detection rule 100842/100843 should fire"
+          else
+            echo "T1078_OFFHOURS_WINDOW=no - outside 00:00-06:00 UTC and not weekend; detection will NOT fire; reschedule to validate"
+          fi
+          ssh -o StrictHostKeyChecking=no \
+              -o BatchMode=yes \
+              -o ConnectTimeout=10 \
+              -o IdentitiesOnly=yes \
+              -i #{host.ssh.keyfile} \
+              #{host.target.user}@#{host.target} \
+              "echo T1078_OFFHOURS_MARKER_$(date -u +%Y%m%dT%H%M%SZ)" 2>&1 || true
+        cleanup: |
+          true

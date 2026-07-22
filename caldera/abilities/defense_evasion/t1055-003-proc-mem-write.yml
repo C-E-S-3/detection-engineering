@@ -1,0 +1,33 @@
+- id: a1055003-0000-4000-8003-000000000003
+  name: T1055 /proc/PID/mem Write Attempt
+  description: >
+    Attempts to open /proc/<ppid>/mem for writing from Python. The open() syscall
+    against /proc/PID/mem is captured by auditd and intended to trigger Wazuh
+    rule 100834 (/proc/PID/mem write access). The open will fail with EACCES or
+    EPERM (expected); the auditd log entry of the attempt is what matters for
+    detection validation. No memory is actually modified.
+    Requires auditd: -a always,exit -F arch=b64 -S openat,open -F path=/proc -k proc_access
+  tactic: defense_evasion
+  technique:
+    attack_id: T1055
+    name: Process Injection
+  platforms:
+    linux:
+      sh:
+        command: |
+          python3 -c "
+          import os
+          target_pid = os.getppid()
+          mem_path = f'/proc/{target_pid}/mem'
+          print(f'Attempting write open of {mem_path}')
+          try:
+              fd = os.open(mem_path, os.O_WRONLY)
+              os.close(fd)
+              print('open succeeded (running as root?)')
+          except PermissionError as e:
+              print(f'Expected PermissionError: {e}')
+          except OSError as e:
+              print(f'OSError: {e}')
+          " 2>&1 || true
+        cleanup: |
+          true

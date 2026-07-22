@@ -1,0 +1,26 @@
+- id: a1078003-0000-4000-8003-000000000003
+  name: T1078 Service Account Interactive SSH Login
+  description: >
+    Performs an SSH login to the target using a service-account-patterned username
+    (svc_purpleteam). Intended to trigger Wazuh rule 100844 (service account
+    interactive SSH login). The account and its authorized key must be pre-created
+    on the target before the exercise. The login executes a benign marker command
+    and exits immediately. Requires svc_purpleteam with an authorized key on
+    #{host.target}; key path is passed via #{host.ssh.svcacct.keyfile}.
+  tactic: initial_access
+  technique:
+    attack_id: T1078
+    name: Valid Accounts
+  platforms:
+    linux:
+      sh:
+        command: |
+          ssh -o StrictHostKeyChecking=no \
+              -o BatchMode=yes \
+              -o ConnectTimeout=10 \
+              -o IdentitiesOnly=yes \
+              -i #{host.ssh.svcacct.keyfile} \
+              svc_purpleteam@#{host.target} \
+              "echo T1078_SVCACCT_MARKER_$(date -u +%Y%m%dT%H%M%SZ)" 2>&1 || true
+        cleanup: |
+          true

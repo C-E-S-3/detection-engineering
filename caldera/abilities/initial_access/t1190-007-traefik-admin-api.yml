@@ -1,0 +1,25 @@
+- id: a1190007-0000-4000-8007-000000000007
+  name: T1190 Traefik Admin API Probe
+  description: >
+    Sends a GET request to the Traefik admin API rawdata endpoint (/api/rawdata)
+    via the web target proxy. Intended to trigger Wazuh rules 100820 (Traefik
+    admin API endpoint accessed) and potentially 100821 (200 OK response) and
+    100825 (repeated enumeration). This simulates an attacker probing for
+    exposed Traefik management interfaces.
+  tactic: initial_access
+  technique:
+    attack_id: T1190
+    name: Exploit Public-Facing Application
+  platforms:
+    linux:
+      sh:
+        command: |
+          for endpoint in /api/rawdata /api/http/routers /api/overview /api/version /api/entrypoints; do
+            curl -sk -o /dev/null -w "traefik_api ${endpoint} status=%{http_code}\n" \
+              "http://#{app.web_target}${endpoint}" \
+              -H "X-Purple-Team-Exercise: phase2-t1190-traefik-api" \
+              --max-time 10 2>&1 || true
+            sleep 1
+          done
+        cleanup: |
+          true

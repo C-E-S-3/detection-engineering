@@ -1,0 +1,47 @@
+id: adv00002-0000-4000-8000-000000000002
+name: Phase 2 Purple Team Adversary
+description: >
+  Purple Team Phase 2 adversary profile covering T1190 (Exploit Public-Facing
+  Application), T1055 (Process Injection), T1078 (Valid Accounts), and T1136
+  (Create Account). Ability ordering reflects a realistic attack chain:
+  initial reconnaissance via web exploitation, lateral movement via valid
+  credentials, defense evasion via process injection, and persistence via
+  account creation. All abilities are detection-validation probes only.
+
+  Expected Wazuh detections:
+    T1190: rules 100820-100829 (Traefik JSON access log source)
+    T1055: rules 100830-100839 (auditd source)
+    T1078: rules 100840-100849 (sshd/PAM auth log source)
+    T1136: rules 100850-100859 (auditd + Wazuh FIM sources)
+
+  Prerequisites:
+    - Caldera agent running on exercise host with network access to #{app.web_target}
+    - #{host.target} reachable via SSH with pre-deployed keys in #{host.ssh.keyfile}
+    - svc_purpleteam account with key in #{host.ssh.svcacct.keyfile} on #{host.target}
+    - auditd configured per phase2_t1055_process_injection.xml prerequisites
+    - Wazuh FIM configured for /etc/passwd, /etc/shadow, /etc/group, /etc/sudoers.d/
+
+atomic_ordering:
+  # Phase 1: T1190 - Web exploitation probes (triggers rules 100820-100829)
+  - a1190007-0000-4000-8007-000000000007  # Traefik admin API enumeration
+  - a1190006-0000-4000-8006-000000000006  # Nuclei scanner UA
+  - a1190001-0000-4000-8001-000000000001  # SQL injection probe
+  - a1190002-0000-4000-8002-000000000002  # Path traversal probe
+  - a1190003-0000-4000-8003-000000000003  # Command injection probe
+  - a1190004-0000-4000-8004-000000000004  # SSTI probe
+  - a1190005-0000-4000-8005-000000000005  # XXE probe
+  # Phase 2: T1078 - Valid accounts / credential use (triggers rules 100840-100849)
+  - a1078001-0000-4000-8001-000000000001  # SSH login from exercise host
+  - a1078002-0000-4000-8002-000000000002  # Off-hours SSH login (schedule during 00:00-06:00 UTC)
+  - a1078003-0000-4000-8003-000000000003  # Service account interactive SSH login
+  # Phase 3: T1055 - Process injection probes (triggers rules 100830-100839)
+  - a1055001-0000-4000-8001-000000000001  # ptrace PTRACE_ATTACH
+  - a1055002-0000-4000-8002-000000000002  # LD_PRELOAD /tmp injection
+  - a1055003-0000-4000-8003-000000000003  # /proc/PID/mem write attempt
+  - a1055004-0000-4000-8004-000000000004  # memfd_create fileless
+  - a1055005-0000-4000-8005-000000000005  # process_vm_writev
+  # Phase 4: T1136 - Account creation / persistence (triggers rules 100850-100859)
+  - a1136001-0000-4000-8001-000000000001  # useradd pt_testuser
+  - a1136002-0000-4000-8002-000000000002  # /etc/passwd echo append
+  - a1136003-0000-4000-8003-000000000003  # usermod -aG sudo
+  - a1136004-0000-4000-8004-000000000004  # sudoers.d write
