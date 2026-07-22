@@ -1,0 +1,248 @@
+<!-- ============================================================
+     CVE-2026-53359 "Januscape" — Linux KVM Guest-to-Host VM Escape
+     CWE-416: Use-After-Free in KVM shadow MMU (arch/x86/kvm/mmu/mmu.c)
+
+     Companion CVE: CVE-2026-46113 (both patches required for full fix)
+
+     Affected: Linux kernel (all versions), Proxmox VE:
+       Vulnerable:  proxmox-kernel &lt; 6.8.12-33-pve / &lt; 7.0.14-4-pve
+       Fixed:       proxmox-kernel-6.8.12-33-pve, proxmox-kernel-7.0.14-4-pve
+       Also fixed:  upstream Linux 6.17, kernel commit 81ccda30b4e8
+
+     Eskridge impact: CRITICAL — Proxmox (pve-nas and any other KVM
+       hypervisors) are directly exposed if running a vulnerable kernel
+       version and any VM has nested virtualization or root-in-guest.
+
+     MITRE ATT&amp;CK:
+       T1068  - Exploitation for Privilege Escalation (TA0004)
+       T1611  - Escape to Host (TA0004)
+       T1190  - Exploit Public-Facing Application (if guest internet-exposed)
+
+     Rule IDs: 104135-104141
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-22
+     References:
+       - https://thehackernews.com/2026/07/16-year-old-linux-kvm-flaw-lets-guest.html
+       - https://tuxcare.com/blog/januscape-exposes-the-kvm-shadow-paging-bug-that-kept-coming-back/
+       - https://news.ycombinator.com/item?id=48807908
+       - https://forum.proxmox.com/threads/are-there-mitigations-available-for-cve-2026-53359-januscape.184874/
+
+     Vulnerability summary:
+       A use-after-free race in the KVM x86 shadow MMU reverse-map lets a guest
+       with root access drive KVM into reusing a freed shadow page. The exploit
+       races kvm_mmu_page_set_translation() to create a stale pte_list entry
+       pointing into freed host memory. The public PoC (loadable kernel module
+       inside guest) reliably panics the host within seconds to minutes; an
+       unreleased variant achieves full host code execution as root.
+       Affects both Intel VMX/EPT and AMD SVM/NPT hypervisors.
+
+     Attack prerequisites (standard path):
+       1. Root (or CAP_SYS_ADMIN) access inside a KVM guest VM
+       2. Nested virtualization enabled (nested=1) on the host kernel module
+          OR direct shadow-page access via specific CPU model configuration
+       3. Host running a vulnerable Proxmox/Linux kernel
+
+     Log source prerequisites — add to Proxmox KVM hosts via Ansible:
+
+       File: /etc/audit/rules.d/90-januscape-kvm.rules
+         # Monitor /dev/kvm open/ioctl by any process (KVM VMM control plane)
+         -a always,exit -F arch=b64 -S open,openat -F path=/dev/kvm -F uid!=0 -k kvm_dev_access_nonroot
+         # Monitor kvm_intel/kvm_amd module load events (nested param detection)
+         -a always,exit -F arch=b64 -S init_module,finit_module -k kvm_module_load
+
+       Also verify Wazuh agent monitors kernel logs on Proxmox hosts:
+         /var/log/kern.log  (Debian/Ubuntu/Proxmox VE default kernel log path)
+         /var/log/syslog    (syslog fallback)
+       KVM shadow MMU bug messages, QEMU process crashes, and kernel BUGs all
+       appear in kern.log / journal and are the primary detection surface.
+
+     Detection layers:
+       1. Kernel warning — KVM GFN mismatch (exploitation precursor, level 12)
+       2. Kernel warning — KVM shadow-page role/frame confusion (active exploit, level 12)
+       3. Kernel BUG  — pte_list_remove kernel BUG (exploitation in progress, level 13)
+       4. Kernel warning — unexpected shadow-page role from KVM MMU (level 12)
+       5. QEMU-KVM process abnormal exit from kernel perspective (level 11)
+       6. Host kernel panic with KVM in call trace (successful exploit, level 15)
+       7. Nested KVM module parameter enabled — exploitation vector open (level 9)
+
+     Severity tiers:
+        9  - Nested KVM enabled: exploitation vector present (config risk only)
+       11  - QEMU-KVM segfault/abort in kernel log (may indicate exploit crash)
+       12  - KVM shadow MMU warning: GFN mismatch, role confusion (exploit attempt)
+       13  - Kernel BUG triggered in KVM pte_list_remove / shadow MMU code path
+       15  - Host kernel panic with KVM in stack trace (escape likely attempted)
+     ============================================================ -->
+
+<group name="privilege_escalation,vm_escape,kvm,januscape,cve_2026_53359,">
+
+  <!-- ===========================================================
+       Layer 1: Kernel Warning — KVM GFN mismatch
+       Rule ID: 104135
+
+       The first observable kernel-level indicator of Januscape exploitation
+       is a GFN (Guest Frame Number) mismatch logged by KVM when the shadow
+       MMU detects inconsistency between the requested and cached page mapping.
+       This appears in kern.log as a WARNING from arch/x86/kvm/mmu/mmu.c.
+
+       Example log line:
+         kernel: WARNING: CPU: 2 PID: 12345 at arch/x86/kvm/mmu/mmu.c:3217
+         kernel: GFN mismatch in kvm_mmu_page_set_translation
+       =========================================================== -->
+  <rule id="104135" level="12">
+    <regex type="pcre2">(?i)GFN mismatch in kvm_mmu_page_set_translation</regex>
+    <description>Januscape CVE-2026-53359: KVM shadow MMU GFN mismatch warning — kvm_mmu_page_set_translation() detected frame number inconsistency; potential KVM VM escape exploitation in progress (T1611/T1068)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1611</id>
+    </mitre>
+    <group>privilege_escalation,vm_escape,kvm,januscape,cve_2026_53359,kvm_mmu_warning,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Layer 2: Kernel Warning — KVM shadow-page role/frame confusion
+       Rule ID: 104136
+
+       When the Januscape race is successfully triggered, KVM logs a warning
+       about a shadow-page where the role (which maps a guest physical page)
+       does not match the frame being translated. This is the direct fingerprint
+       of the CVE-2026-53359 use-after-free being triggered.
+
+       Example log lines:
+         kernel: kvm_mmu_page_set_translation() role and frame confusion becoming visible
+         kernel: kvm [12345]: shadow-page role/frame mismatch detected
+       =========================================================== -->
+  <rule id="104136" level="12">
+    <regex type="pcre2">(?i)kvm_mmu_page_set_translation.*(?:role|frame).*(?:confusion|mismatch)|(?:role|frame).*confusion.*kvm_mmu_page_set_translation</regex>
+    <description>Januscape CVE-2026-53359: KVM shadow-page role/frame confusion detected — kvm_mmu_page_set_translation() role and frame mismatch; this is the core Januscape use-after-free kernel indicator (T1611/T1068)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1611</id>
+    </mitre>
+    <group>privilege_escalation,vm_escape,kvm,januscape,cve_2026_53359,kvm_mmu_warning,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Layer 3: Kernel BUG — pte_list_remove / shadow MMU BUG
+       Rule ID: 104137
+
+       The stale reverse-map entry created by the Januscape race eventually
+       triggers a kernel BUG when KVM tries to remove the freed pte_list
+       entry. This manifests as a hard kernel BUG (panic-level call trace)
+       from pte_list_remove() in arch/x86/kvm/mmu/mmu.c.
+       Level 13: kernel BUG in KVM is a near-certain exploitation attempt.
+
+       Example log lines:
+         kernel: kernel BUG at arch/x86/kvm/mmu/mmu.c:872!
+         kernel: BUG: kernel NULL pointer dereference ... kvm_mmu pte_list_remove
+         kernel: Kernel BUG in pte_list_remove()
+       =========================================================== -->
+  <rule id="104137" level="13">
+    <regex type="pcre2">(?i)(?:BUG|OOPS).*(?:pte_list_remove|kvm.*mmu|kvm_mmu_page)|pte_list_remove.*(?:BUG|OOPS|NULL|invalid)</regex>
+    <description>Januscape CVE-2026-53359: Kernel BUG in KVM shadow MMU pte_list_remove — stale reverse-map from use-after-free; active Januscape exploitation on this Proxmox host; host stability at risk (T1611/T1068)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1611</id>
+    </mitre>
+    <group>privilege_escalation,vm_escape,kvm,januscape,cve_2026_53359,kernel_bug,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Layer 4: Kernel Warning — unexpected KVM shadow-page role
+       Rule ID: 104138
+
+       A second class of KVM MMU warning appears when shadow-page cache
+       invalidation finds an unexpected role.word mismatch, also part of
+       the Januscape race window. This is a WARNING-level kernel message
+       (does not always panic) but strongly indicates exploitation activity.
+
+       Example log lines:
+         kernel: kvm [12345]: Unexpected shadow-page role: expected 0x... got 0x...
+         kernel: WARNING: unexpected shadow-page role in kvm shadow MMU
+         kernel: kvm_mmu_page_set_translation role.word mismatch
+       =========================================================== -->
+  <rule id="104138" level="12">
+    <regex type="pcre2">(?i)unexpected shadow.?page role|kvm.*shadow.*mmu.*role\.word|kvm.*role\.word.*mismatch</regex>
+    <description>Januscape CVE-2026-53359: KVM unexpected shadow-page role warning — shadow-page cache role.word mismatch detected; associated with Januscape (CVE-2026-53359) race exploitation (T1611/T1068)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1611</id>
+    </mitre>
+    <group>privilege_escalation,vm_escape,kvm,januscape,cve_2026_53359,kvm_mmu_warning,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Layer 5: QEMU-KVM abnormal termination on host
+       Rule ID: 104139
+
+       The Januscape PoC causes the host to panic or the QEMU-KVM process
+       to crash with a segfault (before full host panic). A segfault of a
+       qemu-kvm / qemu-system-x86_64 process in the kernel log is a
+       significant indicator — these processes are normally stable and
+       crashes correlate strongly with KVM exploit attempts.
+
+       Example log lines:
+         kernel: qemu-kvm[12345]: segfault at 0 ip 0x... sp 0x... error 4
+         kernel: qemu-system-x86[9876] general protection fault
+         kernel: qemu-kvm[3456]: trap invalid opcode ip:... in libvirt...
+       =========================================================== -->
+  <rule id="104139" level="11">
+    <regex type="pcre2">(?i)(?:qemu-kvm|qemu-system-x86|qemu-system-aarch64)\[\d+\].*(?:segfault|general protection fault|invalid opcode|killed|trap|BUG)</regex>
+    <description>Januscape CVE-2026-53359: QEMU-KVM process abnormal termination in kernel log — qemu-kvm crash may indicate Januscape VM-escape attempt; correlate with KVM MMU warnings (rules 104135-104138) for confirmation (T1611)</description>
+    <mitre>
+      <id>T1611</id>
+    </mitre>
+    <group>privilege_escalation,vm_escape,kvm,januscape,cve_2026_53359,qemu_crash,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Layer 6: Host kernel panic with KVM in call trace
+       Rule ID: 104140
+
+       If the Januscape exploit succeeds or the PoC triggers a full host
+       panic, the kernel logs "Kernel panic - not syncing" immediately
+       followed by a call trace referencing KVM MMU code. This is the
+       highest-confidence indicator — the host is actively being exploited
+       or has been crashed by guest code.
+
+       Example log lines:
+         kernel: Kernel panic - not syncing: Fatal exception in interrupt
+         kernel: RIP: 0010:pte_list_remove+0x3c/0xa0 [kvm]
+         kernel: kernel: Oops: general protection fault ... kvm_mmu_page_set_translation
+       =========================================================== -->
+  <rule id="104140" level="15">
+    <regex type="pcre2">(?i)(?:Kernel panic|Oops.*exception|Oops.*general protection).*kvm|kvm.*(?:Kernel panic|Oops.*fault)|RIP.*(?:pte_list_remove|kvm_mmu_page_set_translation|kvm_mmu_unload).*\[kvm\]</regex>
+    <description>Januscape CVE-2026-53359 CRITICAL: Host kernel panic / Oops with KVM in call trace — near-certain Januscape VM-escape exploitation; host integrity compromised; initiate immediate incident response (T1611/T1068)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1611</id>
+    </mitre>
+    <group>privilege_escalation,vm_escape,kvm,januscape,cve_2026_53359,kernel_panic,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Layer 7: Nested KVM module parameter enabled — exploitation vector
+       Rule ID: 104141
+
+       The standard Januscape PoC requires nested virtualization to be
+       enabled in the host kernel module (kvm_intel nested=1 or
+       kvm_amd nested=1). Detecting this configuration in kernel log
+       (modprobe output or module parameter messages) provides early
+       warning of the exploitation prerequisite being met.
+       Level 9: configuration risk indicator, not active exploitation.
+
+       This also matches the kernel log message when nested KVM is loaded:
+         kernel: kvm_intel: nested virtualization enabled
+         kernel: kvm_amd: Nested Virtualization enabled
+       And modprobe parameter override in audit:
+         type=SYSCALL ... comm="modprobe" ... kvm_intel nested=1
+       =========================================================== -->
+  <rule id="104141" level="9">
+    <regex type="pcre2">(?i)kvm_(?:intel|amd).*nested.*(?:enabled|=1|=Y)|nested.*(?:enabled|=1|=Y).*kvm_(?:intel|amd)|kvm.*nested virtualization enabled</regex>
+    <description>Januscape CVE-2026-53359: Nested KVM virtualization enabled on host — nested=1 is the standard exploitation prerequisite for Januscape; verify this is intentional and host is patched to proxmox-kernel-6.8.12-33-pve / 7.0.14-4-pve (T1068)</description>
+    <mitre>
+      <id>T1068</id>
+    </mitre>
+    <group>privilege_escalation,vm_escape,kvm,januscape,cve_2026_53359,configuration_risk,</group>
+  </rule>
+
+</group>
