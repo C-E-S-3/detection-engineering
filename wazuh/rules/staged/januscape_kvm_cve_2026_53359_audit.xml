@@ -1,0 +1,154 @@
+<!-- ============================================================
+     CVE-2026-53359 "Januscape" — KVM /dev/kvm Access and Module Load Detection
+     Supplementary auditd-based rules (companion to rules 104135-104141)
+
+     Parent file: staged/januscape_kvm_cve_2026_53359_vm_escape.xml
+     Parent issue: ESKA-614 | This issue: ESKA-618
+
+     MITRE ATT&CK:
+       T1611  - Escape to Host (TA0004)
+       T1068  - Exploitation for Privilege Escalation (TA0004)
+       T1082  - System Information Discovery (TA0007)
+
+     Rule IDs: 104142-104144
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-22
+     References:
+       - https://thehackernews.com/2026/07/16-year-old-linux-kvm-flaw-lets-guest.html
+       - https://tuxcare.com/blog/januscape-exposes-the-kvm-shadow-paging-bug-that-kept-coming-back/
+       - https://forum.proxmox.com/threads/are-there-mitigations-available-for-cve-2026-53359-januscape.184874/
+
+     Detection rationale:
+       Rules 104135-104141 (ESKA-614) cover KVM shadow MMU kernel log signals
+       (GFN mismatch, role confusion, kernel BUG, QEMU crash, kernel panic).
+
+       These supplementary rules cover two additional detection surfaces:
+
+       Surface A — unexpected /dev/kvm access
+         On a hardened KVM host, /dev/kvm should only be opened by:
+           - /usr/bin/qemu-system-x86_64 (QEMU process, usually as root or libvirt-qemu)
+           - /usr/lib/qemu/qemu-kvm
+           - libvirt management layer
+         Any other binary opening /dev/kvm is anomalous and could indicate:
+           a) A VM-escaped process probing the host's KVM control surface
+           b) An attacker tool enumerating KVM capabilities before privilege escalation
+           c) A debugging tool (kvmtool, kvm-unit-tests) — should be in change window
+
+       Surface B — KVM module loaded outside of boot context
+         kvm_intel/kvm_amd module loading mid-session (outside boot) may indicate:
+           a) A post-exploit actor reloading KVM with modified parameters (e.g., nested=1)
+           b) An operator action to enable nested virtualisation (change-managed, low risk)
+         The audit rule (init_module/finit_module with kvm_dev_access key) fires for
+         both insmod and modprobe paths.
+
+     Log source prerequisites — add to all Proxmox/KVM hosts via Ansible (inframan):
+
+       File: /etc/audit/rules.d/90-januscape-kvm.rules
+
+         # Detect /dev/kvm opened by any non-root process (kvm_dev_access_nonroot key)
+         # Covers open, openat, openat2 syscalls targeting /dev/kvm
+         -a always,exit -F arch=b64 -S open,openat,openat2 -F path=/dev/kvm -F uid!=0 -k kvm_dev_access_nonroot
+
+         # Detect kvm_intel/kvm_amd module load outside of boot (kvm_module_load key)
+         -a always,exit -F arch=b64 -S init_module,finit_module -k kvm_module_load
+
+       These rules emit SYSCALL+PATH audit records. Wazuh's auditd decoder extracts
+       audit.key and populates audit.exe from the SYSCALL exe field.
+
+     Severity rationale:
+        0  - Base anchor rules (internal routing only, no alert)
+        9  - /dev/kvm opened by non-root process (low confidence; libvirt-qemu is normal)
+       13  - /dev/kvm opened by non-QEMU, non-libvirt process (high confidence anomaly)
+       10  - KVM module loaded outside boot context (configuration change, warrants review)
+     ============================================================ -->
+
+<group name="privilege_escalation,vm_escape,kvm,januscape,cve_2026_53359,">
+
+  <!-- ===========================================================
+       Layer A1: Base anchor — /dev/kvm access by non-root process
+       Rule ID: 104142
+
+       Auditd fires kvm_dev_access_nonroot on any open/openat/openat2
+       syscall against /dev/kvm by a non-root UID. This rule is a silent
+       anchor (level 0) that routes all such events into the chain for
+       the more specific rules below.
+
+       Audit record example:
+         type=SYSCALL msg=audit(1753142400.123:456): arch=c000003e syscall=257
+           success=yes exit=3 a0=ffffff9c a1=55... a2=80000 a3=0
+           items=1 ppid=1234 pid=5678 auid=1000 uid=1000 gid=1000
+           euid=1000 ... comm="exploit-kvm" exe="/tmp/exploit-kvm"
+           key="kvm_dev_access_nonroot"
+         type=PATH msg=audit(1753142400.123:456): item=0 name="/dev/kvm"
+           inode=... dev=... mode=020660 ...
+       =========================================================== -->
+  <rule id="104142" level="0">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.key">kvm_dev_access_nonroot</field>
+    <description>Januscape CVE-2026-53359: /dev/kvm opened by non-root process (base anchor) (T1611/T1068)</description>
+  </rule>
+
+  <!-- ===========================================================
+       Layer A2: /dev/kvm opened by a non-QEMU, non-libvirt process
+       Rule ID: 104143
+
+       Fires when a non-root process opens /dev/kvm AND the executable
+       is not a known-legitimate KVM frontend (QEMU or libvirt). The
+       pcre2 negative match excludes the standard QEMU binary paths and
+       libvirt daemon paths commonly found on Proxmox/Debian systems.
+
+       False-positive sources:
+         - KVM unit-test frameworks (kvm-unit-tests) during maintenance
+         - kvmtool (lightweight KVM launcher)
+         - Custom VM launchers
+         - Action: verify against authorized change management
+
+       Example anomalous access:
+         exe="/tmp/escaped-process" or exe="/home/user/kvm-tool"
+         uid=1001 (non-root, non-libvirt-qemu)
+       =========================================================== -->
+  <rule id="104143" level="13">
+    <if_sid>104142</if_sid>
+    <field name="audit.exe" negate="yes" type="pcre2">(?i)(?:qemu-system-x86_64|qemu-system-aarch64|qemu-kvm|qemu-system-arm|libvirt|virt-manager|virsh|vhost-net)</field>
+    <description>Januscape CVE-2026-53359: /dev/kvm opened by non-QEMU process exe=$(audit.exe) uid=$(audit.uid) — unexpected KVM device access; may indicate VM-escape attempt or unauthorized hypervisor interaction (T1611/T1068)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1611</id>
+    </mitre>
+    <group>privilege_escalation,vm_escape,kvm,januscape,cve_2026_53359,kvm_dev_access,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Layer B: KVM kernel module loaded outside of boot context
+       Rule ID: 104144
+
+       Matches auditd init_module / finit_module syscalls tagged with
+       the kvm_module_load key. An operator loading kvm_intel/kvm_amd
+       mid-session (e.g., to enable nested=1) is expected to be rare
+       and change-managed; an attacker may reload the module with
+       modified parameters to re-enable the Januscape attack surface
+       after an operator disabled nested virtualisation as a workaround.
+
+       This rule fires at level 10 (warrants investigation, not critical)
+       because planned operator actions are the most likely trigger.
+
+       Audit record example:
+         type=SYSCALL ... syscall=313 (finit_module) ... uid=0 ...
+           key="kvm_module_load"
+         type=PATH ... name="/lib/modules/.../kvm_intel.ko" ...
+
+       Correlate with rule 104141 (nested KVM enabled) to confirm
+       exploitation-enabling parameter was set.
+       =========================================================== -->
+  <rule id="104144" level="10">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.key">kvm_module_load</field>
+    <description>Januscape CVE-2026-53359: KVM kernel module (kvm_intel/kvm_amd) loaded outside of boot context by uid=$(audit.uid) — correlate with rule 104141 (nested KVM enabled) to determine if exploitation prerequisites were set (T1611)</description>
+    <mitre>
+      <id>T1068</id>
+      <id>T1611</id>
+    </mitre>
+    <group>privilege_escalation,vm_escape,kvm,januscape,cve_2026_53359,kvm_module_load,</group>
+  </rule>
+
+</group>
