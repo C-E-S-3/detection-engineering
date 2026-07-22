@@ -1,5 +1,5 @@
 <!-- ============================================================
-     CVE-2026-53359 "Januscape" — KVM /dev/kvm Access and Module Load Detection
+     CVE-2026-53359 "Januscape" - KVM /dev/kvm Access and Module Load Detection
      Supplementary auditd-based rules (companion to rules 104135-104141)
 
      Parent file: staged/januscape_kvm_cve_2026_53359_vm_escape.xml
@@ -24,7 +24,7 @@
 
        These supplementary rules cover two additional detection surfaces:
 
-       Surface A — unexpected /dev/kvm access
+       Surface A - unexpected /dev/kvm access
          On a hardened KVM host, /dev/kvm should only be opened by:
            - /usr/bin/qemu-system-x86_64 (QEMU process, usually as root or libvirt-qemu)
            - /usr/lib/qemu/qemu-kvm
@@ -32,16 +32,16 @@
          Any other binary opening /dev/kvm is anomalous and could indicate:
            a) A VM-escaped process probing the host's KVM control surface
            b) An attacker tool enumerating KVM capabilities before privilege escalation
-           c) A debugging tool (kvmtool, kvm-unit-tests) — should be in change window
+           c) A debugging tool (kvmtool, kvm-unit-tests) - should be in change window
 
-       Surface B — KVM module loaded outside of boot context
+       Surface B - KVM module loaded outside of boot context
          kvm_intel/kvm_amd module loading mid-session (outside boot) may indicate:
            a) A post-exploit actor reloading KVM with modified parameters (e.g., nested=1)
            b) An operator action to enable nested virtualisation (change-managed, low risk)
          The audit rule (init_module/finit_module with kvm_dev_access key) fires for
          both insmod and modprobe paths.
 
-     Log source prerequisites — add to all Proxmox/KVM hosts via Ansible (inframan):
+     Log source prerequisites - add to all Proxmox/KVM hosts via Ansible (inframan):
 
        File: /etc/audit/rules.d/90-januscape-kvm.rules
 
@@ -65,7 +65,7 @@
 <group name="privilege_escalation,vm_escape,kvm,januscape,cve_2026_53359,">
 
   <!-- ===========================================================
-       Layer A1: Base anchor — /dev/kvm access by non-root process
+       Layer A1: Base anchor - /dev/kvm access by non-root process
        Rule ID: 104142
 
        Auditd fires kvm_dev_access_nonroot on any open/openat/openat2
@@ -110,7 +110,7 @@
   <rule id="104143" level="13">
     <if_sid>104142</if_sid>
     <field name="audit.exe" negate="yes" type="pcre2">(?i)(?:qemu-system-x86_64|qemu-system-aarch64|qemu-kvm|qemu-system-arm|libvirt|virt-manager|virsh|vhost-net)</field>
-    <description>Januscape CVE-2026-53359: /dev/kvm opened by non-QEMU process exe=$(audit.exe) uid=$(audit.uid) — unexpected KVM device access; may indicate VM-escape attempt or unauthorized hypervisor interaction (T1611/T1068)</description>
+    <description>Januscape CVE-2026-53359: /dev/kvm opened by non-QEMU process exe=$(audit.exe) uid=$(audit.uid) - unexpected KVM device access; may indicate VM-escape attempt or unauthorized hypervisor interaction (T1611/T1068)</description>
     <mitre>
       <id>T1068</id>
       <id>T1611</id>
@@ -143,7 +143,7 @@
   <rule id="104144" level="10">
     <decoded_as>auditd</decoded_as>
     <field name="audit.key">kvm_module_load</field>
-    <description>Januscape CVE-2026-53359: KVM kernel module (kvm_intel/kvm_amd) loaded outside of boot context by uid=$(audit.uid) — correlate with rule 104141 (nested KVM enabled) to determine if exploitation prerequisites were set (T1611)</description>
+    <description>Januscape CVE-2026-53359: KVM kernel module (kvm_intel/kvm_amd) loaded outside of boot context by uid=$(audit.uid) - correlate with rule 104141 (nested KVM enabled) to determine if exploitation prerequisites were set (T1611)</description>
     <mitre>
       <id>T1068</id>
       <id>T1611</id>
