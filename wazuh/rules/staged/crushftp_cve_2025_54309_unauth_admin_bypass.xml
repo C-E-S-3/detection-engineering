@@ -88,7 +88,7 @@
        =========================================================== -->
 
   <rule id="104054" level="13">
-    <program_name type="pcre2">(?i)crushftp</program_name>
+    <program_name>crushftp</program_name>
     <regex type="pcre2">(?i)POST\s+/as2[/ \?].*\s(200|302)\b</regex>
     <description>CrushFTP CVE-2025-54309: POST to AS2 endpoint returned HTTP success on $(hostname) - unauthenticated admin bypass exploitation (T1190)</description>
     <mitre>
@@ -172,7 +172,7 @@
        =========================================================== -->
 
   <rule id="104057" level="13">
-    <program_name type="pcre2">(?i)crushftp</program_name>
+    <program_name>crushftp</program_name>
     <regex type="pcre2">(?i)(user|login|authenticated|account)[=:\s]+[0-9a-f]{32}m\b</regex>
     <description>CrushFTP CVE-2025-54309: authentication using 32-char hex username (rogue admin pattern) on $(hostname) - confirmed post-exploitation persistence via created account (T1078)</description>
     <mitre>
