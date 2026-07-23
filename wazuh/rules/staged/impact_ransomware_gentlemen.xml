@@ -1,6 +1,6 @@
 <!-- ============================================================
      Gentlemen Ransomware (Storm-2697) Detection Rules
-     MITRE ATT&CK:
+     MITRE ATT&amp;CK:
        T1486  - Data Encrypted for Impact
        T1053.005 - Scheduled Task/Job: Scheduled Task
        T1570  - Lateral Tool Transfer

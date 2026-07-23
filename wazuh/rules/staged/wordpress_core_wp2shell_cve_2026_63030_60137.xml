@@ -41,7 +41,7 @@
      Patched:  6.9.5 and 7.0.2
      Public PoC: live July 18, 2026
 
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1190     - Exploit Public-Facing Application
        T1505.003 - Server Software Component: Web Shell
        T1059.004 - Command and Scripting Interpreter: Unix Shell

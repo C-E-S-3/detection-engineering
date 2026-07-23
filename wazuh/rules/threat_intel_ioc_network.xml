@@ -3,7 +3,7 @@
 <!-- Covers C2/delivery infrastructure from threat-intel 2026-06-17 to   -->
 <!-- 2026-06-19: Mastra npm supply chain RAT, JetBrains malicious plugin  -->
 <!-- campaign, FishMonger/Earth Lusca SprySOCKS APT backdoor             -->
-<!-- MITRE ATT&CK: T1071.001, T1095, T1105, T1528, T1041, T1195.002     -->
+<!-- MITRE ATT&amp;CK: T1071.001, T1095, T1105, T1528, T1041, T1195.002     -->
 
 <group name="threat_intel,ioc_network,">
 

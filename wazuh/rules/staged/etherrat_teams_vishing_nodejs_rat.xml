@@ -2,7 +2,7 @@
      EtherRAT Detection Rules
      Threat: EtherRAT Node.js RAT delivered via Microsoft Teams Vishing
      Source: Palo Alto Unit 42 / BleepingComputer, July 2026
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1566.004 - Phishing: Voice Calls via Teams (TA0001)
        T1219     - Remote Access Software / Quick Assist (TA0011)
        T1059.006 - Command and Scripting Interpreter: Node.js (TA0002)

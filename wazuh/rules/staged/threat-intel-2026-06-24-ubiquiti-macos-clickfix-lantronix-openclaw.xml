@@ -30,7 +30,7 @@
      Author: SecOps Purple Team
      Date: 2026-06-24
 
-     MITRE ATT&CK Coverage:
+     MITRE ATT&amp;CK Coverage:
        T1190        Exploit Public-Facing Application (UniFi CVEs, Lantronix CVE, OpenClaw CVE)
        T1059.004    Unix Shell (UniFi command injection payload execution)
        T1204.002    User Execution: Malicious File (macOS ClickFix DMG mount)

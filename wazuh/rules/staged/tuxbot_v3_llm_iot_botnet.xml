@@ -1,6 +1,6 @@
 <!-- ============================================================
      TuxBot v3: LLM-Assisted IoT Botnet — Iranian-Nexus, SHA512 DGA, P2P C2
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1568.002 - Domain Generation Algorithms (SHA512-seeded DGA backup C2)
        T1573     - Encrypted Channel (TCP 2222 with SSH-2.0-CNC-Control-Server banner)
        T1071     - Application Layer Protocol (multi-protocol: TCP, DNS TXT, HTTP, P2P)

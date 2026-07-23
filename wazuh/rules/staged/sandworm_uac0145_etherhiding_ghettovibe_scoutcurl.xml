@@ -14,7 +14,7 @@
           resolves C2 domain from actor smart contract storage slot
           (T1102.002) - C2 cannot be sinkholed via DNS seizure
      Source: CERT-UA advisory #6318437 (2026-07-17)
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1102.002 - Web Service: Bidirectional Communication (EtherHiding)
        T1547.001 - Boot or Logon Autostart: Startup Folder (GHETTOVIBE)
        T1059.001 - PowerShell (SCOUTCURL + ClickFix delivery)
@@ -62,11 +62,11 @@
          https://cert.gov.ua/article/6318437
        GuardioLabs EtherHiding technique (2023):
          https://labs.guard.io/etherhiding-hiding-web2-malicious-code-in-web3-smart-contracts-65ea78efad16
-       MITRE ATT&CK - Sandworm Team (G0034):
+       MITRE ATT&amp;CK - Sandworm Team (G0034):
          https://attack.mitre.org/groups/G0034/
-       MITRE ATT&CK - T1102.002 Web Service Bidirectional Communication:
+       MITRE ATT&amp;CK - T1102.002 Web Service Bidirectional Communication:
          https://attack.mitre.org/techniques/T1102/002/
-       MITRE ATT&CK - T1547.001 Startup Folder:
+       MITRE ATT&amp;CK - T1547.001 Startup Folder:
          https://attack.mitre.org/techniques/T1547/001/
      ============================================================ -->
 

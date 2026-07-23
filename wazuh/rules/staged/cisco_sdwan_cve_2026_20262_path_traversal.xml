@@ -1,7 +1,7 @@
 <!-- ============================================================
      Cisco Catalyst SD-WAN Manager Authenticated Path Traversal
      CVE-2026-20262 (Cisco IOS XE SD-WAN / vManage)
-     MITRE ATT&CK:
+     MITRE ATT&amp;CK:
        T1190 - Exploit Public-Facing Application
        T1068 - Exploitation for Privilege Escalation
      Rule IDs: 102200-102212

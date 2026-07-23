@@ -1,6 +1,6 @@
 <!-- ============================================================
      Malicious npm Preinstall Hook - Cross-Platform Infostealer Detection Rules
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1195.002  - Compromise Software Supply Chain
        T1059.007  - Command and Scripting Interpreter: JavaScript
        T1053.005  - Scheduled Task/Job: Scheduled Task (Windows persistence)

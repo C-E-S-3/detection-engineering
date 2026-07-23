@@ -1,7 +1,7 @@
 <!-- ============================================================
      JoomShaper SP Page Builder Unrestricted File Upload RCE
      CVE-2026-48908  - CVSS 9.8 CRITICAL
-     MITRE ATT&CK:
+     MITRE ATT&amp;CK:
        T1190        - Exploit Public-Facing Application
        T1505.003    - Server Software Component: Web Shell
        T1136.001    - Create Account: Local Account (rogue Joomla admin)
@@ -19,7 +19,7 @@
        CVE-2026-48908 is an unrestricted file upload vulnerability in the
        JoomShaper SP Page Builder Joomla extension (CVSS 9.8). Unauthenticated
        attackers POST to the following endpoint without any auth check:
-         POST /index.php?option=com_sppagebuilder&task=asset.uploadCustomIcon
+         POST /index.php?option=com_sppagebuilder&amp;task=asset.uploadCustomIcon
        The upload accepts arbitrary MIME types, allowing PHP webshell deployment.
        Observed post-exploitation: PHP webshell dropped to:
          /media/com_sppagebuilder/assets/iconfont/[uidto //fonts/[hash].php

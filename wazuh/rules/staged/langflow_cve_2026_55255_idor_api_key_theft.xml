@@ -1,7 +1,7 @@
 <!-- ============================================================
      Langflow Cross-Tenant IDOR API Key Theft
      CVE-2026-55255  - CVSS 9.9 CRITICAL
-     MITRE ATT&CK:
+     MITRE ATT&amp;CK:
        T1190        - Exploit Public-Facing Application
        T1528        - Steal Application Access Token (LLM API key exfil)
        T1087.001    - Account Discovery: Local Account (flow UUID enumeration)

@@ -1,6 +1,6 @@
 <!-- ============================================================
      Check Point VPN CVE-2026-50751 Detection Rules
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1190  - Exploit Public-Facing Application
        T1110  - Brute Force
        T1078  - Valid Accounts

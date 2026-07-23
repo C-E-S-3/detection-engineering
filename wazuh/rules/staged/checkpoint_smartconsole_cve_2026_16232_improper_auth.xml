@@ -1,6 +1,6 @@
 <!-- ============================================================
      Check Point SmartConsole CVE-2026-16232 Improper Authentication
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1190  - Exploit Public-Facing Application (TA0001 Initial Access)
        T1078  - Valid Accounts: use of obtained token (TA0001/TA0005)
        T1098  - Account Manipulation: admin account creation post-bypass (TA0003)

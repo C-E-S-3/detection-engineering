@@ -1,6 +1,6 @@
 <!-- ================================================================
      CVE-2026-20253: Splunk Enterprise PostgreSQL Sidecar Pre-Auth RCE
-     MITRE ATT&CK: T1190 (Exploit Public-Facing Application)
+     MITRE ATT&amp;CK: T1190 (Exploit Public-Facing Application)
                    T1059.004 (Unix Shell)
                    T1505.003 (Web Shell)
      Rule IDs: 102900-102912

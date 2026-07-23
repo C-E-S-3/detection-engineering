@@ -24,7 +24,7 @@
      Author: SecOps Purple Team
      Date: 2026-06-27
 
-     MITRE ATT&CK Coverage:
+     MITRE ATT&amp;CK Coverage:
        T1071.001  Application Layer Protocol: Web (Amadey/StealC/TonRAT C2 HTTP)
        T1041      Exfiltration Over C2 Channel (StealC credential exfil)
        T1555.003  Credentials from Web Browsers (Amadey/StealC)

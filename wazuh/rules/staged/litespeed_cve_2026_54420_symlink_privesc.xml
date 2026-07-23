@@ -1,7 +1,7 @@
 <!-- ============================================================
      LiteSpeed cPanel Plugin Symlink Following - Root
      CVE-2026-54420 (LiteSpeed cPanel / WHM Plugin)
-     MITRE ATT&CK:
+     MITRE ATT&amp;CK:
        T1068 - Exploitation for Privilege Escalation
        T1055 - Process Injection (via privileged child)
        T1562.006 - Impair Defenses: Indicator Blocking

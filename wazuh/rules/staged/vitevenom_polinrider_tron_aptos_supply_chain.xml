@@ -6,7 +6,7 @@
              Active June 29 - July 17, 2026.
      Source: opensourcemalware.com ViteVenom analysis (2026-07-19)
              PolinRider / Contagious Interview (G1052, DPRK)
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1195.001 - Compromise Software Supply Chain (TA0001)
        T1059.007 - Command and Script Interpreter: JavaScript (TA0002)
        T1102.003 - Web Service: One-Way Communication / blockchain C2 (TA0011)
@@ -120,11 +120,11 @@
          https://thehackernews.com/2026/06/hijacked-npm-and-go-packages-use-vs.html
        JFrog Security Research - Hijacked npm VSCode Tasks Blockchain:
          https://research.jfrog.com/post/hijacked-npm-vscode-tasks-blockchain/
-       MITRE ATT&CK - Contagious Interview G1052:
+       MITRE ATT&amp;CK - Contagious Interview G1052:
          https://attack.mitre.org/groups/G1052/
-       MITRE ATT&CK - T1102.003 Web Service One-Way Communication:
+       MITRE ATT&amp;CK - T1102.003 Web Service One-Way Communication:
          https://attack.mitre.org/techniques/T1102/003/
-       MITRE ATT&CK - T1195.001 Compromise Software Dependencies:
+       MITRE ATT&amp;CK - T1195.001 Compromise Software Dependencies:
          https://attack.mitre.org/techniques/T1195/001/
      ============================================================ -->
 
@@ -519,8 +519,8 @@
        Observed persistence commands from the PolinRider / Contagious
        Interview campaign:
          crontab -l | { cat; echo "*/5 * * * * node /tmp/.update"; } | crontab -
-         echo 'node /tmp/.cache/.update &' ]] ~/.bashrc
-         echo 'node /tmp/.config/update &' ]] ~/.profile
+         echo 'node /tmp/.cache/.update &amp;' ]] ~/.bashrc
+         echo 'node /tmp/.config/update &amp;' ]] ~/.profile
 
        The key behavioral signature is crontab(1) or tee/echo being invoked
        as a child of npm or node during package installation. Legitimate npm

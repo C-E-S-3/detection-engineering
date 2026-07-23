@@ -1,6 +1,6 @@
 <!-- ============================================================
      Ivanti Sentry CVE-2026-10520 / CVE-2026-10523 Detection Rules
-     MITRE ATT&CK:
+     MITRE ATT&amp;CK:
        T1190  - Exploit Public-Facing Application
        T1136.001 - Create Account: Local Account (CVE-2026-10523)
      Rule IDs: 101800-101810

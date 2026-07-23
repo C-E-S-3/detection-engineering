@@ -1,7 +1,7 @@
 <!-- ============================================================
      Copy Fail Linux Kernel Privilege Escalation Detection Rules
      CVE-2026-31431 (CVSS 7.8 HIGH, CISA KEV - added May 2026)
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1068  - Exploitation for Privilege Escalation
        T1548.001 - Setuid and Setgid (secondary)
      Rule IDs: 102800-102809

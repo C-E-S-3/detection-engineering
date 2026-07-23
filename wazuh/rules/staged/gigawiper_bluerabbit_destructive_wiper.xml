@@ -1,6 +1,6 @@
 <!-- ============================================================
      GigaWiper (BLUERABBIT) Destructive Backdoor Detection Rules
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1561.002  - Disk Wipe: Disk Structure Wipe
        T1486      - Data Encrypted for Impact (Crucio fake ransomware)
        T1561.001  - Disk Wipe: Disk Content Wipe (FlockWiper)

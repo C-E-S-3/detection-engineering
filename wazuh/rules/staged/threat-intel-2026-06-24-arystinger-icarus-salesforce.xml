@@ -12,7 +12,7 @@
      Author: SecOps Purple Team
      Date: 2026-06-24
 
-     MITRE ATT&CK Coverage:
+     MITRE ATT&amp;CK Coverage:
        T1190   Exploit Public-Facing Application (AryStinger CVEs)
        T1601   Modify System Image (dropbear/gs-netcat on routers)
        T1090   Proxy (AryStinger SOCKS5 tunneling infrastructure)

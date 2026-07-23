@@ -1,6 +1,6 @@
 <!-- ============================================================
      GodDamn Ransomware (Hyadina RaaS) and PoisonX BYOVD Detection Rules
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1543.003  - Create or Modify System Process: Windows Service
        T1562.001  - Impair Defenses: Disable or Modify Tools (BYOVD EDR kill)
        T1486      - Data Encrypted for Impact

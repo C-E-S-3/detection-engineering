@@ -59,7 +59,7 @@
   <rule id="101303" level="13">
     <if_sid>101302</if_sid>
     <list field="privoxy.domain" lookup="match_key_value">etc/lists/misp-domains</list>
-    <check_value type="pcre2">^1$</check_value>
+    <check_value>^1$</check_value>
     <description>Privoxy: HIGH-CONFIDENCE MISP hit - $(privoxy.domain) (threat level 1)</description>
     <mitre>
       <id>T1071.001</id>

@@ -4,7 +4,7 @@
              filing utility; suspected China-nexus threat actor
      Source: The Hacker News / Seqrite Blog, July 2026
              Operation DragonReturn (Seqrite threat intelligence)
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1204.002 - User Execution: Malicious File (TA0002)
        T1027.003 - Obfuscated Files or Information: Steganography (TA0005)
        T1055     - Process Injection (TA0005)

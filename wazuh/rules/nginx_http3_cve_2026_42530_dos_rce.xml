@@ -1,6 +1,6 @@
 <!-- ================================================================
      CVE-2026-42530 + CVE-2026-42055: NGINX HTTP/3 Critical Flaws
-     MITRE ATT&CK: T1190 (Exploit Public-Facing Application)
+     MITRE ATT&amp;CK: T1190 (Exploit Public-Facing Application)
                    T1499.004 (Endpoint DoS: Application Exploitation)
      Rule IDs: 102913-102920
      Severity: HIGH  - CVSSv4 9.2, NGINX 1.31.0-1.31.1 affected

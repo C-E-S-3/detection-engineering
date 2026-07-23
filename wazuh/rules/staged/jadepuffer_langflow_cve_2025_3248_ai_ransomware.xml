@@ -1,6 +1,6 @@
 <!-- ============================================================
      JADEPUFFER Autonomous AI Ransomware / CVE-2025-3248 Langflow RCE
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1190      - Exploit Public-Facing Application (CVE-2025-3248 Langflow RCE)
        T1059.006  - Command and Scripting Interpreter: Python
        T1102.002  - Web Service: Bidirectional Communication (Cloudflare Tunnel C2)

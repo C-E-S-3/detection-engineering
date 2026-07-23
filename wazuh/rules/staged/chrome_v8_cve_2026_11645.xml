@@ -1,6 +1,6 @@
 <!-- ============================================================
      Chrome V8 Zero-Day CVE-2026-11645 Detection Rules
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1203  - Exploitation for Client Execution
        T1059.001 - Command and Scripting Interpreter: PowerShell
        T1059.003 - Command and Scripting Interpreter: Windows Command Shell
