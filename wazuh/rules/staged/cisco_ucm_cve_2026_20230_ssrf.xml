@@ -68,7 +68,7 @@
   <rule id="103579" level="5">
     <decoded_as>web-accesslog</decoded_as>
     <regex type="pcre2">(?i)(/ccmwebapi/|/webdialer/|WebDialerSrv|/ccm/webdialer)</regex>
-    <description>Cisco UCM: HTTP request to WebDialer endpoint on $(hostname) -- CVE-2026-20230 attack surface; log source anchor for SSRF correlation (T1190)</description>
+    <description>Cisco UCM: HTTP request to WebDialer endpoint on $(hostname)  -  CVE-2026-20230 attack surface; log source anchor for SSRF correlation (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -87,7 +87,7 @@
   <rule id="103580" level="13">
     <if_matched_sid>103579</if_matched_sid>
     <regex type="pcre2">(?i)(127\.0\.0\.1|localhost|169\.254\.169\.254|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|::1|file://|dict://|gopher://|ftp://)</regex>
-    <description>Cisco UCM SSRF payload detected on $(hostname): WebDialer request contains internal address or SSRF protocol scheme -- active CVE-2026-20230 exploitation attempt (T1190)</description>
+    <description>Cisco UCM SSRF payload detected on $(hostname): WebDialer request contains internal address or SSRF protocol scheme  -  active CVE-2026-20230 exploitation attempt (T1190)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -106,7 +106,7 @@
 
   <rule id="103581" level="12">
     <regex type="pcre2">(?i)(webdialer|WebDialerSrv|ccmwebapi).*?(127\.0\.0\.1|localhost|169\.254\.169\.254|::1|file://|gopher://|dict://)</regex>
-    <description>Cisco UCM syslog SSRF indicator on $(hostname): WebDialer reference combined with internal address or protocol redirect -- CVE-2026-20230 exploitation signature (T1190)</description>
+    <description>Cisco UCM syslog SSRF indicator on $(hostname): WebDialer reference combined with internal address or protocol redirect  -  CVE-2026-20230 exploitation signature (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -125,7 +125,7 @@
   <rule id="103582" level="11" frequency="10" timeframe="60">
     <if_matched_sid>103579</if_matched_sid>
     <same_srcip/>
-    <description>Cisco UCM WebDialer burst on $(hostname): 10+ requests in 60 seconds from same source -- exploit scanner or automated CVE-2026-20230 exploitation tool (T1190)</description>
+    <description>Cisco UCM WebDialer burst on $(hostname): 10+ requests in 60 seconds from same source  -  exploit scanner or automated CVE-2026-20230 exploitation tool (T1190)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -147,7 +147,7 @@
     <regex type="pcre2">(?i)(type=CREATE|SYSCALL.*open.*O_CREAT|type=PATH.*nametype=CREATE)</regex>
     <user>^(tomcat|cisco|ccmservice|ccmservice_user)$</user>
     <regex type="pcre2">(?i)(/(tmp|var/tmp|home|opt/cisco|usr/local)/.*\.(sh|py|pl|rb|php|jsp|war|jar|class)|/etc/(cron|init\.d|rc\.d|passwd|shadow|sudoers)|/.ssh/)</regex>
-    <description>Cisco UCM service user file write in suspicious path on $(hostname): Tomcat/CCM service account created file in writable/sensitive directory -- potential CVE-2026-20230 post-SSRF file write leading to RCE (T1190, T1105)</description>
+    <description>Cisco UCM service user file write in suspicious path on $(hostname): Tomcat/CCM service account created file in writable/sensitive directory  -  potential CVE-2026-20230 post-SSRF file write leading to RCE (T1190, T1105)</description>
     <mitre>
       <id>T1190</id>
       <id>T1105</id>
@@ -168,7 +168,7 @@
     <regex type="pcre2">type=EXECVE|type=SYSCALL.*execve</regex>
     <field name="ppid_name" type="pcre2">^(java|tomcat|ccmservice)$</field>
     <regex type="pcre2">(?i)(/(bin|usr/bin|sbin)/(bash|sh|dash|zsh|python|perl|ruby|curl|wget|nc|ncat|socat|chmod|chown)|/tmp/)</regex>
-    <description>Cisco UCM: shell spawned from Tomcat/CCM service on $(hostname) -- java/tomcat executing shell or download utility is near-certain post-CVE-2026-20230 code execution; immediate incident response required (T1190, T1059.004)</description>
+    <description>Cisco UCM: shell spawned from Tomcat/CCM service on $(hostname)  -  java/tomcat executing shell or download utility is near-certain post-CVE-2026-20230 code execution; immediate incident response required (T1190, T1059.004)</description>
     <mitre>
       <id>T1190</id>
       <id>T1059.004</id>
@@ -188,7 +188,7 @@
   <rule id="103585" level="11">
     <if_matched_sid>103579</if_matched_sid>
     <regex type="pcre2">(?i)(\.\.\/|%2e%2e%2f|%252e%252e%252f|%c0%af|%c1%9c|\/etc\/|\/proc\/|\/sys\/|\/root\/|\/home\/)</regex>
-    <description>Cisco UCM WebDialer path traversal attempt on $(hostname): request contains directory traversal sequence -- potential CVE-2026-20230 filesystem reconnaissance (T1190, T1083)</description>
+    <description>Cisco UCM WebDialer path traversal attempt on $(hostname): request contains directory traversal sequence  -  potential CVE-2026-20230 filesystem reconnaissance (T1190, T1083)</description>
     <mitre>
       <id>T1190</id>
       <id>T1083</id>
@@ -208,7 +208,7 @@
   <rule id="103586" level="15" frequency="2" timeframe="300">
     <if_matched_sid>103582</if_matched_sid>
     <if_matched_group>cucm_file_write,</if_matched_group>
-    <description>Cisco UCM FULL EXPLOIT CHAIN on $(hostname): WebDialer burst followed by UCM service user file write within 5 minutes -- CVE-2026-20230 complete exploitation chain confirmed; CRITICAL incident response required (T1190, T1105)</description>
+    <description>Cisco UCM FULL EXPLOIT CHAIN on $(hostname): WebDialer burst followed by UCM service user file write within 5 minutes  -  CVE-2026-20230 complete exploitation chain confirmed; CRITICAL incident response required (T1190, T1105)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>

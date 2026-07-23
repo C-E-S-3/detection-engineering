@@ -16,9 +16,9 @@
        inject path traversal sequences (e.g. /../, %2e%2e%2f) into the
        URL, causing the server to access arbitrary files on the host
        filesystem with root-level privileges. This enables:
-         - /etc/shadow and /etc/passwd read -> credential extraction
-         - Writing to /etc/cron.d/ -> persistent root execution
-         - Reading configuration databases -> full vManage compromise
+         - /etc/shadow and /etc/passwd read - credential extraction
+         - Writing to /etc/cron.d/ - persistent root execution
+         - Reading configuration databases - full vManage compromise
 
      Log source prerequisites:
        - Traefik access log in JSON format forwarded to Wazuh
@@ -44,7 +44,7 @@
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">^/dataservice/.*(?:%2e%2e[%2f/]|\.\.\/|%252e%252e|\.\.%2f|%2e%2e%5c)</field>
     <options>no_full_log</options>
-    <description>Cisco SD-WAN Manager CVE-2026-20262: path traversal sequence in /dataservice/ API from $(ClientHost) to $(RequestHost)$(RequestPath) -- authenticated path traversal attempt (T1190/T1068)</description>
+    <description>Cisco SD-WAN Manager CVE-2026-20262: path traversal sequence in /dataservice/ API from $(ClientHost) to $(RequestHost)$(RequestPath)  -  authenticated path traversal attempt (T1190/T1068)</description>
     <mitre>
       <id>T1190</id>
       <id>T1068</id>
@@ -56,7 +56,7 @@
   <rule id="102201" level="15">
     <if_sid>102200</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
-    <description>Cisco SD-WAN Manager CVE-2026-20262: path traversal returned 2xx to $(ClientHost) -- exploitation SUCCESSFUL, root file access likely (T1190/T1068)</description>
+    <description>Cisco SD-WAN Manager CVE-2026-20262: path traversal returned 2xx to $(ClientHost)  -  exploitation SUCCESSFUL, root file access likely (T1190/T1068)</description>
     <mitre>
       <id>T1190</id>
       <id>T1068</id>
@@ -69,7 +69,7 @@
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">^/dataservice/.*%25(?:2e|2E){2}</field>
     <options>no_full_log</options>
-    <description>Cisco SD-WAN Manager CVE-2026-20262: double-encoded path traversal in /dataservice/ from $(ClientHost) -- WAF evasion variant (T1190)</description>
+    <description>Cisco SD-WAN Manager CVE-2026-20262: double-encoded path traversal in /dataservice/ from $(ClientHost)  -  WAF evasion variant (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -81,7 +81,7 @@
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">^/dataservice/.*(?:etc/shadow|etc/passwd|etc/cron|root/|\.ssh/authorized_keys|\.bash_history|proc/self)</field>
     <options>no_full_log</options>
-    <description>Cisco SD-WAN Manager CVE-2026-20262: request targeting sensitive system path via /dataservice/ from $(ClientHost) -- directory traversal targeting credentials or persistence (T1190/T1068)</description>
+    <description>Cisco SD-WAN Manager CVE-2026-20262: request targeting sensitive system path via /dataservice/ from $(ClientHost)  -  directory traversal targeting credentials or persistence (T1190/T1068)</description>
     <mitre>
       <id>T1190</id>
       <id>T1068</id>
@@ -93,7 +93,7 @@
   <rule id="102204" level="9">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">^/dataservice/(?:version|about|client/server-info|token)</field>
-    <description>Cisco SD-WAN Manager API info endpoint accessed from $(ClientHost) -- pre-exploitation reconnaissance (T1590)</description>
+    <description>Cisco SD-WAN Manager API info endpoint accessed from $(ClientHost)  -  pre-exploitation reconnaissance (T1590)</description>
     <mitre>
       <id>T1590</id>
     </mitre>
@@ -105,7 +105,7 @@
     <decoded_as>json</decoded_as>
     <field name="RequestMethod" type="pcre2">^(PUT|DELETE|PATCH)$</field>
     <field name="RequestPath" type="pcre2">^/dataservice/</field>
-    <description>Cisco SD-WAN Manager: $(RequestMethod) to /dataservice/ from $(ClientHost) -- unusual API method may indicate exploitation attempt (T1190)</description>
+    <description>Cisco SD-WAN Manager: $(RequestMethod) to /dataservice/ from $(ClientHost)  -  unusual API method may indicate exploitation attempt (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -121,7 +121,7 @@
   <rule id="102206" level="14" frequency="5" timeframe="60">
     <if_matched_sid>102200</if_matched_sid>
     <same_field>ClientHost</same_field>
-    <description>Cisco SD-WAN CVE-2026-20262: 5+ path traversal probes from $(ClientHost) in 60s -- automated exploitation tool (T1190)</description>
+    <description>Cisco SD-WAN CVE-2026-20262: 5+ path traversal probes from $(ClientHost) in 60s  -  automated exploitation tool (T1190)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -134,7 +134,7 @@
     <if_matched_sid>102200</if_matched_sid>
     <same_field>ClientHost</same_field>
     <different_field>RequestHost</different_field>
-    <description>Cisco SD-WAN CVE-2026-20262: $(ClientHost) traversal probes against multiple SD-WAN hosts -- lateral path traversal campaign (T1190)</description>
+    <description>Cisco SD-WAN CVE-2026-20262: $(ClientHost) traversal probes against multiple SD-WAN hosts  -  lateral path traversal campaign (T1190)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -151,7 +151,7 @@
   <rule id="102209" level="15" frequency="2" timeframe="300">
     <if_matched_sid>102200,102203</if_matched_sid>
     <same_field>ClientHost</same_field>
-    <description>Cisco SD-WAN CVE-2026-20262 two-stage attack: $(ClientHost) traversal probe followed by sensitive path read -- likely successful credential/config extraction (T1190/T1068)</description>
+    <description>Cisco SD-WAN CVE-2026-20262 two-stage attack: $(ClientHost) traversal probe followed by sensitive path read  -  likely successful credential/config extraction (T1190/T1068)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -165,7 +165,7 @@
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">^/dataservice/</field>
     <field name="DownstreamStatus" type="pcre2">^40[13]$</field>
-    <description>Cisco SD-WAN Manager: auth failure ($(DownstreamStatus)) on /dataservice/ from $(ClientHost) -- may indicate token bypass attempt (T1190)</description>
+    <description>Cisco SD-WAN Manager: auth failure ($(DownstreamStatus)) on /dataservice/ from $(ClientHost)  -  may indicate token bypass attempt (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -176,7 +176,7 @@
   <rule id="102211" level="13" frequency="10" timeframe="60">
     <if_matched_sid>102210</if_matched_sid>
     <same_field>ClientHost</same_field>
-    <description>Cisco SD-WAN Manager: 10+ auth failures from $(ClientHost) in 60s -- credential spraying or token brute-force preceding CVE-2026-20262 exploitation (T1110)</description>
+    <description>Cisco SD-WAN Manager: 10+ auth failures from $(ClientHost) in 60s  -  credential spraying or token brute-force preceding CVE-2026-20262 exploitation (T1110)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1110</id>
@@ -190,7 +190,7 @@
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">^/dataservice/</field>
     <field name="DownstreamStatus" type="pcre2">^(?:404|500|502|503)$</field>
-    <description>Cisco SD-WAN Manager /dataservice/ returned error $(DownstreamStatus) to $(ClientHost) -- API endpoint enumeration or post-traversal probe (T1590)</description>
+    <description>Cisco SD-WAN Manager /dataservice/ returned error $(DownstreamStatus) to $(ClientHost)  -  API endpoint enumeration or post-traversal probe (T1590)</description>
     <mitre>
       <id>T1590</id>
     </mitre>

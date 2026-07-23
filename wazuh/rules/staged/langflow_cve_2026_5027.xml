@@ -3,7 +3,7 @@
 <!-- MITRE ATT&CK: T1190 (Exploit Public-Facing Application)                         -->
 <!--               T1053.003 (Scheduled Task/Job: Cron)                               -->
 <!--               T1059.004 (Command and Scripting Interpreter: Unix Shell)           -->
-<!-- CVE: CVE-2026-5027 (CVSS 8.8)  - Langflow &lt;= 1.8.4 path traversal in             -->
+<!-- CVE: CVE-2026-5027 (CVSS 8.8)  - Langflow lte 1.8.4 path traversal in             -->
 <!--      POST /api/v2/files; unauthenticated when auto-login enabled (default);      -->
 <!--      cron injection achieves unauthenticated RCE as root                         -->
 <!-- Added: 2026-06-14 | Actively exploited June 10 2026; patched in 1.10.0          -->

@@ -12,7 +12,7 @@
      Author: SecOps Engineer
      Date: 2026-07-12
 
-     Threat Actor: Hyadina (RaaS); ransomware lineage: Monster 2022 -> Beast -> GodDamn
+     Threat Actor: Hyadina (RaaS); ransomware lineage: Monster 2022 - Beast - GodDamn
      References:
        - Broadcom / Symantec: https://www.security.com/threat-intelligence/goddamn-ransomware-beast-rebrand
        - IOC source: Broadcom Symantec Threat Intelligence (July 2026)
@@ -33,9 +33,9 @@
          PoisonX BYOVD kernel driver g11.sys; Microsoft-signed; author GitHub oxfemale
 
      Log source prerequisites:
-       - Sysmon EventID 1 (ProcessCreate) -> Wazuh SID 61603
+       - Sysmon EventID 1 (ProcessCreate) - Wazuh SID 61603
          Required for process ancestry rules (103847, 103848, 103849)
-       - Sysmon EventID 11 (FileCreate) -> Wazuh SID 61644
+       - Sysmon EventID 11 (FileCreate) - Wazuh SID 61644
          Required for encrypted file extension detection (103845)
        - Wazuh FIM (syscheck) monitoring Windows driver store paths:
            C:\Windows\System32\drivers\
@@ -64,7 +64,7 @@
   <rule id="103842" level="15">
     <if_sid>554,553,550</if_sid>
     <match>g11.sys</match>
-    <description>PoisonX BYOVD: g11.sys kernel driver written to system path on $(agent.name) -- GodDamn ransomware (Hyadina RaaS) BYOVD EDR-kill driver staged for installation (T1543.003, T1562.001)</description>
+    <description>PoisonX BYOVD: g11.sys kernel driver written to system path on $(agent.name)  -  GodDamn ransomware (Hyadina RaaS) BYOVD EDR-kill driver staged for installation (T1543.003, T1562.001)</description>
     <mitre>
       <id>T1543.003</id>
       <id>T1562.001</id>
@@ -81,7 +81,7 @@
   <rule id="103843" level="15">
     <if_sid>550,553,554,593</if_sid>
     <match>2d91a78e739891c9854c254f5b2a6b84c0e167dfa253466cbccd2cdd1c20145d</match>
-    <description>PoisonX BYOVD: confirmed IOC hash 2d91a78e (g11.sys) detected by FIM on $(agent.name) -- GodDamn/Hyadina ransomware EDR-kill kernel driver (T1543.003, T1562.001)</description>
+    <description>PoisonX BYOVD: confirmed IOC hash 2d91a78e (g11.sys) detected by FIM on $(agent.name)  -  GodDamn/Hyadina ransomware EDR-kill kernel driver (T1543.003, T1562.001)</description>
     <mitre>
       <id>T1543.003</id>
       <id>T1562.001</id>
@@ -99,7 +99,7 @@
     <if_group>windows</if_group>
     <field name="win.system.eventID">^7045$</field>
     <field name="win.eventdata.serviceName" type="pcre2">^g11$</field>
-    <description>PoisonX BYOVD: Windows kernel service "g11" registered on $(agent.name) -- PoisonX BYOVD EDR-kill driver kernel service installation (T1543.003)</description>
+    <description>PoisonX BYOVD: Windows kernel service "g11" registered on $(agent.name)  -  PoisonX BYOVD EDR-kill driver kernel service installation (T1543.003)</description>
     <mitre>
       <id>T1543.003</id>
       <id>T1562.001</id>
@@ -116,7 +116,7 @@
   <rule id="103845" level="14">
     <if_sid>61644</if_sid>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.God8?Damn$</field>
-    <description>GodDamn Ransomware: file with .God8Damn extension created on $(win.eventdata.computer) -- Hyadina RaaS file encryption in progress (T1486)</description>
+    <description>GodDamn Ransomware: file with .God8Damn extension created on $(win.eventdata.computer)  -  Hyadina RaaS file encryption in progress (T1486)</description>
     <mitre>
       <id>T1486</id>
     </mitre>
@@ -131,7 +131,7 @@
   <rule id="103846" level="15" frequency="20" timeframe="60">
     <if_matched_sid>103845</if_matched_sid>
     <same_field>win.eventdata.computer</same_field>
-    <description>GodDamn Ransomware: MASS ENCRYPTION  - 20+ .God8Damn files in 60s on $(win.eventdata.computer) -- CRITICAL: isolate host immediately (T1486)</description>
+    <description>GodDamn Ransomware: MASS ENCRYPTION  - 20+ .God8Damn files in 60s on $(win.eventdata.computer)  -  CRITICAL: isolate host immediately (T1486)</description>
     <mitre>
       <id>T1486</id>
     </mitre>
@@ -149,7 +149,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\symantec\.exe$</field>
     <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)\\(Program Files|Program Files \(x86\))\\(Broadcom|Symantec|Norton|Symantec Endpoint Protection)\\.+\\symantec\.exe$</field>
-    <description>PoisonX BYOVD: symantec.exe launched from non-standard path $(win.eventdata.image) on $(win.eventdata.computer) -- GodDamn/Hyadina dropper masquerades as Symantec process (T1036.005)</description>
+    <description>PoisonX BYOVD: symantec.exe launched from non-standard path $(win.eventdata.image) on $(win.eventdata.computer)  -  GodDamn/Hyadina dropper masquerades as Symantec process (T1036.005)</description>
     <mitre>
       <id>T1036.005</id>
       <id>T1543.003</id>
@@ -166,7 +166,7 @@
   <rule id="103848" level="12">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(WebBrowserPassView|MailPassView|PasswordFox|ChromePass|IEPassView|OperaPassView|BulletsPassView|MessenPass|PstPassword|OutlookPassView|WirelessKeyView|NetworkPasswordRecovery|VaultPasswordView|CredentialsFileView|rdpv|dialupass|SniffPass|RouterPassView|WebPassView|ProductKey|ProduKey)\.exe$</field>
-    <description>GodDamn/Hyadina: NirSoft credential theft tool $(win.eventdata.image) executed on $(win.eventdata.computer) by $(win.eventdata.user) -- credential harvesting phase preceding lateral movement (T1555.003)</description>
+    <description>GodDamn/Hyadina: NirSoft credential theft tool $(win.eventdata.image) executed on $(win.eventdata.computer) by $(win.eventdata.user)  -  credential harvesting phase preceding lateral movement (T1555.003)</description>
     <mitre>
       <id>T1555.003</id>
       <id>T1078</id>
@@ -183,7 +183,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(PsExec|PSEXEC|psexec64)\.exe$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)\\\\[a-zA-Z0-9_\-\.]+\\[a-zA-Z$]+\\</field>
-    <description>GodDamn/Hyadina: PsExec launched against remote UNC share on $(win.eventdata.computer) by $(win.eventdata.user) -- lateral movement pattern consistent with Hyadina ransomware spreading (T1570)</description>
+    <description>GodDamn/Hyadina: PsExec launched against remote UNC share on $(win.eventdata.computer) by $(win.eventdata.user)  -  lateral movement pattern consistent with Hyadina ransomware spreading (T1570)</description>
     <mitre>
       <id>T1570</id>
       <id>T1486</id>

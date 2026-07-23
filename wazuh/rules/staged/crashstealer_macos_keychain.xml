@@ -56,7 +56,7 @@
   <rule id="103908" level="14">
     <if_sid>103000</if_sid>
     <match>werkbit.io</match>
-    <description>CrashStealer macOS: connection to delivery domain werkbit.io from $(agent.name) -- CrashStealer macOS infostealer delivery; PIN-gated dropper distribution (T1190, T1555.001)</description>
+    <description>CrashStealer macOS: connection to delivery domain werkbit.io from $(agent.name)  -  CrashStealer macOS infostealer delivery; PIN-gated dropper distribution (T1190, T1555.001)</description>
     <mitre>
       <id>T1190</id>
       <id>T1555.001</id>
@@ -72,7 +72,7 @@
   <rule id="103909" level="15">
     <if_sid>103000</if_sid>
     <match>endpoint-api-v1.com</match>
-    <description>CrashStealer macOS: connection to C2 exfiltration domain endpoint-api-v1.com from $(agent.name) -- CRITICAL: CrashStealer Keychain/credential exfiltration channel (T1041, T1555.001)</description>
+    <description>CrashStealer macOS: connection to C2 exfiltration domain endpoint-api-v1.com from $(agent.name)  -  CRITICAL: CrashStealer Keychain/credential exfiltration channel (T1041, T1555.001)</description>
     <mitre>
       <id>T1041</id>
       <id>T1555.001</id>
@@ -91,7 +91,7 @@
     <if_group>macos,audit</if_group>
     <field name="audit.exe" type="pcre2">(?i)/usr/bin/codesign$</field>
     <field name="audit.command" type="pcre2">(?i)(CrashReporter|LaunchAgents)</field>
-    <description>CrashStealer macOS: codesign executed with CrashReporter or LaunchAgents path on $(agent.name) by $(audit.auid) -- CrashStealer re-signing malware binary to masquerade as Apple CrashReporter (T1553.002, T1036.005)</description>
+    <description>CrashStealer macOS: codesign executed with CrashReporter or LaunchAgents path on $(agent.name) by $(audit.auid)  -  CrashStealer re-signing malware binary to masquerade as Apple CrashReporter (T1553.002, T1036.005)</description>
     <mitre>
       <id>T1553.002</id>
       <id>T1036.005</id>
@@ -109,7 +109,7 @@
   <rule id="103911" level="13">
     <if_sid>550,553,554</if_sid>
     <field name="file" type="pcre2">(?i)/Library/LaunchAgents/.*\.plist$</field>
-    <description>CrashStealer macOS: LaunchAgent plist written in Library/LaunchAgents on $(agent.name) -- persistence installation; verify if process is a known-good writer; CrashStealer installs LaunchAgent under CrashReporter-mimicking path (T1547.011)</description>
+    <description>CrashStealer macOS: LaunchAgent plist written in Library/LaunchAgents on $(agent.name)  -  persistence installation; verify if process is a known-good writer; CrashStealer installs LaunchAgent under CrashReporter-mimicking path (T1547.011)</description>
     <mitre>
       <id>T1547.011</id>
     </mitre>
@@ -125,7 +125,7 @@
   <rule id="103912" level="15">
     <if_sid>550,553,554</if_sid>
     <field name="file" type="pcre2">(?i)/Library/LaunchAgents/.*CrashReporter.*\.plist$</field>
-    <description>CrashStealer macOS: LaunchAgent plist with CrashReporter in path written on $(agent.name) -- CRITICAL: CrashStealer persistence masquerading as Apple CrashReporter; isolate and investigate (T1547.011, T1036.005)</description>
+    <description>CrashStealer macOS: LaunchAgent plist with CrashReporter in path written on $(agent.name)  -  CRITICAL: CrashStealer persistence masquerading as Apple CrashReporter; isolate and investigate (T1547.011, T1036.005)</description>
     <mitre>
       <id>T1547.011</id>
       <id>T1036.005</id>
@@ -143,7 +143,7 @@
     <if_group>macos,audit</if_group>
     <field name="audit.file.name" type="pcre2">(?i)(login\.keychain-db|login\.keychain|keychain-2\.db)$</field>
     <field name="audit.exe" negate="yes" type="pcre2">(?i)/(securityd|Security|SecurityAgent|keychaind|keychain-agent|Safari|Chrome|Firefox|Brave|Edge|1Password|Keychain Access)$</field>
-    <description>CrashStealer macOS: Keychain database accessed by unexpected process $(audit.exe) on $(agent.name) -- credential theft from macOS Keychain; CrashStealer or similar infostealer activity (T1555.001)</description>
+    <description>CrashStealer macOS: Keychain database accessed by unexpected process $(audit.exe) on $(agent.name)  -  credential theft from macOS Keychain; CrashStealer or similar infostealer activity (T1555.001)</description>
     <mitre>
       <id>T1555.001</id>
       <id>T1005</id>

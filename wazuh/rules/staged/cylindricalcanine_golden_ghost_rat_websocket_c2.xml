@@ -104,7 +104,7 @@
   <rule id="104089" level="14">
     <if_sid>103000</if_sid>
     <match>uu\.goldeyeuu\.io|api\.keensie\.com</match>
-    <description>CylindricalCanine Golden Gh0st RAT: outbound connection to confirmed C2 domain from $(agent.name) -- C2 domains uu.goldeyeuu[.]io (TCP 5188, unencrypted command channel) and api.keensie[.]com (TCP 5198, encrypted exfil channel) are attributed to CylindricalCanine, a GoldenEyeDog (APT-Q-27/Dragon Breath) China-nexus subgroup; 27+ malware specimens signed with 60 stolen DigiCert certificates bypass AV at deployment; isolate originating host and initiate IR immediately (T1071.001)</description>
+    <description>CylindricalCanine Golden Gh0st RAT: outbound connection to confirmed C2 domain from $(agent.name)  -  C2 domains uu.goldeyeuu[.]io (TCP 5188, unencrypted command channel) and api.keensie[.]com (TCP 5198, encrypted exfil channel) are attributed to CylindricalCanine, a GoldenEyeDog (APT-Q-27/Dragon Breath) China-nexus subgroup; 27+ malware specimens signed with 60 stolen DigiCert certificates bypass AV at deployment; isolate originating host and initiate IR immediately (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1553.002</id>
@@ -133,7 +133,7 @@
   <rule id="104090" level="15" frequency="2" timeframe="120">
     <if_matched_sid>104089</if_matched_sid>
     <same_source_ip />
-    <description>CylindricalCanine Golden Gh0st RAT CRITICAL: active C2 beaconing confirmed from $(agent.name) -- 2+ connections to Golden Gh0st C2 infrastructure (uu.goldeyeuu[.]io or api.keensie[.]com) within 120 seconds from the same host; Golden Gh0st RAT implant is running and performing regular C2 check-ins; China-nexus CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) espionage campaign; CRITICAL: isolate host NOW, capture memory, escalate to IR (T1071.001, T1573)</description>
+    <description>CylindricalCanine Golden Gh0st RAT CRITICAL: active C2 beaconing confirmed from $(agent.name)  -  2+ connections to Golden Gh0st C2 infrastructure (uu.goldeyeuu[.]io or api.keensie[.]com) within 120 seconds from the same host; Golden Gh0st RAT implant is running and performing regular C2 check-ins; China-nexus CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) espionage campaign; CRITICAL: isolate host NOW, capture memory, escalate to IR (T1071.001, T1573)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1573</id>
@@ -170,7 +170,7 @@
   <rule id="104091" level="12">
     <if_sid>103000</if_sid>
     <match>dstport=5188|dport=5188|dst_port=5188|destination_port=5188|DestinationPort=5188|:5188 |:5188$</match>
-    <description>CylindricalCanine Golden Gh0st RAT: outbound TCP 5188 connection from $(agent.name) -- TCP 5188 is the unencrypted WebSocket command channel for Golden Gh0st RAT attributed to CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath); the attacker sends keylogging, file enumeration, and remote execution commands over this channel; TCP 5188 is IANA unassigned with no known legitimate enterprise use; triage source host and correlate with C2 domain rules 104089-104090 (T1071.001)</description>
+    <description>CylindricalCanine Golden Gh0st RAT: outbound TCP 5188 connection from $(agent.name)  -  TCP 5188 is the unencrypted WebSocket command channel for Golden Gh0st RAT attributed to CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath); the attacker sends keylogging, file enumeration, and remote execution commands over this channel; TCP 5188 is IANA unassigned with no known legitimate enterprise use; triage source host and correlate with C2 domain rules 104089-104090 (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
     </mitre>
@@ -205,7 +205,7 @@
   <rule id="104092" level="13">
     <if_sid>103000</if_sid>
     <match>dstport=5198|dport=5198|dst_port=5198|destination_port=5198|DestinationPort=5198|:5198 |:5198$</match>
-    <description>CylindricalCanine Golden Gh0st RAT: outbound TCP 5198 encrypted exfil connection from $(agent.name) -- TCP 5198 is the encrypted WebSocket exfiltration channel for Golden Gh0st RAT; CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) uses this channel to exfiltrate keylog data, credentials, screenshots, and files to C2 infrastructure; TCP 5198 is IANA unassigned with no legitimate enterprise use; isolate host and check for correlated TCP 5188 activity (rule 104091) and C2 domain hits (rule 104089) (T1573, T1041)</description>
+    <description>CylindricalCanine Golden Gh0st RAT: outbound TCP 5198 encrypted exfil connection from $(agent.name)  -  TCP 5198 is the encrypted WebSocket exfiltration channel for Golden Gh0st RAT; CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) uses this channel to exfiltrate keylog data, credentials, screenshots, and files to C2 infrastructure; TCP 5198 is IANA unassigned with no legitimate enterprise use; isolate host and check for correlated TCP 5188 activity (rule 104091) and C2 domain hits (rule 104089) (T1573, T1041)</description>
     <mitre>
       <id>T1573</id>
       <id>T1041</id>
@@ -239,7 +239,7 @@
   <rule id="104093" level="15" frequency="3" timeframe="120">
     <if_matched_sid>104091</if_matched_sid>
     <same_source_ip />
-    <description>CylindricalCanine Golden Gh0st RAT CRITICAL: active C2 beaconing confirmed via TCP 5188 from $(agent.name) -- 3+ outbound connections to TCP 5188 (Golden Gh0st unencrypted command channel) within 120 seconds; active Golden Gh0st RAT implant is maintaining its C2 channel awaiting attacker commands; China-nexus CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) espionage; CRITICAL: isolate host NOW, capture memory, treat all accessible data as potentially exfiltrated via TCP 5198, escalate to IR (T1071.001)</description>
+    <description>CylindricalCanine Golden Gh0st RAT CRITICAL: active C2 beaconing confirmed via TCP 5188 from $(agent.name)  -  3+ outbound connections to TCP 5188 (Golden Gh0st unencrypted command channel) within 120 seconds; active Golden Gh0st RAT implant is maintaining its C2 channel awaiting attacker commands; China-nexus CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) espionage; CRITICAL: isolate host NOW, capture memory, treat all accessible data as potentially exfiltrated via TCP 5198, escalate to IR (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
     </mitre>
@@ -283,7 +283,7 @@
     <field name="win.system.eventID">^3$</field>
     <field name="win.eventdata.destinationPort" type="pcre2">^(?:5188|5198)$</field>
     <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)\\(?:chrome|firefox|msedge|safari|opera|brave|iexplore|chromium|Electron)\.exe$</field>
-    <description>CylindricalCanine Golden Gh0st RAT: non-browser process $(win.eventdata.image) initiated TCP $(win.eventdata.destinationPort) connection to $(win.eventdata.destinationIp) on $(win.eventdata.computer) by $(win.eventdata.user) -- Sysmon EventID 3 provides process attribution for Golden Gh0st RAT WebSocket C2 connection; TCP 5188 is the unencrypted command channel and TCP 5198 is the encrypted exfiltration channel; Golden Gh0st RAT binaries are signed with stolen DigiCert certificates (April 2026 breach) so the signing certificate will appear valid; verify signing cert subject and serial number against the stolen DigiCert cert list (T1071.001, T1573)</description>
+    <description>CylindricalCanine Golden Gh0st RAT: non-browser process $(win.eventdata.image) initiated TCP $(win.eventdata.destinationPort) connection to $(win.eventdata.destinationIp) on $(win.eventdata.computer) by $(win.eventdata.user)  -  Sysmon EventID 3 provides process attribution for Golden Gh0st RAT WebSocket C2 connection; TCP 5188 is the unencrypted command channel and TCP 5198 is the encrypted exfiltration channel; Golden Gh0st RAT binaries are signed with stolen DigiCert certificates (April 2026 breach) so the signing certificate will appear valid; verify signing cert subject and serial number against the stolen DigiCert cert list (T1071.001, T1573)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1573</id>
@@ -328,7 +328,7 @@
   <rule id="104095" level="15">
     <if_sid>550,553,554,593</if_sid>
     <field name="syscheck.sha256_after">81e276aaa3eb9b3f595663c316b3c6414cc3dde5e6cc3a82856b7276acabb7de</field>
-    <description>CylindricalCanine Golden Gh0st RAT CRITICAL: confirmed malicious binary hash detected via FIM on $(agent.name) at $(syscheck.path) -- SHA256 hash 81e276aaa3eb9b3f595663c316b3c6414cc3dde5e6cc3a82856b7276acabb7de is a known Golden Gh0st RAT specimen signed with a DigiCert certificate stolen in the April 2026 CylindricalCanine breach; the file appears digitally signed and AV may have permitted its execution; do not dismiss because the file appears signed; CRITICAL: quarantine file immediately, isolate host, and initiate IR (T1553.002, T1071.001)</description>
+    <description>CylindricalCanine Golden Gh0st RAT CRITICAL: confirmed malicious binary hash detected via FIM on $(agent.name) at $(syscheck.path)  -  SHA256 hash 81e276aaa3eb9b3f595663c316b3c6414cc3dde5e6cc3a82856b7276acabb7de is a known Golden Gh0st RAT specimen signed with a DigiCert certificate stolen in the April 2026 CylindricalCanine breach; the file appears digitally signed and AV may have permitted its execution; do not dismiss because the file appears signed; CRITICAL: quarantine file immediately, isolate host, and initiate IR (T1553.002, T1071.001)</description>
     <mitre>
       <id>T1553.002</id>
       <id>T1071.001</id>

@@ -59,10 +59,10 @@
           session token harvest and DPAPI key extraction
 
      Log source prerequisites:
-       - Sysmon EventID 1 (ProcessCreate) -> Wazuh SID 61603
+       - Sysmon EventID 1 (ProcessCreate) - Wazuh SID 61603
          Required for rules 104020, 104021, 104022, 104023, 104024.
          Sysmon must capture CommandLine and ParentImage fields.
-       - Sysmon EventID 11 (FileCreate) -> Wazuh SID 61644
+       - Sysmon EventID 11 (FileCreate) - Wazuh SID 61644
          Supplementary for detecting file-copy staging of credential DBs.
 
      Severity tiers:
@@ -175,9 +175,9 @@
        the remote HTA, the embedded VBScript uses COM objects to spawn
        further processes. The most common pattern is:
 
-         mshta.exe -> powershell.exe (to execute encoded payload)
-         mshta.exe -> cmd.exe (to stage or run secondary loader)
-         mshta.exe -> wscript.exe / cscript.exe (additional script execution)
+         mshta.exe - powershell.exe (to execute encoded payload)
+         mshta.exe - cmd.exe (to stage or run secondary loader)
+         mshta.exe - wscript.exe / cscript.exe (additional script execution)
 
        Legitimate mshta.exe usage (enterprise HTA applications, Group
        Policy distribution) rarely spawns interactive interpreters as
@@ -216,8 +216,8 @@
        password (pass-the-cookie attack).
 
        The stealer accesses the Cookies database at paths including:
-         C:\Users\*\AppData\Local\Google\Chrome\User Data\<Profile>\Cookies
-         C:\Users\*\AppData\Local\Microsoft\Edge\User Data\<Profile>\Cookies
+         C:\Users\*\AppData\Local\Google\Chrome\User Data\[Profile]\Cookies
+         C:\Users\*\AppData\Local\Microsoft\Edge\User Data\[Profile]\Cookies
          C:\Users\*\AppData\Roaming\Mozilla\Firefox\Profiles\*.default\cookies.sqlite
          C:\Users\*\AppData\Roaming\Opera Software\Opera Stable\Cookies
 

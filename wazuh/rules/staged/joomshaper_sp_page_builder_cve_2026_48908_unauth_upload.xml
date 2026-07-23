@@ -22,7 +22,7 @@
          POST /index.php?option=com_sppagebuilder&task=asset.uploadCustomIcon
        The upload accepts arbitrary MIME types, allowing PHP webshell deployment.
        Observed post-exploitation: PHP webshell dropped to:
-         /media/com_sppagebuilder/assets/iconfont/&lt;uid>/fonts/&lt;hash>.php
+         /media/com_sppagebuilder/assets/iconfont/[uidto //fonts/[hash].php
        Rogue Joomla Super Administrator accounts created with email *@secure.local
        and username pattern [roleword][2 digits] (e.g. webeditor48, siteeditor38).
        Webshell timestamps are modified (timestomped) to evade detection.
@@ -96,7 +96,7 @@
   </rule>
 
   <!-- PHP file accessed under the SP Page Builder media/iconfont directory.
-       Documented webshell drop location: /media/com_sppagebuilder/assets/iconfont/&lt;uid>/fonts/
+       Documented webshell drop location: /media/com_sppagebuilder/assets/iconfont/[uidto //fonts/
        An HTTP GET/POST to a .php file in this path indicates webshell execution.
        Level 15: active webshell execution  - T1505.003. -->
   <rule id="103736" level="15">

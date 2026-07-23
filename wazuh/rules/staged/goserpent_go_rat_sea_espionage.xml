@@ -2,7 +2,7 @@
      GoSerpent: Go-Based RAT - Southeast Asia Government Espionage
      MITRE ATT&CK Techniques:
        T1573.001 - Encrypted Channel: Symmetric Cryptography (ChaCha20, SHA256-keyed)
-       T1560     - Archive Collected Data (ThumbcacheService -> thumbcache_605a.db)
+       T1560     - Archive Collected Data (ThumbcacheService - thumbcache_605a.db)
        T1003.001 - OS Credential Dumping: LSASS Memory (Mimikatz + QuarksDumpLocalHash)
        T1090     - Proxy (Stowaway SOCKS5 port-forward / reverse tunnel C2 chain)
        T1036     - Masquerading (ThumbcacheService DLL masquerades as Windows component)
@@ -18,11 +18,11 @@
      Attribution: Unattributed; China-nexus indicators (Alibaba Cloud / UCLOUD HK C2,
                   Stowaway SOCKS5 widely used by China-nexus groups, SEA gov targeting)
      Log source prerequisites:
-       - Sysmon EventID 1  (ProcessCreate)  -> Wazuh SID 61603
+       - Sysmon EventID 1  (ProcessCreate)  - Wazuh SID 61603
          Required for rules 104113-104119
-       - Sysmon EventID 11 (FileCreate)     -> Wazuh SID 61644
+       - Sysmon EventID 11 (FileCreate)     - Wazuh SID 61644
          Required for rule 104112 (thumbcache_605a.db artifact)
-       - Sysmon EventID 10 (ProcessAccess)  -> Wazuh SID 61603 with eventID filter
+       - Sysmon EventID 10 (ProcessAccess)  - Wazuh SID 61603 with eventID filter
          Required for rule 104117 (LSASS handle open by Go RAT process)
        - Firewall/network logs (firewall group) with data.dest_ip
          Required for rule 104118 (Alibaba Cloud / UCLOUD HK egress)
@@ -66,7 +66,7 @@
     <if_sid>61644</if_sid>
     <field name="win.system.eventID">^11$</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)C:\\Users\\Public\\thumbcache_605a\.db$</field>
-    <description>CRITICAL: GoSerpent ThumbcacheService IOC -- file C:\Users\Public\thumbcache_605a.db created by $(win.eventdata.image) on $(win.eventdata.computer). Password-protected archive of harvested files; confirmed GoSerpent collection artifact. Treat as active compromise; initiate IR immediately. (T1560, T1036)</description>
+    <description>CRITICAL: GoSerpent ThumbcacheService IOC  -  file C:\Users\Public\thumbcache_605a.db created by $(win.eventdata.image) on $(win.eventdata.computer). Password-protected archive of harvested files; confirmed GoSerpent collection artifact. Treat as active compromise; initiate IR immediately. (T1560, T1036)</description>
     <mitre>
       <id>T1560</id>
       <id>T1036</id>
@@ -96,7 +96,7 @@
   <rule id="104113" level="13">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(QuarksDumpLocalHash|quarksdump|ql)\.exe$</field>
-    <description>GoSerpent: QuarksDumpLocalHash credential dumper executed as $(win.eventdata.image) on $(win.eventdata.computer) -- GoSerpent actor deploys this tool to harvest local NTLM account hashes. Investigate process tree and parent process $(win.eventdata.parentImage). (T1003)</description>
+    <description>GoSerpent: QuarksDumpLocalHash credential dumper executed as $(win.eventdata.image) on $(win.eventdata.computer)  -  GoSerpent actor deploys this tool to harvest local NTLM account hashes. Investigate process tree and parent process $(win.eventdata.parentImage). (T1003)</description>
     <mitre>
       <id>T1003</id>
     </mitre>
@@ -107,7 +107,7 @@
   <rule id="104114" level="13">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\stowaway(\.exe)?$</field>
-    <description>GoSerpent: Stowaway SOCKS5 reverse tunnel proxy executed as $(win.eventdata.image) on $(win.eventdata.computer) -- GoSerpent actor chains C2 through compromised hosts using Stowaway to obscure traffic routing; widely used by China-nexus APT groups. Isolate host and trace upstream C2 chain. (T1090, T1573.001)</description>
+    <description>GoSerpent: Stowaway SOCKS5 reverse tunnel proxy executed as $(win.eventdata.image) on $(win.eventdata.computer)  -  GoSerpent actor chains C2 through compromised hosts using Stowaway to obscure traffic routing; widely used by China-nexus APT groups. Isolate host and trace upstream C2 chain. (T1090, T1573.001)</description>
     <mitre>
       <id>T1090</id>
       <id>T1573.001</id>
@@ -119,7 +119,7 @@
   <rule id="104115" level="12">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(tmcloader|tmc_loader|TmcLoader)(\.exe)?$</field>
-    <description>GoSerpent: TmcLoader staging component executed as $(win.eventdata.image) on $(win.eventdata.computer) -- Go-based loader that stages and executes GoSerpent, McMx, ThumbcacheService, and Stowaway payloads. Active GoSerpent intrusion underway; investigate immediately. (T1574)</description>
+    <description>GoSerpent: TmcLoader staging component executed as $(win.eventdata.image) on $(win.eventdata.computer)  -  Go-based loader that stages and executes GoSerpent, McMx, ThumbcacheService, and Stowaway payloads. Active GoSerpent intrusion underway; investigate immediately. (T1574)</description>
     <mitre>
       <id>T1574</id>
     </mitre>
@@ -130,7 +130,7 @@
   <rule id="104116" level="12">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(mcmx|McMx)(\.exe)?$</field>
-    <description>GoSerpent: McMx secondary Go implant executed as $(win.eventdata.image) on $(win.eventdata.computer) -- simpler Go proxy or secondary RAT deployed alongside GoSerpent primary RAT; used for C2 failover or lateral movement relay. Investigate full process tree. (T1090, T1573.001)</description>
+    <description>GoSerpent: McMx secondary Go implant executed as $(win.eventdata.image) on $(win.eventdata.computer)  -  simpler Go proxy or secondary RAT deployed alongside GoSerpent primary RAT; used for C2 failover or lateral movement relay. Investigate full process tree. (T1090, T1573.001)</description>
     <mitre>
       <id>T1090</id>
       <id>T1573.001</id>
@@ -157,7 +157,7 @@
     <field name="win.system.eventID">^10$</field>
     <field name="win.eventdata.targetImage" type="pcre2">(?i)\\lsass\.exe$</field>
     <field name="win.eventdata.sourceImage" negate="yes" type="pcre2">(?i)\\(MsMpEng|svchost|csrss|wininit|services|lsass|winlogon|NisSrv|MsSense|SenseCnfg|SecurityHealthService|AggregatorHost|spoolsv|dwm|System)\.exe$</field>
-    <description>GoSerpent/Mimikatz: $(win.eventdata.sourceImage) opened handle to lsass.exe on $(win.eventdata.computer) -- credential harvesting attempt; GoSerpent actor uses Mimikatz and QuarksDumpLocalHash for NTLM hash and plaintext credential theft. Investigate source process immediately. (T1003.001)</description>
+    <description>GoSerpent/Mimikatz: $(win.eventdata.sourceImage) opened handle to lsass.exe on $(win.eventdata.computer)  -  credential harvesting attempt; GoSerpent actor uses Mimikatz and QuarksDumpLocalHash for NTLM hash and plaintext credential theft. Investigate source process immediately. (T1003.001)</description>
     <mitre>
       <id>T1003.001</id>
     </mitre>
@@ -184,7 +184,7 @@
   <rule id="104118" level="11">
     <if_group>firewall</if_group>
     <field name="data.dest_ip" type="pcre2">^(47\.\d+\.\d+\.\d+|8\.210\.\d+\.\d+|8\.211\.\d+\.\d+|8\.212\.\d+\.\d+|8\.213\.\d+\.\d+|47\.74\.\d+\.\d+|103\.74\.\d+\.\d+|103\.75\.\d+\.\d+)$</field>
-    <description>GoSerpent C2 candidate: outbound from $(data.src_ip) to Alibaba Cloud / UCLOUD HK IP $(data.dest_ip) -- GoSerpent actor hosts all C2 nodes exclusively on Alibaba Cloud and UCLOUD HK; Chinese-provider egress from Windows hosts with no business relationship warrants investigation. Cross-reference with Stowaway execution events. (T1573.001, T1090)</description>
+    <description>GoSerpent C2 candidate: outbound from $(data.src_ip) to Alibaba Cloud / UCLOUD HK IP $(data.dest_ip)  -  GoSerpent actor hosts all C2 nodes exclusively on Alibaba Cloud and UCLOUD HK; Chinese-provider egress from Windows hosts with no business relationship warrants investigation. Cross-reference with Stowaway execution events. (T1573.001, T1090)</description>
     <mitre>
       <id>T1573.001</id>
       <id>T1090</id>
@@ -208,7 +208,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(ThumbcacheService|thumbcache)(\.exe|\.dll)?$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(QuarksDumpLocalHash|quarksdump|ql|stowaway|tmcloader|tmc_loader|mcmx|McMx)(\.exe)?$</field>
-    <description>CRITICAL: GoSerpent multi-stage toolchain confirmed -- ThumbcacheService ($(win.eventdata.parentImage)) spawned $(win.eventdata.image) on $(win.eventdata.computer). Two-TTP chain (collection + credential dump/proxy) is definitive GoSerpent IOC. Initiate IR immediately. (T1560, T1003/T1090)</description>
+    <description>CRITICAL: GoSerpent multi-stage toolchain confirmed  -  ThumbcacheService ($(win.eventdata.parentImage)) spawned $(win.eventdata.image) on $(win.eventdata.computer). Two-TTP chain (collection + credential dump/proxy) is definitive GoSerpent IOC. Initiate IR immediately. (T1560, T1003/T1090)</description>
     <mitre>
       <id>T1560</id>
       <id>T1003</id>
@@ -232,7 +232,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\ThumbcacheService(\.exe|\.dll)?$</field>
     <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)^C:\\Windows\\(System32|SysWOW64|WinSxS)\\</field>
-    <description>GoSerpent: ThumbcacheService process $(win.eventdata.image) executed from non-standard path on $(win.eventdata.computer) -- GoSerpent deploys a malicious DLL masquerading as a Windows thumbnail cache service; legitimate Windows has no ThumbcacheService component outside System32. Investigate parent $(win.eventdata.parentImage) and loaded DLLs. (T1036, T1574)</description>
+    <description>GoSerpent: ThumbcacheService process $(win.eventdata.image) executed from non-standard path on $(win.eventdata.computer)  -  GoSerpent deploys a malicious DLL masquerading as a Windows thumbnail cache service; legitimate Windows has no ThumbcacheService component outside System32. Investigate parent $(win.eventdata.parentImage) and loaded DLLs. (T1036, T1574)</description>
     <mitre>
       <id>T1036</id>
       <id>T1574</id>

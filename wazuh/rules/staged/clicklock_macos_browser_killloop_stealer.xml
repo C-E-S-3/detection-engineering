@@ -68,7 +68,7 @@
   <rule id="104003" level="15">
     <if_sid>550,553,554</if_sid>
     <field name="file" type="pcre2">(?i)/Library/LaunchAgents/(com\.authirity|com\.chromer)\.plist$</field>
-    <description>ClickLock macOS: CRITICAL -- known ClickLock LaunchAgent plist $(file) detected on $(agent.name) -- com.authirity.plist installs browser kill-loop daemon; com.chromer.plist installs Telegram exfil agent; isolate host and initiate IR (T1543.001, T1056.002)</description>
+    <description>ClickLock macOS: CRITICAL  -  known ClickLock LaunchAgent plist $(file) detected on $(agent.name)  -  com.authirity.plist installs browser kill-loop daemon; com.chromer.plist installs Telegram exfil agent; isolate host and initiate IR (T1543.001, T1056.002)</description>
     <mitre>
       <id>T1543.001</id>
       <id>T1056.002</id>
@@ -87,13 +87,13 @@
        with installer scripts, not via bare shell writes. This rule fires when
        process arguments include a LaunchAgents plist path - covering both
        curl -o /Library/LaunchAgents/com.authirity.plist ... patterns and
-       bash -c '... > /Library/LaunchAgents/...' patterns.
+       bash -c '... to //Library/LaunchAgents/...' patterns.
        =========================================================== -->
   <rule id="104004" level="12">
     <decoded_as>json</decoded_as>
     <field name="process.name" type="pcre2">^(bash|sh|zsh|curl|python3?|ruby|perl)$</field>
     <field name="process.args" type="pcre2">/Library/LaunchAgents/.*\.plist</field>
-    <description>ClickLock macOS: $(process.name) executing with /Library/LaunchAgents plist path on $(agent.name) -- ClickFix-style LaunchAgent persistence; no legitimate installer writes LaunchAgents via bare shell; high suspicion of ClickLock or similar stealer delivery (T1543.001, T1204.002)</description>
+    <description>ClickLock macOS: $(process.name) executing with /Library/LaunchAgents plist path on $(agent.name)  -  ClickFix-style LaunchAgent persistence; no legitimate installer writes LaunchAgents via bare shell; high suspicion of ClickLock or similar stealer delivery (T1543.001, T1204.002)</description>
     <mitre>
       <id>T1543.001</id>
       <id>T1204.002</id>
@@ -116,7 +116,7 @@
     <decoded_as>json</decoded_as>
     <field name="process.name" type="pcre2">^(killall|pkill)$</field>
     <field name="process.args" type="pcre2">(?i)(Safari|Google Chrome|Firefox|Chromium|Brave Browser|Opera|firefox-bin|Waterfox|Vivaldi)</field>
-    <description>ClickLock macOS: $(process.name) targeting browser process on $(agent.name) -- potential ClickLock browser kill-loop; single event may be legitimate; correlate with rule 104006 for kill-loop frequency pattern and rules 104003/104004 for LaunchAgent indicators (T1489)</description>
+    <description>ClickLock macOS: $(process.name) targeting browser process on $(agent.name)  -  potential ClickLock browser kill-loop; single event may be legitimate; correlate with rule 104006 for kill-loop frequency pattern and rules 104003/104004 for LaunchAgent indicators (T1489)</description>
     <mitre>
       <id>T1489</id>
     </mitre>
@@ -136,7 +136,7 @@
   <rule id="104006" level="13" frequency="5" timeframe="60">
     <if_matched_sid>104005</if_matched_sid>
     <same_srcip></same_srcip>
-    <description>ClickLock macOS: browser kill-loop detected on $(agent.name) -- 5+ browser kill commands in 60 seconds matches ClickLock watchdog daemon (com.authirity.plist) behavioral signature; credential coercion likely in progress; initiate IR immediately (T1489, T1056.002)</description>
+    <description>ClickLock macOS: browser kill-loop detected on $(agent.name)  -  5+ browser kill commands in 60 seconds matches ClickLock watchdog daemon (com.authirity.plist) behavioral signature; credential coercion likely in progress; initiate IR immediately (T1489, T1056.002)</description>
     <mitre>
       <id>T1489</id>
       <id>T1056.002</id>
@@ -158,7 +158,7 @@
   <rule id="104007" level="11">
     <if_sid>103000</if_sid>
     <match>api.telegram.org</match>
-    <description>ClickLock macOS: outbound connection to api.telegram.org detected from $(agent.name) -- potential ClickLock credential exfiltration via Telegram Bot API; high confidence in non-Telegram environments; correlate with LaunchAgent and kill-loop rules 104003-104006 (T1567)</description>
+    <description>ClickLock macOS: outbound connection to api.telegram.org detected from $(agent.name)  -  potential ClickLock credential exfiltration via Telegram Bot API; high confidence in non-Telegram environments; correlate with LaunchAgent and kill-loop rules 104003-104006 (T1567)</description>
     <mitre>
       <id>T1567</id>
     </mitre>

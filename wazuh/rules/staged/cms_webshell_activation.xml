@@ -24,7 +24,7 @@
          1. Exploit public-facing CMS plugin/component (T1190)
          2. Upload or write a PHP webshell to a web-accessible path
          3. Activate the webshell via HTTP GET/POST with command parameters
-            (T1505.003 -> T1059.004)
+            (T1505.003 - T1059.004)
 
        These rules detect steps 2 and 3 generically.
 

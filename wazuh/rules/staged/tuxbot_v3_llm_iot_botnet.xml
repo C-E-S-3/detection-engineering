@@ -19,7 +19,7 @@
          Required for rules 104103-104105 (C2 IP and shared infra contacts)
        - OPNsense Unbound DNS logs (unbound,dns groups) with data.query
          Required for rule 104106 (DGA domain DNS lookup)
-       - Suricata EVE JSON -> Wazuh SID 86601
+       - Suricata EVE JSON - Wazuh SID 86601
          Required for rules 104107-104111 (Suricata network detections)
      Coverage notes:
        - Primary C2: 209.182.237.133 (Singapore; TCP 2222; SSH-2.0-CNC-Control-Server banner)
@@ -51,7 +51,7 @@
   <rule id="104103" level="14">
     <if_group>firewall</if_group>
     <field name="data.dest_ip">^209\.182\.237\.133$</field>
-    <description>IOC: TuxBot v3 C2 contact -- outbound to 209.182.237.133 (Singapore; TCP 2222; SSH-2.0-CNC-Control-Server; Iranian-nexus IoT botnet; T1573, T1071). Isolate host immediately. (Unit 42 2026-07-15)</description>
+    <description>IOC: TuxBot v3 C2 contact  -  outbound to 209.182.237.133 (Singapore; TCP 2222; SSH-2.0-CNC-Control-Server; Iranian-nexus IoT botnet; T1573, T1071). Isolate host immediately. (Unit 42 2026-07-15)</description>
     <mitre>
       <id>T1573</id>
       <id>T1071</id>
@@ -63,7 +63,7 @@
   <rule id="104104" level="13">
     <if_group>firewall</if_group>
     <field name="data.src_ip">^209\.182\.237\.133$</field>
-    <description>IOC: TuxBot v3 inbound from primary C2 IP 209.182.237.133 -- active exploit attempt or IoT device recruitment scan from Iranian-nexus botnet infrastructure (T1498, T1496). Block and investigate targeted hosts.</description>
+    <description>IOC: TuxBot v3 inbound from primary C2 IP 209.182.237.133  -  active exploit attempt or IoT device recruitment scan from Iranian-nexus botnet infrastructure (T1498, T1496). Block and investigate targeted hosts.</description>
     <mitre>
       <id>T1498</id>
       <id>T1496</id>
@@ -75,7 +75,7 @@
   <rule id="104105" level="14">
     <if_group>firewall</if_group>
     <field name="data.dest_ip">^185\.10\.68\.127$</field>
-    <description>IOC: Contact with Keksec/TuxBot shared infrastructure IP 185.10.68.127 -- flagged malicious May 2026; overlaps with Keksec/Kaitori IoT botnet ecosystem and TuxBot v3 staging/relay (T1071, T1496). Isolate host immediately.</description>
+    <description>IOC: Contact with Keksec/TuxBot shared infrastructure IP 185.10.68.127  -  flagged malicious May 2026; overlaps with Keksec/Kaitori IoT botnet ecosystem and TuxBot v3 staging/relay (T1071, T1496). Isolate host immediately.</description>
     <mitre>
       <id>T1071</id>
       <id>T1496</id>
@@ -96,7 +96,7 @@
   <rule id="104106" level="14">
     <if_group>unbound,dns,</if_group>
     <field name="data.query" type="pcre2">(?i)digikalas\.online</field>
-    <description>IOC: DNS query for TuxBot v3 developer domain digikalas.online -- hosted on Iran's Arvan Cloud CDN; leaked via Git log in TuxBot sample; possible DGA seed or DNS TXT C2 polling channel (T1568.002, T1071). Host likely compromised IoT device.</description>
+    <description>IOC: DNS query for TuxBot v3 developer domain digikalas.online  -  hosted on Iran's Arvan Cloud CDN; leaked via Git log in TuxBot sample; possible DGA seed or DNS TXT C2 polling channel (T1568.002, T1071). Host likely compromised IoT device.</description>
     <mitre>
       <id>T1568.002</id>
       <id>T1071</id>
@@ -108,7 +108,7 @@
   <rule id="104107" level="14">
     <if_sid>86601</if_sid>
     <field name="dns.query.rrname" type="pcre2">(?i)digikalas\.online</field>
-    <description>Suricata: DNS lookup for TuxBot v3 developer domain digikalas.online -- Iranian-nexus IoT botnet SHA512 DGA seed domain or DNS TXT C2 channel; Arvan Cloud CDN hosted (T1568.002, T1071). Host likely TuxBot-infected IoT device.</description>
+    <description>Suricata: DNS lookup for TuxBot v3 developer domain digikalas.online  -  Iranian-nexus IoT botnet SHA512 DGA seed domain or DNS TXT C2 channel; Arvan Cloud CDN hosted (T1568.002, T1071). Host likely TuxBot-infected IoT device.</description>
     <mitre>
       <id>T1568.002</id>
       <id>T1071</id>
@@ -128,7 +128,7 @@
   <rule id="104108" level="14">
     <if_sid>86601</if_sid>
     <field name="alert.dest_ip" type="pcre2">^209\.182\.237\.133$</field>
-    <description>Suricata: Traffic to TuxBot v3 C2 IP 209.182.237.133 (Singapore; TCP 2222; SSH-2.0-CNC-Control-Server banner; Iranian-nexus IoT botnet) -- host is TuxBot-infected or actively being recruited (T1573). Isolate and investigate.</description>
+    <description>Suricata: Traffic to TuxBot v3 C2 IP 209.182.237.133 (Singapore; TCP 2222; SSH-2.0-CNC-Control-Server banner; Iranian-nexus IoT botnet)  -  host is TuxBot-infected or actively being recruited (T1573). Isolate and investigate.</description>
     <mitre>
       <id>T1573</id>
       <id>T1071</id>
@@ -140,7 +140,7 @@
   <rule id="104109" level="14">
     <if_sid>86601</if_sid>
     <field name="alert.dest_ip" type="pcre2">^185\.10\.68\.127$</field>
-    <description>Suricata: Traffic to Keksec/TuxBot shared infrastructure IP 185.10.68.127 -- flagged malicious May 2026; TuxBot v3 staging or relay node overlapping Keksec/Kaitori botnet ecosystem (T1071, T1496). Investigate source host immediately.</description>
+    <description>Suricata: Traffic to Keksec/TuxBot shared infrastructure IP 185.10.68.127  -  flagged malicious May 2026; TuxBot v3 staging or relay node overlapping Keksec/Kaitori botnet ecosystem (T1071, T1496). Investigate source host immediately.</description>
     <mitre>
       <id>T1071</id>
       <id>T1496</id>
@@ -165,7 +165,7 @@
     <if_group>firewall</if_group>
     <field name="data.dest_port">^2222$</field>
     <field name="data.direction" negate="yes" type="pcre2">(?i)^in(bound)?$</field>
-    <description>Suspicious outbound TCP 2222 to $(data.dest_ip) -- non-standard port used by TuxBot v3 IoT botnet C2 server (SSH-2.0-CNC-Control-Server banner; 209.182.237.133). Legitimate IoT devices rarely initiate outbound TCP 2222. Investigate source host. (T1573, T1568.002)</description>
+    <description>Suspicious outbound TCP 2222 to $(data.dest_ip)  -  non-standard port used by TuxBot v3 IoT botnet C2 server (SSH-2.0-CNC-Control-Server banner; 209.182.237.133). Legitimate IoT devices rarely initiate outbound TCP 2222. Investigate source host. (T1573, T1568.002)</description>
     <mitre>
       <id>T1573</id>
       <id>T1568.002</id>
@@ -177,7 +177,7 @@
   <rule id="104111" level="11">
     <if_sid>86601</if_sid>
     <field name="alert.dest_port" type="pcre2">^2222$</field>
-    <description>Suricata: Outbound TCP 2222 from $(alert.src_ip) to $(alert.dest_ip) -- non-standard port associated with TuxBot v3 IoT botnet C2 (Iranian-nexus; primary C2 209.182.237.133). Verify if traffic targets known TuxBot IOC IPs; isolate if confirmed. (T1573)</description>
+    <description>Suricata: Outbound TCP 2222 from $(alert.src_ip) to $(alert.dest_ip)  -  non-standard port associated with TuxBot v3 IoT botnet C2 (Iranian-nexus; primary C2 209.182.237.133). Verify if traffic targets known TuxBot IOC IPs; isolate if confirmed. (T1573)</description>
     <mitre>
       <id>T1573</id>
       <id>T1568.002</id>

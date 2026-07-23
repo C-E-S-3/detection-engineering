@@ -73,7 +73,7 @@
          these into SID 61603 (ProcessCreate) and SID 61644 (ImageLoad
          and other Sysmon events). The win.eventdata.hashes field
          contains a comma-separated list of hash values in the format
-         SHA256=<hash>,SHA1=<hash>,MD5=<hash>. The PCRE2 pattern
+         SHA256=[hash],SHA1=[hash],MD5=[hash]. The PCRE2 pattern
          matches the known Golden Gh0st RAT SHA256 within that string.
        Rule 104102 (ImageLoad, golden ghost DLL):
          Same prerequisites as rule 104101, but fires on EventID 7
@@ -131,7 +131,7 @@
   <rule id="104096" level="14">
     <if_group>unbound,dns,</if_group>
     <field name="data.query" type="pcre2">(?i)(uu\.goldeyeuu\.io|api\.keensie\.com)</field>
-    <description>CylindricalCanine Golden Gh0st RAT: DNS query for confirmed C2 domain from $(agent.name) -- endpoint queried resolver for uu.goldeyeuu[.]io (Golden Gh0st command channel, TCP 5188) or api.keensie[.]com (encrypted exfil, TCP 5198); DNS-layer detection fires even when firewall blocks the outbound connection; CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) China-nexus espionage group signed RAT with 60 stolen DigiCert certificates to bypass AV; isolate querying host immediately (T1071.001)</description>
+    <description>CylindricalCanine Golden Gh0st RAT: DNS query for confirmed C2 domain from $(agent.name)  -  endpoint queried resolver for uu.goldeyeuu[.]io (Golden Gh0st command channel, TCP 5188) or api.keensie[.]com (encrypted exfil, TCP 5198); DNS-layer detection fires even when firewall blocks the outbound connection; CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) China-nexus espionage group signed RAT with 60 stolen DigiCert certificates to bypass AV; isolate querying host immediately (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1553.002</id>
@@ -160,7 +160,7 @@
   <rule id="104097" level="15" frequency="2" timeframe="120">
     <if_matched_sid>104096</if_matched_sid>
     <same_source_ip />
-    <description>CylindricalCanine Golden Gh0st RAT CRITICAL: active C2 DNS beaconing confirmed from $(agent.name) -- 2+ DNS queries to Golden Gh0st C2 domains (uu.goldeyeuu[.]io or api.keensie[.]com) within 120 seconds from the same host; active Golden Gh0st RAT implant is performing regular DNS-based C2 check-ins; China-nexus CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) espionage; CRITICAL: isolate host NOW, capture memory, escalate to IR (T1071.001, T1573)</description>
+    <description>CylindricalCanine Golden Gh0st RAT CRITICAL: active C2 DNS beaconing confirmed from $(agent.name)  -  2+ DNS queries to Golden Gh0st C2 domains (uu.goldeyeuu[.]io or api.keensie[.]com) within 120 seconds from the same host; active Golden Gh0st RAT implant is performing regular DNS-based C2 check-ins; China-nexus CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) espionage; CRITICAL: isolate host NOW, capture memory, escalate to IR (T1071.001, T1573)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1573</id>
@@ -191,7 +191,7 @@
        Requires Sysmon EventID 22 (DnsQuery) enabled in the Sysmon
        configuration. In many default Sysmon configs EventID 22 is
        disabled; confirm it is active with a rule like:
-         <EventFiltering><DnsQuery onmatch="exclude"/></EventFiltering>
+         [EventFiltering][DnsQuery onmatch="exclude"/][/EventFiltering]
        to log all DNS queries. A scoped include rule targeting the
        known C2 domains reduces noise while preserving coverage.
        =========================================================== -->
@@ -199,7 +199,7 @@
     <if_sid>61644</if_sid>
     <field name="win.system.eventID">^22$</field>
     <field name="win.eventdata.queryName" type="pcre2">(?i)(uu\.goldeyeuu\.io|api\.keensie\.com)</field>
-    <description>CylindricalCanine Golden Gh0st RAT: Windows DNS query for confirmed C2 domain by $(win.eventdata.image) on $(win.eventdata.computer) -- Sysmon EventID 22 captured a DNS lookup for uu.goldeyeuu[.]io (command channel) or api.keensie[.]com (encrypted exfil); process-level attribution via Sysmon provides the querying binary path; Golden Gh0st RAT resolves C2 domain before establishing WebSocket connection on TCP 5188 or 5198; C2 domains attributed to CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) China-nexus espionage; isolate host immediately (T1071.001)</description>
+    <description>CylindricalCanine Golden Gh0st RAT: Windows DNS query for confirmed C2 domain by $(win.eventdata.image) on $(win.eventdata.computer)  -  Sysmon EventID 22 captured a DNS lookup for uu.goldeyeuu[.]io (command channel) or api.keensie[.]com (encrypted exfil); process-level attribution via Sysmon provides the querying binary path; Golden Gh0st RAT resolves C2 domain before establishing WebSocket connection on TCP 5188 or 5198; C2 domains attributed to CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) China-nexus espionage; isolate host immediately (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1553.002</id>
@@ -236,7 +236,7 @@
   <rule id="104099" level="14">
     <if_sid>86601</if_sid>
     <field name="dns.query.rrname" type="pcre2">(?i)(uu\.goldeyeuu\.io|api\.keensie\.com)</field>
-    <description>CylindricalCanine Golden Gh0st RAT: Suricata passive DNS: query for confirmed C2 domain detected from $(agent.name) -- DNS lookup for uu.goldeyeuu[.]io (unencrypted command channel, TCP 5188) or api.keensie[.]com (encrypted exfil channel, TCP 5198) observed on the wire; both domains are confirmed CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) infrastructure; correlate with firewall rules 104089-104090 to determine whether the subsequent connection succeeded; isolate the source host and initiate IR (T1071.001)</description>
+    <description>CylindricalCanine Golden Gh0st RAT: Suricata passive DNS: query for confirmed C2 domain detected from $(agent.name)  -  DNS lookup for uu.goldeyeuu[.]io (unencrypted command channel, TCP 5188) or api.keensie[.]com (encrypted exfil channel, TCP 5198) observed on the wire; both domains are confirmed CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) infrastructure; correlate with firewall rules 104089-104090 to determine whether the subsequent connection succeeded; isolate the source host and initiate IR (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
     </mitre>
@@ -250,7 +250,7 @@
 
        Sysmon EventID 1 (ProcessCreate) records the SHA256 hash of
        every executed binary in the win.eventdata.hashes field as a
-       comma-separated list (e.g. SHA256=<hash>,SHA1=<hash>,MD5=<hash>).
+       comma-separated list (e.g. SHA256=[hash],SHA1=[hash],MD5=[hash]).
        This rule fires when a process is created whose hash matches
        the known Golden Gh0st RAT specimen:
          81e276aaa3eb9b3f595663c316b3c6414cc3dde5e6cc3a82856b7276acabb7de
@@ -275,7 +275,7 @@
     <if_sid>61603</if_sid>
     <field name="win.system.eventID">^1$</field>
     <field name="win.eventdata.hashes" type="pcre2">(?i)81e276aaa3eb9b3f595663c316b3c6414cc3dde5e6cc3a82856b7276acabb7de</field>
-    <description>CylindricalCanine Golden Gh0st RAT CRITICAL: known malicious binary executed on $(win.eventdata.computer) by $(win.eventdata.user) -- Sysmon EventID 1 (ProcessCreate) recorded execution of process with SHA256 hash 81e276aaa3eb9b3f595663c316b3c6414cc3dde5e6cc3a82856b7276acabb7de, a confirmed Golden Gh0st RAT specimen signed with a DigiCert certificate stolen in the CylindricalCanine breach; binary path: $(win.eventdata.image); the file appears legitimately signed and AV may have permitted execution; CRITICAL: isolate host NOW, capture memory, quarantine process, escalate to IR (T1553.002, T1071.001)</description>
+    <description>CylindricalCanine Golden Gh0st RAT CRITICAL: known malicious binary executed on $(win.eventdata.computer) by $(win.eventdata.user)  -  Sysmon EventID 1 (ProcessCreate) recorded execution of process with SHA256 hash 81e276aaa3eb9b3f595663c316b3c6414cc3dde5e6cc3a82856b7276acabb7de, a confirmed Golden Gh0st RAT specimen signed with a DigiCert certificate stolen in the CylindricalCanine breach; binary path: $(win.eventdata.image); the file appears legitimately signed and AV may have permitted execution; CRITICAL: isolate host NOW, capture memory, quarantine process, escalate to IR (T1553.002, T1071.001)</description>
     <mitre>
       <id>T1553.002</id>
       <id>T1071.001</id>
@@ -321,7 +321,7 @@
     <if_sid>61644</if_sid>
     <field name="win.system.eventID">^7$</field>
     <field name="win.eventdata.hashes" type="pcre2">(?i)81e276aaa3eb9b3f595663c316b3c6414cc3dde5e6cc3a82856b7276acabb7de</field>
-    <description>CylindricalCanine Golden Gh0st RAT: confirmed RAT module loaded into process $(win.eventdata.image) on $(win.eventdata.computer) -- Sysmon EventID 7 (ImageLoad) detected a DLL or executable with SHA256 hash 81e276aaa3eb9b3f595663c316b3c6414cc3dde5e6cc3a82856b7276acabb7de loaded into a running process; this detects reflective DLL injection of Golden Gh0st RAT where no separate process creation event fires; CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) uses stolen DigiCert certs so the module appears signed; quarantine the host and capture memory before removing (T1553.002, T1071.001)</description>
+    <description>CylindricalCanine Golden Gh0st RAT: confirmed RAT module loaded into process $(win.eventdata.image) on $(win.eventdata.computer)  -  Sysmon EventID 7 (ImageLoad) detected a DLL or executable with SHA256 hash 81e276aaa3eb9b3f595663c316b3c6414cc3dde5e6cc3a82856b7276acabb7de loaded into a running process; this detects reflective DLL injection of Golden Gh0st RAT where no separate process creation event fires; CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) uses stolen DigiCert certs so the module appears signed; quarantine the host and capture memory before removing (T1553.002, T1071.001)</description>
     <mitre>
       <id>T1553.002</id>
       <id>T1071.001</id>
@@ -356,7 +356,7 @@
   <rule id="104102" level="15" frequency="2" timeframe="120">
     <if_matched_sid>104098</if_matched_sid>
     <same_field>win.eventdata.computer</same_field>
-    <description>CylindricalCanine Golden Gh0st RAT CRITICAL: active C2 DNS beaconing confirmed via Sysmon EventID 22 on $(win.eventdata.computer) -- 2+ Windows DNS client queries (Sysmon EventID 22) for Golden Gh0st C2 domains (uu.goldeyeuu[.]io or api.keensie[.]com) within 120 seconds from the same host; active implant is performing regular C2 DNS check-ins; endpoint-level DNS evidence confirms infection; CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) espionage; CRITICAL: isolate host NOW, capture memory, escalate to IR (T1071.001, T1573)</description>
+    <description>CylindricalCanine Golden Gh0st RAT CRITICAL: active C2 DNS beaconing confirmed via Sysmon EventID 22 on $(win.eventdata.computer)  -  2+ Windows DNS client queries (Sysmon EventID 22) for Golden Gh0st C2 domains (uu.goldeyeuu[.]io or api.keensie[.]com) within 120 seconds from the same host; active implant is performing regular C2 DNS check-ins; endpoint-level DNS evidence confirms infection; CylindricalCanine (GoldenEyeDog/APT-Q-27/Dragon Breath) espionage; CRITICAL: isolate host NOW, capture memory, escalate to IR (T1071.001, T1573)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1573</id>

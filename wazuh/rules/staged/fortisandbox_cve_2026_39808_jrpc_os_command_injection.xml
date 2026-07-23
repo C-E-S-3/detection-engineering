@@ -158,7 +158,7 @@
   <rule id="103986" level="7">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/(?:api/v[12]/)?jrpc\b</field>
-    <description>FortiSandbox CVE-2026-39808: Request to FortiSandbox JRPC API endpoint $(RequestPath) from $(ClientHost) at $(RequestHost) -- CVE-2026-39808 OS command injection attack surface anchor; correlate with child rules 103987-103992 (T1190)</description>
+    <description>FortiSandbox CVE-2026-39808: Request to FortiSandbox JRPC API endpoint $(RequestPath) from $(ClientHost) at $(RequestHost)  -  CVE-2026-39808 OS command injection attack surface anchor; correlate with child rules 103987-103992 (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -178,7 +178,7 @@
   <rule id="103987" level="11">
     <if_sid>103986</if_sid>
     <field name="RequestMethod">POST</field>
-    <description>FortiSandbox CVE-2026-39808: POST to FortiSandbox JRPC API $(RequestPath) from $(ClientHost) at $(RequestHost) -- POST is the primary exploit delivery method for CVE-2026-39808 JRPC OS command injection; review source IP against authorized Fortinet integration allowlist (T1190)</description>
+    <description>FortiSandbox CVE-2026-39808: POST to FortiSandbox JRPC API $(RequestPath) from $(ClientHost) at $(RequestHost)  -  POST is the primary exploit delivery method for CVE-2026-39808 JRPC OS command injection; review source IP against authorized Fortinet integration allowlist (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -199,7 +199,7 @@
   <rule id="103988" level="13">
     <if_sid>103987</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
-    <description>FortiSandbox CVE-2026-39808: POST to FortiSandbox JRPC API $(RequestPath) from $(ClientHost) returned HTTP $(DownstreamStatus) at $(RequestHost) -- unauthenticated JRPC request accepted and processed; CVE-2026-39808 vulnerability confirmed; injected OS commands may have executed (T1190/T1059.004)</description>
+    <description>FortiSandbox CVE-2026-39808: POST to FortiSandbox JRPC API $(RequestPath) from $(ClientHost) returned HTTP $(DownstreamStatus) at $(RequestHost)  -  unauthenticated JRPC request accepted and processed; CVE-2026-39808 vulnerability confirmed; injected OS commands may have executed (T1190/T1059.004)</description>
     <mitre>
       <id>T1190</id>
       <id>T1059.004</id>
@@ -224,7 +224,7 @@
   <rule id="103989" level="14">
     <if_sid>103986</if_sid>
     <field name="RequestPath" type="pcre2">(?i)(?:%3B|%7C|%60|%26%26|%0[aA]|%24%28|;[a-z]|\|[a-z]|`[a-z]|\$\()</field>
-    <description>FortiSandbox CVE-2026-39808: Request to FortiSandbox JRPC API $(RequestPath) from $(ClientHost) contains OS command injection metacharacters in URL -- active CVE-2026-39808 exploitation attempt; URL contains shell metacharacters indicating command injection payload (T1190/T1059.004)</description>
+    <description>FortiSandbox CVE-2026-39808: Request to FortiSandbox JRPC API $(RequestPath) from $(ClientHost) contains OS command injection metacharacters in URL  -  active CVE-2026-39808 exploitation attempt; URL contains shell metacharacters indicating command injection payload (T1190/T1059.004)</description>
     <mitre>
       <id>T1190</id>
       <id>T1059.004</id>
@@ -244,7 +244,7 @@
     <if_sid>103989</if_sid>
     <field name="RequestMethod">POST</field>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
-    <description>FortiSandbox CVE-2026-39808 CRITICAL: POST to FortiSandbox JRPC $(RequestPath) from $(ClientHost) returned HTTP $(DownstreamStatus) with command injection metacharacters -- confirmed active CVE-2026-39808 OS command injection exploitation; OS commands have executed; initiate incident response and isolate FortiSandbox immediately (T1190/T1059.004/T1562.001)</description>
+    <description>FortiSandbox CVE-2026-39808 CRITICAL: POST to FortiSandbox JRPC $(RequestPath) from $(ClientHost) returned HTTP $(DownstreamStatus) with command injection metacharacters  -  confirmed active CVE-2026-39808 OS command injection exploitation; OS commands have executed; initiate incident response and isolate FortiSandbox immediately (T1190/T1059.004/T1562.001)</description>
     <mitre>
       <id>T1190</id>
       <id>T1059.004</id>
@@ -268,7 +268,7 @@
   <rule id="103991" level="9" frequency="8" timeframe="60">
     <if_matched_sid>103986</if_matched_sid>
     <same_field>ClientHost</same_field>
-    <description>FortiSandbox CVE-2026-39808: Probe burst - $(ClientHost) sent 8+ requests to FortiSandbox JRPC API at $(RequestHost) within 60 seconds -- automated exploit tooling or scanner fingerprint; investigate source IP for CVE-2026-39808 exploitation activity (T1190)</description>
+    <description>FortiSandbox CVE-2026-39808: Probe burst - $(ClientHost) sent 8+ requests to FortiSandbox JRPC API at $(RequestHost) within 60 seconds  -  automated exploit tooling or scanner fingerprint; investigate source IP for CVE-2026-39808 exploitation activity (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -305,7 +305,7 @@
        strong indicator of post-exploitation activity. -->
   <rule id="103992" level="14">
     <regex type="pcre2">(?i)(?:httpd|python[23]?|fortisandbox|fdsm)\[.*(?:wget\s+http|curl\s+-[a-z]*\s+http|nc\s+-[a-z]*\s+\d|bash\s+-i|python\s+-c|perl\s+-e|/bin/sh\s+-c|crontab\s+-[el]|chmod\s+[0-7]{3,4}\s+/|id\s*;|whoami\s*;|cat\s+/etc/(?:passwd|shadow)|uname\s+-[ar])</regex>
-    <description>FortiSandbox CVE-2026-39808: Suspicious OS command in FortiSandbox web service process syslog on $(agent.name) -- web service process executed shell command consistent with post-CVE-2026-39808 exploitation; correlate with HTTP-layer events for confirmation (T1059.004/T1562.001)</description>
+    <description>FortiSandbox CVE-2026-39808: Suspicious OS command in FortiSandbox web service process syslog on $(agent.name)  -  web service process executed shell command consistent with post-CVE-2026-39808 exploitation; correlate with HTTP-layer events for confirmation (T1059.004/T1562.001)</description>
     <mitre>
       <id>T1059.004</id>
       <id>T1562.001</id>

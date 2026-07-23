@@ -71,7 +71,7 @@
   <rule id="101430" level="5">
     <program_name>^(vpnd|cpd|fwd|cpmad|fw)$</program_name>
     <regex type="pcre2">(?i)(authentication\s+fail|auth\s+fail|login\s+fail|failed\s+to\s+authenticate|incorrect\s+(credentials|password)|invalid\s+credentials)</regex>
-    <description>Check Point VPN: authentication failure on $(hostname) -- CVE-2026-50751 brute-force precursor anchor (T1110, T1190)</description>
+    <description>Check Point VPN: authentication failure on $(hostname)  -  CVE-2026-50751 brute-force precursor anchor (T1110, T1190)</description>
     <mitre>
       <id>T1110</id>
       <id>T1190</id>
@@ -84,7 +84,7 @@
   <rule id="101431" level="11" frequency="5" timeframe="120">
     <if_matched_sid>101430</if_matched_sid>
     <same_srcip/>
-    <description>Check Point VPN brute force on $(hostname): 5+ authentication failures in 120 seconds from same source -- credential spray preceding CVE-2026-50751 IKEv1 bypass (T1110)</description>
+    <description>Check Point VPN brute force on $(hostname): 5+ authentication failures in 120 seconds from same source  -  credential spray preceding CVE-2026-50751 IKEv1 bypass (T1110)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1110</id>
@@ -107,7 +107,7 @@
     <if_matched_sid>101430</if_matched_sid>
     <same_srcip/>
     <regex type="pcre2">(?i)(user\s+authenticated|authentication\s+success|login\s+success|vpn\s+session\s+opened|connection\s+established|session\s+established|remote\s+access\s+granted)</regex>
-    <description>Check Point VPN authentication bypass on $(hostname): auth success from source with 5+ recent failures -- high-confidence CVE-2026-50751 IKEv1 certificate bypass exploitation (T1190, T1078)</description>
+    <description>Check Point VPN authentication bypass on $(hostname): auth success from source with 5+ recent failures  -  high-confidence CVE-2026-50751 IKEv1 certificate bypass exploitation (T1190, T1078)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -128,7 +128,7 @@
   <rule id="101433" level="12">
     <program_name>^(vpnd|cpd|fwd|cpmad|fw)$</program_name>
     <regex type="pcre2">(?i)(IKEv1|IKE\s+v1|ISAKMP\s+[Pp]hase\s+1|aggressive\s+mode\s+SA|main\s+mode\s+SA)</regex>
-    <description>Check Point VPN: deprecated IKEv1/ISAKMP key exchange detected on $(hostname) -- IKEv1 is the exploited protocol in CVE-2026-50751; disable per Check Point sk185033 (T1190)</description>
+    <description>Check Point VPN: deprecated IKEv1/ISAKMP key exchange detected on $(hostname)  -  IKEv1 is the exploited protocol in CVE-2026-50751; disable per Check Point sk185033 (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -139,7 +139,7 @@
   <rule id="101437" level="12" frequency="10" timeframe="60">
     <if_matched_sid>101433</if_matched_sid>
     <same_srcip/>
-    <description>Check Point VPN: high-frequency IKEv1 negotiations (10+ in 60s) on $(hostname) -- exploit tool or CVE-2026-50751 scanner activity, immediate investigation required (T1190)</description>
+    <description>Check Point VPN: high-frequency IKEv1 negotiations (10+ in 60s) on $(hostname)  -  exploit tool or CVE-2026-50751 scanner activity, immediate investigation required (T1190)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -159,7 +159,7 @@
   <rule id="101434" level="13">
     <program_name>^(vpnd|cpd|fwd|cpmad|fw)$</program_name>
     <regex type="pcre2">(?i)(certificate\s+validation\s+fail|cert\s+(auth|validation)\s+(bypass|fail)|invalid\s+certificate\s+chain|IKE\s+[Pp]hase.?1\s+fail|ike\s+notification.*cert|IKE.*no\s+proposal\s+chosen|IKE.*cert.*error)</regex>
-    <description>Check Point VPN IKEv1 certificate validation anomaly on $(hostname) -- error pattern matches CVE-2026-50751 certificate bypass exploitation indicators from sk185033 (T1190)</description>
+    <description>Check Point VPN IKEv1 certificate validation anomaly on $(hostname)  -  error pattern matches CVE-2026-50751 certificate bypass exploitation indicators from sk185033 (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -178,7 +178,7 @@
   <rule id="101435" level="12">
     <program_name>^(cpmad|api_server|cpwmd|mgmtd)$</program_name>
     <regex type="pcre2">(?i)(management\s+api|smartconsole\s+login|web\s+api\s+login|api\s+login|admin\s+(login|authenticated))</regex>
-    <description>Check Point management API login on $(hostname) -- correlate with CVE-2026-50751 VPN bypass indicators; admin console access may indicate post-initial-access pivot (T1190, T1078)</description>
+    <description>Check Point management API login on $(hostname)  -  correlate with CVE-2026-50751 VPN bypass indicators; admin console access may indicate post-initial-access pivot (T1190, T1078)</description>
     <mitre>
       <id>T1190</id>
       <id>T1078</id>
@@ -198,7 +198,7 @@
     <program_name>^(vpnd|cpd|fwd|cpmad|fw)$</program_name>
     <regex type="pcre2">(?i)(user\s+authenticated|authentication\s+success|login\s+success|vpn\s+session\s+opened|session\s+established|remote\s+access\s+granted)</regex>
     <time>20:00 - 07:00</time>
-    <description>Check Point VPN session established outside business hours on $(hostname) -- off-hours VPN auth; triage against CVE-2026-50751 exploitation window and Qilin ransomware TTPs (T1190, T1078)</description>
+    <description>Check Point VPN session established outside business hours on $(hostname)  -  off-hours VPN auth; triage against CVE-2026-50751 exploitation window and Qilin ransomware TTPs (T1190, T1078)</description>
     <mitre>
       <id>T1190</id>
       <id>T1078</id>

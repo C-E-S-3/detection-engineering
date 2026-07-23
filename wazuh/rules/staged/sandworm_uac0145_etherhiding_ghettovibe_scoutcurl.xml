@@ -98,7 +98,7 @@
     <field name="win.system.eventID">^11$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(?:powershell|pwsh|cmd|mshta)\.exe$</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)\\(?:AppData\\Roaming|ProgramData)\\Microsoft\\Windows\\Start\s+Menu\\Programs\\Startup\\[^\\]+\.vb[se]$</field>
-    <description>UAC-0145/GHETTOVIBE: $(win.eventdata.image) created VBS file in Windows Startup folder on $(win.eventdata.computer) by $(win.eventdata.user) [file: $(win.eventdata.targetFilename)] -- GHETTOVIBE VBS dropper deposited by ClickFix Win+R PowerShell one-liner; VBS in Startup folder auto-executes at every user logon without registry modification; check browser history for compromised Ukrainian sites (SMARTAXE ClickFix lure), investigate for SCOUTCURL recon output, and check network logs for EtherHiding C2 connections to Ethereum RPC endpoints (T1547.001, T1059.001, CERT-UA #6318437 UAC-0145/Sandworm)</description>
+    <description>UAC-0145/GHETTOVIBE: $(win.eventdata.image) created VBS file in Windows Startup folder on $(win.eventdata.computer) by $(win.eventdata.user) [file: $(win.eventdata.targetFilename)]  -  GHETTOVIBE VBS dropper deposited by ClickFix Win+R PowerShell one-liner; VBS in Startup folder auto-executes at every user logon without registry modification; check browser history for compromised Ukrainian sites (SMARTAXE ClickFix lure), investigate for SCOUTCURL recon output, and check network logs for EtherHiding C2 connections to Ethereum RPC endpoints (T1547.001, T1059.001, CERT-UA #6318437 UAC-0145/Sandworm)</description>
     <mitre>
       <id>T1547.001</id>
       <id>T1059.001</id>
@@ -131,7 +131,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\w?script\.exe$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)\\(?:AppData\\Roaming|ProgramData)\\Microsoft\\Windows\\Start\s+Menu\\Programs\\Startup\\[^\\]+\.vb[se]</field>
-    <description>UAC-0145/GHETTOVIBE: wscript.exe executing VBS from Windows Startup folder on $(win.eventdata.computer) by $(win.eventdata.user) [$(win.eventdata.commandLine)] -- GHETTOVIBE VBS persistence is auto-executing at logon; fires on every logon while the dropper remains in the Startup folder; remove the VBS file, investigate for EtherHiding C2 connections (rule 104048) and SCOUTCURL recon output, and trace the initial ClickFix lure in browser history (T1547.001, T1059.005, UAC-0145/Sandworm)</description>
+    <description>UAC-0145/GHETTOVIBE: wscript.exe executing VBS from Windows Startup folder on $(win.eventdata.computer) by $(win.eventdata.user) [$(win.eventdata.commandLine)]  -  GHETTOVIBE VBS persistence is auto-executing at logon; fires on every logon while the dropper remains in the Startup folder; remove the VBS file, investigate for EtherHiding C2 connections (rule 104048) and SCOUTCURL recon output, and trace the initial ClickFix lure in browser history (T1547.001, T1059.005, UAC-0145/Sandworm)</description>
     <mitre>
       <id>T1547.001</id>
       <id>T1059.005</id>
@@ -166,7 +166,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\w?script\.exe$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(?:powershell|pwsh)\.exe$</field>
-    <description>UAC-0145/GHETTOVIBE-SCOUTCURL: wscript.exe spawned PowerShell on $(win.eventdata.computer) by $(win.eventdata.user) [cmd: $(win.eventdata.commandLine)] -- GHETTOVIBE VBS invokes SCOUTCURL PowerShell recon module as a child process; wscript spawning powershell is the GHETTOVIBE-to-SCOUTCURL handoff signature; correlate with rules 104044/104045 for Startup VBS context and rule 104048 for EtherHiding Ethereum RPC network activity (T1059.001, T1059.005, UAC-0145/Sandworm)</description>
+    <description>UAC-0145/GHETTOVIBE-SCOUTCURL: wscript.exe spawned PowerShell on $(win.eventdata.computer) by $(win.eventdata.user) [cmd: $(win.eventdata.commandLine)]  -  GHETTOVIBE VBS invokes SCOUTCURL PowerShell recon module as a child process; wscript spawning powershell is the GHETTOVIBE-to-SCOUTCURL handoff signature; correlate with rules 104044/104045 for Startup VBS context and rule 104048 for EtherHiding Ethereum RPC network activity (T1059.001, T1059.005, UAC-0145/Sandworm)</description>
     <mitre>
       <id>T1059.001</id>
       <id>T1059.005</id>
@@ -207,7 +207,7 @@
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\w?script\.exe$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(?:powershell|pwsh)\.exe$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:whoami|net\s+(?:user|group|localgroup)|ipconfig|tasklist|systeminfo|Get-(?:WmiObject|CimInstance|Process|Service|NetAdapter|NetIPAddress)|Invoke-WebRequest|DownloadString|DownloadFile|iwr\s+http|curl\s+http|wget\s+http)</field>
-    <description>UAC-0145/SCOUTCURL: PowerShell spawned by wscript.exe running system recon or exfiltration commands on $(win.eventdata.computer) by $(win.eventdata.user) [cmd: $(win.eventdata.commandLine)] -- SCOUTCURL PowerShell module collects hostname, OS, processes, network config, users, and domain membership then transmits compressed base64-encoded output to C2 via Invoke-WebRequest; wscript.exe parent confirms GHETTOVIBE delivery chain; check Startup folder for VBS (rule 104044) and network logs for EtherHiding Ethereum RPC connections (rule 104048) (T1059.001, T1082, T1016, T1057, UAC-0145/Sandworm)</description>
+    <description>UAC-0145/SCOUTCURL: PowerShell spawned by wscript.exe running system recon or exfiltration commands on $(win.eventdata.computer) by $(win.eventdata.user) [cmd: $(win.eventdata.commandLine)]  -  SCOUTCURL PowerShell module collects hostname, OS, processes, network config, users, and domain membership then transmits compressed base64-encoded output to C2 via Invoke-WebRequest; wscript.exe parent confirms GHETTOVIBE delivery chain; check Startup folder for VBS (rule 104044) and network logs for EtherHiding Ethereum RPC connections (rule 104048) (T1059.001, T1082, T1016, T1057, UAC-0145/Sandworm)</description>
     <mitre>
       <id>T1059.001</id>
       <id>T1082</id>
@@ -247,7 +247,7 @@
   <rule id="104048" level="14">
     <if_sid>103000</if_sid>
     <match>cloudflare-eth\.com|mainnet\.infura\.io|eth-mainnet\.g\.alchemy\.com|rpc\.ankr\.com|ethereum\.publicnode\.com|rpc\.flashbots\.net|eth\.llamarpc\.com|rpc\.mevblocker\.io|api\.mycryptoapi\.com|gateway\.tenderly\.co|eth-mainnet\.public\.blastapi\.io|1rpc\.io|endpoints\.omniatech\.io</match>
-    <description>EtherHiding/UAC-0145: Connection to public Ethereum JSON-RPC endpoint on $(agent.name) -- EtherHiding technique used by UAC-0145 FluidLeech/LoadLoop (CERT-UA #6318437) and EtherRAT (Teams vishing, rules 104014-104019): malware queries public Ethereum RPC to retrieve the current C2 domain from an actor smart contract via eth_call; C2 cannot be sinkholed since the address lives in blockchain state; no legitimate enterprise script or automation tool queries Ethereum JSON-RPC; correlate with process ancestry rules 104044-104047 for GHETTOVIBE chain or rules 104014-104016 for EtherRAT chain (T1102.002, T1008)</description>
+    <description>EtherHiding/UAC-0145: Connection to public Ethereum JSON-RPC endpoint on $(agent.name)  -  EtherHiding technique used by UAC-0145 FluidLeech/LoadLoop (CERT-UA #6318437) and EtherRAT (Teams vishing, rules 104014-104019): malware queries public Ethereum RPC to retrieve the current C2 domain from an actor smart contract via eth_call; C2 cannot be sinkholed since the address lives in blockchain state; no legitimate enterprise script or automation tool queries Ethereum JSON-RPC; correlate with process ancestry rules 104044-104047 for GHETTOVIBE chain or rules 104014-104016 for EtherRAT chain (T1102.002, T1008)</description>
     <mitre>
       <id>T1102.002</id>
       <id>T1008</id>
@@ -279,7 +279,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(?:powershell|pwsh|curl)\.exe$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:cloudflare-eth\.com|mainnet\.infura\.io|eth-mainnet\.g\.alchemy\.com|rpc\.ankr\.com|ethereum\.publicnode\.com|rpc\.flashbots\.net|eth\.llamarpc\.com|rpc\.mevblocker\.io|api\.mycryptoapi\.com|gateway\.tenderly\.co|eth-mainnet\.public\.blastapi\.io|1rpc\.io|endpoints\.omniatech\.io)</field>
-    <description>EtherHiding/UAC-0145/SCOUTCURL: $(win.eventdata.image) commandLine references Ethereum JSON-RPC endpoint on $(win.eventdata.computer) by $(win.eventdata.user) [cmd: $(win.eventdata.commandLine)] -- SCOUTCURL invokes Invoke-WebRequest or curl with an Ethereum RPC URL to perform eth_call C2 domain resolution; PowerShell with Ethereum RPC domain in commandLine is a high-confidence EtherHiding execution indicator; correlate with wscript parent (rule 104046) and network connection (rule 104048) on the same host to confirm UAC-0145 GHETTOVIBE chain (T1102.002, T1059.001, UAC-0145/Sandworm)</description>
+    <description>EtherHiding/UAC-0145/SCOUTCURL: $(win.eventdata.image) commandLine references Ethereum JSON-RPC endpoint on $(win.eventdata.computer) by $(win.eventdata.user) [cmd: $(win.eventdata.commandLine)]  -  SCOUTCURL invokes Invoke-WebRequest or curl with an Ethereum RPC URL to perform eth_call C2 domain resolution; PowerShell with Ethereum RPC domain in commandLine is a high-confidence EtherHiding execution indicator; correlate with wscript parent (rule 104046) and network connection (rule 104048) on the same host to confirm UAC-0145 GHETTOVIBE chain (T1102.002, T1059.001, UAC-0145/Sandworm)</description>
     <mitre>
       <id>T1102.002</id>
       <id>T1059.001</id>
@@ -316,7 +316,7 @@
   <rule id="104050" level="14">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)\beth_(?:call|getLogs|getStorageAt|getBalance|blockNumber)\b</field>
-    <description>EtherHiding/UAC-0145: Ethereum JSON-RPC method detected in process commandLine on $(win.eventdata.computer) by $(win.eventdata.user) [process: $(win.eventdata.image), cmd: $(win.eventdata.commandLine)] -- EtherHiding C2 uses eth_call or eth_getStorageAt to query a smart contract slot for the current C2 domain; JSON-RPC method name in a script interpreter commandLine confirms EtherHiding blockchain C2 resolution logic is executing; extremely rare in legitimate use outside Ethereum developer tooling (T1102.002, UAC-0145/Sandworm CERT-UA #6318437)</description>
+    <description>EtherHiding/UAC-0145: Ethereum JSON-RPC method detected in process commandLine on $(win.eventdata.computer) by $(win.eventdata.user) [process: $(win.eventdata.image), cmd: $(win.eventdata.commandLine)]  -  EtherHiding C2 uses eth_call or eth_getStorageAt to query a smart contract slot for the current C2 domain; JSON-RPC method name in a script interpreter commandLine confirms EtherHiding blockchain C2 resolution logic is executing; extremely rare in legitimate use outside Ethereum developer tooling (T1102.002, UAC-0145/Sandworm CERT-UA #6318437)</description>
     <mitre>
       <id>T1102.002</id>
     </mitre>
@@ -353,7 +353,7 @@
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\explorer\.exe$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(?:powershell|pwsh)\.exe$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:DownloadString|DownloadFile|Invoke-WebRequest|iwr\s+http|Start-BitsTransfer|New-Object\s+Net\.WebClient|\.Download(?:String|File)\s*\(|curl\s+http|wget\s+http)</field>
-    <description>UAC-0145/ClickFix: explorer.exe spawned PowerShell with download cradle on $(win.eventdata.computer) by $(win.eventdata.user) [cmd: $(win.eventdata.commandLine)] -- UAC-0145 ClickFix CAPTCHA lure instructs victim to paste a clipboard PowerShell command via Win+R; Win+R execution appears as explorer.exe spawning powershell.exe; download cradle in commandLine confirms malicious clipboard delivery rather than routine admin use; earliest detection point in UAC-0145 chain; check Startup folder for GHETTOVIBE VBS within minutes of this alert (T1204.003, T1059.001, UAC-0145/Sandworm)</description>
+    <description>UAC-0145/ClickFix: explorer.exe spawned PowerShell with download cradle on $(win.eventdata.computer) by $(win.eventdata.user) [cmd: $(win.eventdata.commandLine)]  -  UAC-0145 ClickFix CAPTCHA lure instructs victim to paste a clipboard PowerShell command via Win+R; Win+R execution appears as explorer.exe spawning powershell.exe; download cradle in commandLine confirms malicious clipboard delivery rather than routine admin use; earliest detection point in UAC-0145 chain; check Startup folder for GHETTOVIBE VBS within minutes of this alert (T1204.003, T1059.001, UAC-0145/Sandworm)</description>
     <mitre>
       <id>T1204.003</id>
       <id>T1059.001</id>
@@ -386,7 +386,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\explorer\.exe$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(?:mshta|wscript|cscript)\.exe$</field>
-    <description>UAC-0145/ClickFix: explorer.exe spawned VBS script engine $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) [cmd: $(win.eventdata.commandLine)] -- UAC-0145 ClickFix variants may deliver VBS or MSHTA payloads directly via Win+R clipboard paste; explorer spawning mshta.exe, wscript.exe, or cscript.exe from Run dialog is the Win+R entry point for direct VBS-stage ClickFix delivery; check commandLine for URLs or encoded content and correlate with Startup VBS rules 104044/104045 on this host (T1204.003, T1059.005, UAC-0145/Sandworm)</description>
+    <description>UAC-0145/ClickFix: explorer.exe spawned VBS script engine $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) [cmd: $(win.eventdata.commandLine)]  -  UAC-0145 ClickFix variants may deliver VBS or MSHTA payloads directly via Win+R clipboard paste; explorer spawning mshta.exe, wscript.exe, or cscript.exe from Run dialog is the Win+R entry point for direct VBS-stage ClickFix delivery; check commandLine for URLs or encoded content and correlate with Startup VBS rules 104044/104045 on this host (T1204.003, T1059.005, UAC-0145/Sandworm)</description>
     <mitre>
       <id>T1204.003</id>
       <id>T1059.005</id>
@@ -422,7 +422,7 @@
   <rule id="104053" level="15" frequency="3" timeframe="180">
     <if_matched_sid>104048</if_matched_sid>
     <same_source_ip />
-    <description>EtherHiding/UAC-0145: ACTIVE ETHERHIDING C2 BEACONING from $(agent.name) -- 3+ connections to public Ethereum JSON-RPC infrastructure within 180 seconds from the same host; FluidLeech or LoadLoop (UAC-0145/Sandworm GRU Unit 74455) is actively performing repeated EtherHiding C2 domain resolution; sustained beaconing confirms live EtherHiding implant rather than single resolution attempt; CRITICAL: isolate host NOW, capture volatile memory, remove GHETTOVIBE VBS from Startup folder, search for FluidLeech/LoadLoop in AppData and Temp, and begin incident response (T1102.002, CERT-UA #6318437)</description>
+    <description>EtherHiding/UAC-0145: ACTIVE ETHERHIDING C2 BEACONING from $(agent.name)  -  3+ connections to public Ethereum JSON-RPC infrastructure within 180 seconds from the same host; FluidLeech or LoadLoop (UAC-0145/Sandworm GRU Unit 74455) is actively performing repeated EtherHiding C2 domain resolution; sustained beaconing confirms live EtherHiding implant rather than single resolution attempt; CRITICAL: isolate host NOW, capture volatile memory, remove GHETTOVIBE VBS from Startup folder, search for FluidLeech/LoadLoop in AppData and Temp, and begin incident response (T1102.002, CERT-UA #6318437)</description>
     <mitre>
       <id>T1102.002</id>
     </mitre>

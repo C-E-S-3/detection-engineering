@@ -138,7 +138,7 @@
   <rule id="103965" level="7">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)/OA_HTML/ibytransmit</field>
-    <description>Oracle EBS CVE-2026-46817: HTTP request to Oracle Payments File Transmission endpoint $(RequestPath) from $(ClientHost) at $(RequestHost) -- CVE-2026-46817 attack surface anchor; correlate with child rules 103966-103970 for exploitation signals (T1190)</description>
+    <description>Oracle EBS CVE-2026-46817: HTTP request to Oracle Payments File Transmission endpoint $(RequestPath) from $(ClientHost) at $(RequestHost)  -  CVE-2026-46817 attack surface anchor; correlate with child rules 103966-103970 for exploitation signals (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -160,7 +160,7 @@
   <rule id="103966" level="11">
     <if_sid>103965</if_sid>
     <field name="RequestMethod">POST</field>
-    <description>Oracle EBS CVE-2026-46817: POST to Oracle Payments ibytransmit from $(ClientHost) at $(RequestHost) -- unauthenticated POST to File Transmission interface is the CVE-2026-46817 exploit delivery method; review source IP against authorized partner allowlist (T1190)</description>
+    <description>Oracle EBS CVE-2026-46817: POST to Oracle Payments ibytransmit from $(ClientHost) at $(RequestHost)  -  unauthenticated POST to File Transmission interface is the CVE-2026-46817 exploit delivery method; review source IP against authorized partner allowlist (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -182,7 +182,7 @@
   <rule id="103967" level="13">
     <if_sid>103966</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
-    <description>Oracle EBS CVE-2026-46817: POST to Oracle Payments ibytransmit from $(ClientHost) returned HTTP $(DownstreamStatus) -- authentication bypass confirmed at HTTP layer; server processed unauthenticated POST; active CVE-2026-46817 exploitation; investigate immediately (T1190/T1548)</description>
+    <description>Oracle EBS CVE-2026-46817: POST to Oracle Payments ibytransmit from $(ClientHost) returned HTTP $(DownstreamStatus)  -  authentication bypass confirmed at HTTP layer; server processed unauthenticated POST; active CVE-2026-46817 exploitation; investigate immediately (T1190/T1548)</description>
     <mitre>
       <id>T1190</id>
       <id>T1548</id>
@@ -211,7 +211,7 @@
   <rule id="103968" level="14">
     <if_sid>103965</if_sid>
     <field name="rawRequest" type="pcre2">(?i)(?:/etc/passwd|/etc/shadow|/etc/oracle|/etc/oratab|\.\.\/|%2e%2e[%2f/]|%252e%252e|/opt/oracle|/u01/oracle|/u02/oracle|oracle\.dbc|\.dbc\b|cwallet\.sso|ewallet\.p12|\.ora\b|wdbc\.cfg|appsweb\.cfg|admin\.xml|dbc_file|/oracle/product|/app/oracle)</field>
-    <description>Oracle EBS CVE-2026-46817 LFI payload: Request to ibytransmit from $(ClientHost) at $(RequestHost) contains file path or path traversal pattern -- attacker invoking internal Oracle Java function to read credential or configuration files via CVE-2026-46817; likely targeting Oracle DBC/wallet files or system credentials (T1190/T1083/T1552.001)</description>
+    <description>Oracle EBS CVE-2026-46817 LFI payload: Request to ibytransmit from $(ClientHost) at $(RequestHost) contains file path or path traversal pattern  -  attacker invoking internal Oracle Java function to read credential or configuration files via CVE-2026-46817; likely targeting Oracle DBC/wallet files or system credentials (T1190/T1083/T1552.001)</description>
     <mitre>
       <id>T1190</id>
       <id>T1083</id>
@@ -237,7 +237,7 @@
     <if_sid>103966</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
     <field name="rawRequest" type="pcre2">(?i)(?:/etc/passwd|/etc/shadow|/etc/oracle|/etc/oratab|\.\.\/|%2e%2e[%2f/]|%252e%252e|/opt/oracle|/u01/oracle|/u02/oracle|oracle\.dbc|\.dbc\b|cwallet\.sso|ewallet\.p12|\.ora\b|wdbc\.cfg|appsweb\.cfg|admin\.xml|dbc_file|/oracle/product|/app/oracle)</field>
-    <description>Oracle EBS CVE-2026-46817 EXPLOITATION CONFIRMED: POST to Oracle Payments ibytransmit from $(ClientHost) returned $(DownstreamStatus) with file read payload -- unauthenticated Java function invocation succeeded; attacker likely reading Oracle credential or configuration files from server filesystem; IMMEDIATE INCIDENT RESPONSE REQUIRED (T1190/T1083/T1552.001/T1548)</description>
+    <description>Oracle EBS CVE-2026-46817 EXPLOITATION CONFIRMED: POST to Oracle Payments ibytransmit from $(ClientHost) returned $(DownstreamStatus) with file read payload  -  unauthenticated Java function invocation succeeded; attacker likely reading Oracle credential or configuration files from server filesystem; IMMEDIATE INCIDENT RESPONSE REQUIRED (T1190/T1083/T1552.001/T1548)</description>
     <options>alert_by_email</options>
     <mitre>
       <id>T1190</id>
@@ -264,7 +264,7 @@
   <rule id="103970" level="9" frequency="8" timeframe="60">
     <if_matched_sid>103965</if_matched_sid>
     <same_field>ClientHost</same_field>
-    <description>Oracle EBS CVE-2026-46817: Rapid probe burst from $(ClientHost) to Oracle Payments ibytransmit at $(RequestHost) -- 8+ requests in 60 seconds from same source; automated exploit scanner or CVE-2026-46817 exploitation tooling fingerprint; investigate source IP (T1190)</description>
+    <description>Oracle EBS CVE-2026-46817: Rapid probe burst from $(ClientHost) to Oracle Payments ibytransmit at $(RequestHost)  -  8+ requests in 60 seconds from same source; automated exploit scanner or CVE-2026-46817 exploitation tooling fingerprint; investigate source IP (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -304,7 +304,7 @@
        attempt. -->
   <rule id="103971" level="12">
     <regex type="pcre2">(?i)POST\s+/OA_HTML/ibytransmit\s+HTTP/[\d.]+"\s+2\d{2}\s</regex>
-    <description>Oracle EBS CVE-2026-46817 OHS/Apache log: POST to Oracle Payments ibytransmit returned 2xx on $(agent.name) -- authentication bypass confirmed in Oracle HTTP Server or Apache access log; active CVE-2026-46817 exploitation; review source IP and request body for file-read payload (T1190/T1548)</description>
+    <description>Oracle EBS CVE-2026-46817 OHS/Apache log: POST to Oracle Payments ibytransmit returned 2xx on $(agent.name)  -  authentication bypass confirmed in Oracle HTTP Server or Apache access log; active CVE-2026-46817 exploitation; review source IP and request body for file-read payload (T1190/T1548)</description>
     <mitre>
       <id>T1190</id>
       <id>T1548</id>

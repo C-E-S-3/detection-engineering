@@ -128,7 +128,7 @@
     <group>netlogon,service_restart,dc_attack,</group>
   </rule>
 
-  <!-- Rule 103631  - Correlation: Netlogon channel failure burst (>=5 in 120s) from same source
+  <!-- Rule 103631  - Correlation: Netlogon channel failure burst (gte 5 in 120s) from same source
        CVE-2026-41089 exploit tooling typically sends rapid RPC probes before triggering
        the overflow. Five 5805 errors from a single machine within 2 minutes is a strong
        pre-exploitation probe indicator.
@@ -193,7 +193,7 @@
        - File creation: .github/workflows/*.yml modification by external fork contributor
        - Secrets exfiltration: outbound HTTPS from CI runner to non-GitHub endpoints
          carrying Authorization headers or CI_* environment variable values
-       - Agent: GitHub Enterprise audit log via webhook -> Wazuh custom decoder
+       - Agent: GitHub Enterprise audit log via webhook - Wazuh custom decoder
      ============================================================== -->
 
   <!-- Rule 103634  - CI/CD workflow triggered by forked PR with write-secrets permission
@@ -290,9 +290,9 @@
      Fixed: Android June 2026 Security Update (patch level 2026-06-05 or later)
 
      Detection approach:
-       - MDM/EMM (Microsoft Intune, Jamf) compliance event: device patch level &lt; 2026-06-05
+       - MDM/EMM (Microsoft Intune, Jamf) compliance event: device patch level lt 2026-06-05
        - Android enterprise log: unexpected process with escalated UID (root/system)
-         spawned from non-system app (UID >= 10000) on an unpatched device
+         spawned from non-system app (UID gte 10000) on an unpatched device
        - Wazuh syscheck: unexpected app acquiring system/root UID in Android managed logs
        - Network-level: C2 beacon from compromised Android device (spyware pattern)
        - Wazuh agent on MDM log forwarder: device out-of-compliance event
@@ -315,8 +315,8 @@
   </rule>
 
   <!-- Rule 103640  - Android enterprise log: non-system app gaining elevated UID
-       CVE-2025-48595 exploitation causes a normal app (UID >= 10000) to gain
-       system or root UID (UID &lt; 1000). Android enterprise/work-profile audit logs
+       CVE-2025-48595 exploitation causes a normal app (UID gte 10000) to gain
+       system or root UID (UID lt 1000). Android enterprise/work-profile audit logs
        forwarded via MDM may capture this anomalous UID escalation.
        Level 14: app gaining root/system UID outside expected system context. -->
   <rule id="103640" level="14">

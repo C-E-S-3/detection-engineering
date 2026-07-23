@@ -57,7 +57,7 @@
     <field name="win.system.channel">Application</field>
     <field name="win.eventdata.applicationName" type="pcre2">(?i)\\?chrome\.exe$</field>
     <field name="win.eventdata.faultModuleName" type="pcre2">(?i)v8(\.dll)?$</field>
-    <description>Chrome V8 engine crash on $(hostname): $(win.eventdata.applicationName) faulted in $(win.eventdata.faultModuleName) -- possible CVE-2026-11645 heap corruption exploit attempt (T1203)</description>
+    <description>Chrome V8 engine crash on $(hostname): $(win.eventdata.applicationName) faulted in $(win.eventdata.faultModuleName)  -  possible CVE-2026-11645 heap corruption exploit attempt (T1203)</description>
     <mitre>
       <id>T1203</id>
     </mitre>
@@ -69,7 +69,7 @@
   <rule id="101421" level="13">
     <if_sid>101420</if_sid>
     <field name="win.eventdata.exceptionCode" type="pcre2">(?i)0xc0000005</field>
-    <description>Chrome V8 access violation crash on $(hostname) (ExceptionCode: $(win.eventdata.exceptionCode)) -- heap corruption consistent with CVE-2026-11645 RCE exploit (T1203)</description>
+    <description>Chrome V8 access violation crash on $(hostname) (ExceptionCode: $(win.eventdata.exceptionCode))  -  heap corruption consistent with CVE-2026-11645 RCE exploit (T1203)</description>
     <mitre>
       <id>T1203</id>
     </mitre>
@@ -81,7 +81,7 @@
   <rule id="101422" level="12" frequency="3" timeframe="120">
     <if_matched_sid>101420</if_matched_sid>
     <same_field>win.system.computer</same_field>
-    <description>Repeated Chrome V8 crashes on $(hostname): 3+ in 120 seconds -- JIT spray / heap grooming pattern consistent with CVE-2026-11645 exploitation attempt (T1203)</description>
+    <description>Repeated Chrome V8 crashes on $(hostname): 3+ in 120 seconds  -  JIT spray / heap grooming pattern consistent with CVE-2026-11645 exploitation attempt (T1203)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1203</id>
@@ -97,7 +97,7 @@
     <field name="win.system.channel">Application</field>
     <field name="win.eventdata.applicationName" type="pcre2">(?i)\\?chrome\.exe$</field>
     <field name="win.eventdata.faultModuleName" negate="yes" type="pcre2">(?i)v8(\.dll)?$</field>
-    <description>Chrome application crash on $(hostname) in module $(win.eventdata.faultModuleName) -- baseline crash event (not v8.dll; monitor for escalation to rule 101420)</description>
+    <description>Chrome application crash on $(hostname) in module $(win.eventdata.faultModuleName)  -  baseline crash event (not v8.dll; monitor for escalation to rule 101420)</description>
     <mitre>
       <id>T1203</id>
     </mitre>
@@ -118,7 +118,7 @@
     <field name="win.system.eventID">^1$</field>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\chrome\.exe$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(cmd|powershell|powershell_ise|pwsh|wscript|cscript|mshta|bash)\.exe$</field>
-    <description>Chrome spawned shell process $(win.eventdata.image) on $(hostname) -- renderer sandbox escape, likely CVE-2026-11645 post-exploitation (T1059/T1203)</description>
+    <description>Chrome spawned shell process $(win.eventdata.image) on $(hostname)  -  renderer sandbox escape, likely CVE-2026-11645 post-exploitation (T1059/T1203)</description>
     <mitre>
       <id>T1203</id>
       <id>T1059.001</id>
@@ -134,7 +134,7 @@
     <field name="win.system.eventID">^1$</field>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\chrome\.exe$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(rundll32|regsvr32|certutil|bitsadmin|wmic|msiexec|installutil|regasm|regsvcs|ieexec|cmstp|eudcedit|dnscmd|pcwrun|syncappvpublishingserver)\.exe$</field>
-    <description>Chrome spawned LOLBin $(win.eventdata.image) on $(hostname) -- sandbox escape via living-off-the-land binary, CVE-2026-11645 exploitation (T1218/T1203)</description>
+    <description>Chrome spawned LOLBin $(win.eventdata.image) on $(hostname)  -  sandbox escape via living-off-the-land binary, CVE-2026-11645 exploitation (T1218/T1203)</description>
     <mitre>
       <id>T1203</id>
       <id>T1218</id>
@@ -156,7 +156,7 @@
     <field name="win.eventdata.image" type="pcre2">(?i)\\chrome\.exe$</field>
     <field name="win.eventdata.destinationPort" type="pcre2">^(?!(80|443|8080|8443|3128|1080)$)\d+$</field>
     <field name="win.eventdata.initiated">true</field>
-    <description>Chrome process making outbound connection to non-browser port $(win.eventdata.destinationPort) on $(hostname) -- possible C2 callback after CVE-2026-11645 sandbox escape (T1071/T1203)</description>
+    <description>Chrome process making outbound connection to non-browser port $(win.eventdata.destinationPort) on $(hostname)  -  possible C2 callback after CVE-2026-11645 sandbox escape (T1071/T1203)</description>
     <mitre>
       <id>T1203</id>
       <id>T1071.001</id>

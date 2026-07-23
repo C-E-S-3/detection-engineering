@@ -46,9 +46,9 @@
                 aipythondevs.com, windowscreenrepairnearme.com
 
      Log source prerequisites:
-       - Sysmon EventID 1 (ProcessCreate)  -> Wazuh SID 61603
+       - Sysmon EventID 1 (ProcessCreate)  - Wazuh SID 61603
          Required for rules 103998 (trojanized installer), 103999 (WLDR injection)
-       - Firewall/network logs -> Wazuh SID 103000
+       - Firewall/network logs - Wazuh SID 103000
          Required for rules 104000 (C2 IP) and 104001 (C2 domain)
 
      Severity tiers:
@@ -78,7 +78,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(MobaXterm_v[0-9]+\.[0-9]+|WebEx_Client|FaceitInstaller_x64|dbeaver-ce-windows-x86_64|Zoom.*[Ii]nstaller)\.exe$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(python|python3|pythonw)\.exe$</field>
-    <description>UAT-11795 Starland RAT: Python spawned by trojanized installer $(win.eventdata.parentImage) as user $(win.eventdata.user) on $(win.eventdata.computer) -- UAT-11795 trojanized software installer deploying Starland RAT Python backdoor; C2 fallback to Polygon blockchain (T1204.002, T1059.006)</description>
+    <description>UAT-11795 Starland RAT: Python spawned by trojanized installer $(win.eventdata.parentImage) as user $(win.eventdata.user) on $(win.eventdata.computer)  -  UAT-11795 trojanized software installer deploying Starland RAT Python backdoor; C2 fallback to Polygon blockchain (T1204.002, T1059.006)</description>
     <mitre>
       <id>T1204.002</id>
       <id>T1059.006</id>
@@ -100,7 +100,7 @@
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(python|python3|pythonw)\.exe$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\powershell\.exe$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(-windowstyle\s+hidden|-w\s+hidden|-WindowStyle\s+Hidden|-EncodedCommand|-enc\s)</field>
-    <description>UAT-11795 WLDR Implant: powershell.exe with hidden window style spawned by python.exe on $(win.eventdata.computer) as $(win.eventdata.user) -- Starland RAT injecting WLDR memory-resident PowerShell C2 agent for keylogging and credential harvesting (T1059.001, T1056.001)</description>
+    <description>UAT-11795 WLDR Implant: powershell.exe with hidden window style spawned by python.exe on $(win.eventdata.computer) as $(win.eventdata.user)  -  Starland RAT injecting WLDR memory-resident PowerShell C2 agent for keylogging and credential harvesting (T1059.001, T1056.001)</description>
     <mitre>
       <id>T1059.001</id>
       <id>T1056.001</id>
@@ -122,7 +122,7 @@
   <rule id="104000" level="14">
     <if_sid>103000</if_sid>
     <match>104.248.233.104</match>
-    <description>UAT-11795 Starland RAT: connection to confirmed C2 IP 104.248.233.104 from $(agent.name) -- UAT-11795 Starland RAT primary C2 VPS; isolate host and initiate IR (T1071.001)</description>
+    <description>UAT-11795 Starland RAT: connection to confirmed C2 IP 104.248.233.104 from $(agent.name)  -  UAT-11795 Starland RAT primary C2 VPS; isolate host and initiate IR (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
     </mitre>
@@ -132,7 +132,7 @@
   <rule id="104001" level="14">
     <if_sid>103000</if_sid>
     <match>192.81.216.250|74.114.119.201|178.255.126.39|193.149.176.254|185.238.191.234</match>
-    <description>UAT-11795 Starland RAT: connection to confirmed C2 IP $(dst_ip) from $(agent.name) -- UAT-11795 Starland RAT alternate C2 VPS; isolate host and initiate IR (T1071.001)</description>
+    <description>UAT-11795 Starland RAT: connection to confirmed C2 IP $(dst_ip) from $(agent.name)  -  UAT-11795 Starland RAT alternate C2 VPS; isolate host and initiate IR (T1071.001)</description>
     <mitre>
       <id>T1071.001</id>
     </mitre>
@@ -142,7 +142,7 @@
   <rule id="104002" level="14">
     <if_sid>103000</if_sid>
     <match>eorthopaedics.com|sastoro.com|zynaris.io|alphabitcapital.info|web-devtools.com|aipythondevs.com|windowscreenrepairnearme.com</match>
-    <description>UAT-11795 Starland RAT: connection to confirmed C2 domain from $(agent.name) -- UAT-11795 Starland RAT C2 domain detected in network traffic or DNS; blockchain fallback C2 may also be active; isolate host (T1071.001, T1102)</description>
+    <description>UAT-11795 Starland RAT: connection to confirmed C2 domain from $(agent.name)  -  UAT-11795 Starland RAT C2 domain detected in network traffic or DNS; blockchain fallback C2 may also be active; isolate host (T1071.001, T1102)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1102</id>

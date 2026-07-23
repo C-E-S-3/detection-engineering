@@ -54,7 +54,7 @@
 <group name="initial_access,exploit_pubfacing,sharepoint,cve_2026_45659,">
 
   <!-- ===========================================================
-       Layer 1: Process execution (Sysmon EventID 1 -> Wazuh SID 61603)
+       Layer 1: Process execution (Sysmon EventID 1 - Wazuh SID 61603)
        Rule IDs: 103700-103704
 
        Under normal SharePoint operation w3wp.exe spawns .NET worker
@@ -77,7 +77,7 @@
   <rule id="103822" level="14">
     <if_sid>103821</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(powershell|pwsh|csc|vbc|jsc)\.exe$</field>
-    <description>SharePoint CVE-2026-45659: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) -- near-certain deserialization RCE; PowerShell download cradle or .NET compilation post-exploit (T1190/T1059.001)</description>
+    <description>SharePoint CVE-2026-45659: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user)  -  near-certain deserialization RCE; PowerShell download cradle or .NET compilation post-exploit (T1190/T1059.001)</description>
     <mitre>
       <id>T1190</id>
       <id>T1059.001</id>
@@ -92,7 +92,7 @@
   <rule id="103823" level="13">
     <if_sid>103821</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(certutil|bitsadmin|mshta|wscript|cscript|curl|wget)\.exe$</field>
-    <description>SharePoint CVE-2026-45659: w3wp.exe spawned download LOLBin $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) -- staged payload delivery post-deserialization exploit (T1190/T1105)</description>
+    <description>SharePoint CVE-2026-45659: w3wp.exe spawned download LOLBin $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user)  -  staged payload delivery post-deserialization exploit (T1190/T1105)</description>
     <mitre>
       <id>T1190</id>
       <id>T1105</id>
@@ -106,7 +106,7 @@
   <rule id="103824" level="12">
     <if_sid>103821</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(rundll32|regsvr32|msiexec|wmic|installutil|regasm|regsvcs)\.exe$</field>
-    <description>SharePoint CVE-2026-45659: w3wp.exe spawned execution LOLBin $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) -- post-exploit proxy execution or payload loading (T1190/T1218)</description>
+    <description>SharePoint CVE-2026-45659: w3wp.exe spawned execution LOLBin $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user)  -  post-exploit proxy execution or payload loading (T1190/T1218)</description>
     <mitre>
       <id>T1190</id>
       <id>T1218</id>
@@ -121,7 +121,7 @@
   <rule id="103825" level="12">
     <if_sid>103821</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(cmd|whoami|ipconfig|nltest|net|net1|hostname|systeminfo|tasklist|nslookup|ping|arp)\.exe$</field>
-    <description>SharePoint CVE-2026-45659: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user) -- post-exploit host enumeration or command shell; investigate for deserialization RCE (T1190/T1059.003)</description>
+    <description>SharePoint CVE-2026-45659: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) by $(win.eventdata.user)  -  post-exploit host enumeration or command shell; investigate for deserialization RCE (T1190/T1059.003)</description>
     <mitre>
       <id>T1190</id>
       <id>T1059.003</id>
@@ -147,7 +147,7 @@
     <field name="win.eventdata.eventID" type="pcre2">^11$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\w3wp\.exe$</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.(aspx|asmx|ashx|svc)$</field>
-    <description>SharePoint CVE-2026-45659 CRITICAL: w3wp.exe created web script file $(win.eventdata.targetFilename) on $(win.eventdata.computer) -- WEBSHELL DROP confirmed; persistent backdoor access established; initiate immediate incident response (T1505.003)</description>
+    <description>SharePoint CVE-2026-45659 CRITICAL: w3wp.exe created web script file $(win.eventdata.targetFilename) on $(win.eventdata.computer)  -  WEBSHELL DROP confirmed; persistent backdoor access established; initiate immediate incident response (T1505.003)</description>
     <mitre>
       <id>T1505.003</id>
       <id>T1190</id>
@@ -170,7 +170,7 @@
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">POST</field>
     <field name="RequestPath" type="pcre2">(?i)(?:/_api/|/_vti_bin/(?:client\.svc|webs\.asmx|lists\.asmx|sitedata\.asmx|usergroup\.asmx|authentication\.asmx)|/sites/[^/]+/_vti_bin/|/sites/[^/]+/lists/)</field>
-    <description>SharePoint CVE-2026-45659: POST to SharePoint REST/SOAP endpoint from $(ClientHost) at $(RequestHost)$(RequestPath) -- potential deserialization exploit delivery (T1190)</description>
+    <description>SharePoint CVE-2026-45659: POST to SharePoint REST/SOAP endpoint from $(ClientHost) at $(RequestHost)$(RequestPath)  -  potential deserialization exploit delivery (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -184,7 +184,7 @@
   <rule id="103828" level="12">
     <if_sid>103827</if_sid>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
-    <description>SharePoint CVE-2026-45659: POST to SharePoint API at $(RequestHost)$(RequestPath) returned 2xx to $(ClientHost) -- deserialization payload acknowledged; correlate with w3wp.exe child-process events on the target host (T1190)</description>
+    <description>SharePoint CVE-2026-45659: POST to SharePoint API at $(RequestHost)$(RequestPath) returned 2xx to $(ClientHost)  -  deserialization payload acknowledged; correlate with w3wp.exe child-process events on the target host (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -200,7 +200,7 @@
     <field name="RequestMethod">POST</field>
     <field name="RequestPath" type="pcre2">(?i)/_vti_bin/</field>
     <field name="DownstreamStatus" type="pcre2">^500$</field>
-    <description>SharePoint CVE-2026-45659: POST to _vti_bin at $(RequestHost)$(RequestPath) from $(ClientHost) returned HTTP 500 -- deserialization exception likely; active exploit attempt in progress (T1190)</description>
+    <description>SharePoint CVE-2026-45659: POST to _vti_bin at $(RequestHost)$(RequestPath) from $(ClientHost) returned HTTP 500  -  deserialization exception likely; active exploit attempt in progress (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>

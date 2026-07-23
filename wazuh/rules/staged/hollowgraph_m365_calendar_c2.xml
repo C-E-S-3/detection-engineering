@@ -90,7 +90,7 @@
          Required for rules 104066, 104067, 104073
 
      Log source prerequisites (Sysmon - Windows):
-       - Sysmon EventID 3 (NetworkConnect) -> Wazuh SID 61607
+       - Sysmon EventID 3 (NetworkConnect) - Wazuh SID 61607
          Required for rule 104070
 
      Log source prerequisites (M365 Unified Audit Log):
@@ -152,7 +152,7 @@
     <field name="dst_host|network.destination.domain|url.domain" type="pcre2">(?i)graph\.microsoft\.com</field>
     <field name="url.path|uri_path|http.request.uri" type="pcre2">(?i)/v1\.0/(?:me|users/[^/]{1,200})/(?:calendar|events)</field>
     <field name="process.name|src_process|application" negate="yes" type="pcre2">(?i)(?:outlook|olk\.exe|teams|microsoft\.teams|onedrive|lync|skype|msedge|chrome|firefox|iexplore|brave|safari|chromium|opera|vivaldi|edge)</field>
-    <description>HollowGraph: non-M365-client process accessing Microsoft Graph calendar API on $(agent.name) -- process $(process.name) calling /me/events or /users/*/events; HollowGraph uses this endpoint to retrieve operator tasking from calendar event at 2050-05-13 (T1102.002, T1078.004)</description>
+    <description>HollowGraph: non-M365-client process accessing Microsoft Graph calendar API on $(agent.name)  -  process $(process.name) calling /me/events or /users/*/events; HollowGraph uses this endpoint to retrieve operator tasking from calendar event at 2050-05-13 (T1102.002, T1078.004)</description>
     <mitre>
       <id>T1102.002</id>
       <id>T1078.004</id>
@@ -178,7 +178,7 @@
     <decoded_as>json</decoded_as>
     <field name="dst_host|network.destination.domain|url.domain" type="pcre2">(?i)graph\.microsoft\.com</field>
     <field name="url.path|uri_path|http.request.uri|url.query|http.request.uri_query" type="pcre2">(?i)(?:2050(?:-\d{2}){0,2}|ge\+['\"]2050|ge%20['\"]?2050|dateTime.*2050|2050.*dateTime|\$filter.*start.*2050|start.*2050.*filter)</field>
-    <description>HollowGraph IOC: Microsoft Graph API calendar query with year-2050 date filter on $(agent.name) -- specific IOC for HollowGraph C2; implant queries events at 2050-05-13 to retrieve operator tasking attached as encrypted file; no legitimate use case for future-dated calendar queries 24+ years out (T1102.002)</description>
+    <description>HollowGraph IOC: Microsoft Graph API calendar query with year-2050 date filter on $(agent.name)  -  specific IOC for HollowGraph C2; implant queries events at 2050-05-13 to retrieve operator tasking attached as encrypted file; no legitimate use case for future-dated calendar queries 24+ years out (T1102.002)</description>
     <mitre>
       <id>T1102.002</id>
     </mitre>
@@ -203,7 +203,7 @@
     <field name="data.Operation|Operation" type="pcre2">(?i)(?:Create|Update|Set|Add|HardDelete|SoftDelete)(?:.*Event|.*Appointment|.*CalendarItem)?|CalendarItem.*(?:Create|Update)</field>
     <field name="data.Workload|Workload" type="pcre2">(?i)(?:Exchange|MicrosoftTeams|OfficeSuite)</field>
     <field name="data.StartTime|StartTime|data.ModifiedProperties|ModifiedProperties|data.Parameters|Parameters" type="pcre2">2050</field>
-    <description>HollowGraph IOC: M365 Unified Audit Log records calendar event created/modified with 2050 date on mailbox $(data.UserId) -- operator planting HollowGraph dead-drop event; investigate CallerIPAddress, AppId, and whether the acting UserId is expected to access this mailbox (T1102.002, T1078.004)</description>
+    <description>HollowGraph IOC: M365 Unified Audit Log records calendar event created/modified with 2050 date on mailbox $(data.UserId)  -  operator planting HollowGraph dead-drop event; investigate CallerIPAddress, AppId, and whether the acting UserId is expected to access this mailbox (T1102.002, T1078.004)</description>
     <mitre>
       <id>T1102.002</id>
       <id>T1078.004</id>
@@ -228,7 +228,7 @@
     <decoded_as>json</decoded_as>
     <field name="data.Operation|Operation" type="pcre2">(?i)(?:Create|Get|Update|Delete|Add|Access).*(?:Attach|Attachment)|(?:Attach|Attachment).*(?:Create|Get|Add|Access|Upload|Download)</field>
     <field name="data.Workload|Workload" type="pcre2">(?i)(?:Exchange|Calendar|OfficeSuite)</field>
-    <description>HollowGraph: M365 Unified Audit Log records calendar attachment operation via Graph API for user $(data.UserId) -- HollowGraph C2 reads encrypted tasking from and uploads encrypted exfil data to attachments on the 2050-05-13 dead-drop event; investigate AppId, CallerIPAddress, and attachment size/name (T1102.002, T1119, T1020)</description>
+    <description>HollowGraph: M365 Unified Audit Log records calendar attachment operation via Graph API for user $(data.UserId)  -  HollowGraph C2 reads encrypted tasking from and uploads encrypted exfil data to attachments on the 2050-05-13 dead-drop event; investigate AppId, CallerIPAddress, and attachment size/name (T1102.002, T1119, T1020)</description>
     <mitre>
       <id>T1102.002</id>
       <id>T1119</id>
@@ -253,7 +253,7 @@
     <if_sid>61607</if_sid>
     <field name="win.eventdata.destinationHostname" type="pcre2">(?i)graph\.microsoft\.com</field>
     <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)(?:OUTLOOK\.EXE|olk\.exe|ms-teams\.exe|Teams\.exe|OneDrive\.exe|lync\.exe|msedge\.exe|chrome\.exe|firefox\.exe|iexplore\.exe|brave\.exe|MicrosoftEdge\.exe|SearchApp\.exe|explorer\.exe)</field>
-    <description>HollowGraph: non-M365-client process establishing TLS connection to graph.microsoft.com on $(win.eventdata.computer) by $(win.eventdata.user) -- process $(win.eventdata.image) contacting Graph API; no legitimate endpoint .NET app should query graph.microsoft.com calendar endpoints; investigate for HollowGraph implant DLL (T1102.002, T1059.005)</description>
+    <description>HollowGraph: non-M365-client process establishing TLS connection to graph.microsoft.com on $(win.eventdata.computer) by $(win.eventdata.user)  -  process $(win.eventdata.image) contacting Graph API; no legitimate endpoint .NET app should query graph.microsoft.com calendar endpoints; investigate for HollowGraph implant DLL (T1102.002, T1059.005)</description>
     <mitre>
       <id>T1102.002</id>
       <id>T1059.005</id>
@@ -271,7 +271,7 @@
        encoded credential material will exhibit elevated entropy
        and abnormally long subdomain strings compared to
        legitimate TXT queries (SPF, DKIM, ACME challenges).
-       Pattern: label length >= 20 chars AND query depth >= 4
+       Pattern: label length gte 20 chars AND query depth gte 4
        labels (base64/hex-encoded data prepended to attacker
        domain). Correlate with rule 104066 / 104070 on same host
        to raise confidence.
@@ -282,7 +282,7 @@
     <decoded_as>json</decoded_as>
     <field name="dns.question.type|query_type|record_type" type="pcre2">(?i)^TXT$</field>
     <field name="dns.question.name|query|dns.query" type="pcre2">^[a-zA-Z0-9+/=_-]{20,}\.[a-zA-Z0-9+/=_-]{8,}\.[a-zA-Z0-9-]{2,}\.[a-zA-Z]{2,}$</field>
-    <description>HollowGraph potential DNS tunnel: high-entropy TXT query from $(agent.name) -- query label structure consistent with HollowGraph secondary channel delivering Entra ID credentials via DNS tunneling; standalone alert is low-confidence; correlate with Graph API calendar access (rules 104066, 104070) on the same host (T1071.004, T1048.001)</description>
+    <description>HollowGraph potential DNS tunnel: high-entropy TXT query from $(agent.name)  -  query label structure consistent with HollowGraph secondary channel delivering Entra ID credentials via DNS tunneling; standalone alert is low-confidence; correlate with Graph API calendar access (rules 104066, 104070) on the same host (T1071.004, T1048.001)</description>
     <mitre>
       <id>T1071.004</id>
       <id>T1048.001</id>
@@ -305,7 +305,7 @@
   <rule id="104072" level="14" frequency="10" timeframe="120">
     <if_matched_sid>104069</if_matched_sid>
     <same_field>data.UserId</same_field>
-    <description>HollowGraph: repeated M365 calendar attachment operations by same user identity in 2-minute window -- 10+ attachment access events consistent with HollowGraph automated C2 polling cycle; implant automatically checks for updated tasking attachments on 2050-05-13 dead-drop event (T1102.002, T1119)</description>
+    <description>HollowGraph: repeated M365 calendar attachment operations by same user identity in 2-minute window  -  10+ attachment access events consistent with HollowGraph automated C2 polling cycle; implant automatically checks for updated tasking attachments on 2050-05-13 dead-drop event (T1102.002, T1119)</description>
     <mitre>
       <id>T1102.002</id>
       <id>T1119</id>
@@ -327,7 +327,7 @@
   <rule id="104073" level="15">
     <if_matched_sid>104066</if_matched_sid>
     <field name="url.path|uri_path|http.request.uri|url.query|http.request.uri_query" type="pcre2">(?i)(?:2050(?:-\d{2}){0,2}|ge\+['\"]2050|ge%20['\"]?2050|dateTime.*2050|2050.*dateTime|\$filter.*start.*2050)</field>
-    <description>HollowGraph CONFIRMED: non-M365-client process querying Microsoft Graph calendar API with 2050-date dead-drop IOC on $(agent.name) -- composite match on both non-browser Graph calendar access (rule 104066) and HollowGraph-specific 2050 date filter; RSA+AES-256-GCM encrypted tasking or exfil attachment in progress; full incident response warranted; isolate host and revoke M365 credentials immediately (T1102.002)</description>
+    <description>HollowGraph CONFIRMED: non-M365-client process querying Microsoft Graph calendar API with 2050-date dead-drop IOC on $(agent.name)  -  composite match on both non-browser Graph calendar access (rule 104066) and HollowGraph-specific 2050 date filter; RSA+AES-256-GCM encrypted tasking or exfil attachment in progress; full incident response warranted; isolate host and revoke M365 credentials immediately (T1102.002)</description>
     <mitre>
       <id>T1102.002</id>
       <id>T1078.004</id>

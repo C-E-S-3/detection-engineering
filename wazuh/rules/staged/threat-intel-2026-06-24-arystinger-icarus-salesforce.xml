@@ -4,7 +4,7 @@
        - AryStinger: D-Link/NAS router botnet  - XLab Qianxin June 2026
          C2: eixfi.ajb8.com / 107.150.106.14; CVE-2013-3307, CVE-2016-5681
          Converts infected devices into SOCKS5 proxies / scanning nodes
-       - Icarus (ShinyHunters/UNC6240): Klue OAuth -> Salesforce CRM breach
+       - Icarus (ShinyHunters/UNC6240): Klue OAuth - Salesforce CRM breach
          4 attacker IPs; Python-urllib automation; bulk CRM exfiltration
          Victims: Huntress, Recorded Future, Tanium, Jamf, and hundreds more
 

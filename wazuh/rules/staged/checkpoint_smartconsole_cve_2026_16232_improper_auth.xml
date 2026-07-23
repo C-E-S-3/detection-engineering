@@ -88,7 +88,7 @@
   <rule id="104152" level="5">
     <program_name>^(api_server|cpmad|mgmtd|cpwmd|cpsmd)$</program_name>
     <regex type="pcre2">(?i)(smartconsole\s+(login|auth|session)|web[\s_-]?api\s+(login|auth|session|token)|management\s+api\s+(login|auth|session)|login\s+request\s+(received|sent)|session\s+token\s+(issued|created|granted))</regex>
-    <description>Check Point SmartConsole: management API authentication event on $(hostname) -- CVE-2026-16232 anchor (T1190)</description>
+    <description>Check Point SmartConsole: management API authentication event on $(hostname)  -  CVE-2026-16232 anchor (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -108,7 +108,7 @@
     <if_matched_sid>104152</if_matched_sid>
     <same_srcip/>
     <regex type="pcre2">(?i)(login\s+success|session\s+(token\s+)?(issued|created|granted|established)|authentication\s+success|authenticated\s+success|user\s+authenticated)</regex>
-    <description>Check Point SmartConsole: authentication success from $(srcip) following 3+ recent login events on $(hostname) -- possible CVE-2026-16232 improper auth bypass; token may have been obtained without valid credentials (T1190, T1078)</description>
+    <description>Check Point SmartConsole: authentication success from $(srcip) following 3+ recent login events on $(hostname)  -  possible CVE-2026-16232 improper auth bypass; token may have been obtained without valid credentials (T1190, T1078)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -128,7 +128,7 @@
   <rule id="104154" level="12" frequency="6" timeframe="60">
     <if_matched_sid>104152</if_matched_sid>
     <same_srcip/>
-    <description>Check Point SmartConsole: high-frequency login probes (6+ in 60s) from $(srcip) on $(hostname) -- automated CVE-2026-16232 exploit tool or token endpoint scanner detected (T1190)</description>
+    <description>Check Point SmartConsole: high-frequency login probes (6+ in 60s) from $(srcip) on $(hostname)  -  automated CVE-2026-16232 exploit tool or token endpoint scanner detected (T1190)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -148,7 +148,7 @@
     <program_name>^(api_server|cpmad|mgmtd|cpwmd|cpsmd)$</program_name>
     <regex type="pcre2">(?i)(login\s+fail|auth(entication)?\s+fail|invalid\s+(credentials|password|token)|unauthorized\s+(login|access)|session\s+(denied|rejected)|wrong\s+password|bad\s+credentials)</regex>
     <same_srcip/>
-    <description>Check Point SmartConsole: repeated authentication failures (5+ in 2m) from $(srcip) on $(hostname) -- brute-force or CVE-2026-16232 pre-exploitation probe; investigate for follow-on token bypass (T1190)</description>
+    <description>Check Point SmartConsole: repeated authentication failures (5+ in 2m) from $(srcip) on $(hostname)  -  brute-force or CVE-2026-16232 pre-exploitation probe; investigate for follow-on token bypass (T1190)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -168,7 +168,7 @@
   <rule id="104156" level="14">
     <program_name>^(api_server|cpmad|mgmtd|cpwmd|cpsmd)$</program_name>
     <regex type="pcre2">(?i)(install[\s_-]?policy|policy\s+install(ation)?|publish[\s_-]?session|session\s+published|policy\s+(pushed|deployed|applied|committed)|firewall\s+policy\s+(install|push|deploy))</regex>
-    <description>Check Point SmartConsole: firewall policy install or publish operation on $(hostname) -- privileged API operation that pushes rules to managed gateways; correlate with CVE-2026-16232 bypass indicators for unauthorized policy modification (T1562.004, T1190)</description>
+    <description>Check Point SmartConsole: firewall policy install or publish operation on $(hostname)  -  privileged API operation that pushes rules to managed gateways; correlate with CVE-2026-16232 bypass indicators for unauthorized policy modification (T1562.004, T1190)</description>
     <mitre>
       <id>T1562.004</id>
       <id>T1190</id>
@@ -188,7 +188,7 @@
   <rule id="104157" level="14">
     <program_name>^(api_server|cpmad|mgmtd|cpwmd|cpsmd)$</program_name>
     <regex type="pcre2">(?i)(add[\s_-]?admin(istrator)?|create[\s_-]?admin(istrator)?|set[\s_-]?admin(istrator)?|new\s+admin(istrator)?\s+(created|added)|admin(istrator)?\s+(account\s+)?(created|added|provisioned)|user\s+created.*admin|admin.*user\s+created)</regex>
-    <description>Check Point SmartConsole: administrator account created or modified via management API on $(hostname) -- post-exploitation persistence tactic consistent with CVE-2026-16232 bypass; verify this was authorized (T1098, T1078)</description>
+    <description>Check Point SmartConsole: administrator account created or modified via management API on $(hostname)  -  post-exploitation persistence tactic consistent with CVE-2026-16232 bypass; verify this was authorized (T1098, T1078)</description>
     <mitre>
       <id>T1098</id>
       <id>T1078</id>
@@ -209,7 +209,7 @@
     <program_name>^(api_server|cpmad|mgmtd|cpwmd|cpsmd)$</program_name>
     <regex type="pcre2">(?i)(login\s+success|session\s+(token\s+)?(issued|created|granted|established)|authentication\s+success|user\s+authenticated)</regex>
     <time>20:00 - 07:00</time>
-    <description>Check Point SmartConsole: management API authentication success outside business hours on $(hostname) -- off-hours management access; triage against CVE-2026-16232 active exploitation campaign (T1190, T1078)</description>
+    <description>Check Point SmartConsole: management API authentication success outside business hours on $(hostname)  -  off-hours management access; triage against CVE-2026-16232 active exploitation campaign (T1190, T1078)</description>
     <mitre>
       <id>T1190</id>
       <id>T1078</id>
@@ -229,7 +229,7 @@
   <rule id="104159" level="13">
     <program_name>^(api_server|cpmad|mgmtd|cpwmd|cpsmd)$</program_name>
     <regex type="pcre2">(?i)(add[\s_-]?access[\s_-]?rule|delete[\s_-]?access[\s_-]?rule|set[\s_-]?access[\s_-]?rule|access\s+rule\s+(added|deleted|modified|created|changed)|firewall\s+rule\s+(added|deleted|modified|created)|security\s+policy\s+(rule\s+)?(modified|changed|updated)|network\s+(object\s+)?(added|deleted|created|modified))</regex>
-    <description>Check Point SmartConsole: firewall access rule or network object modification on $(hostname) -- policy change via management API; if correlated with CVE-2026-16232 indicators, attacker may be creating permissive rules for lateral movement (T1562.004)</description>
+    <description>Check Point SmartConsole: firewall access rule or network object modification on $(hostname)  -  policy change via management API; if correlated with CVE-2026-16232 indicators, attacker may be creating permissive rules for lateral movement (T1562.004)</description>
     <mitre>
       <id>T1562.004</id>
       <id>T1190</id>

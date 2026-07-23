@@ -7,8 +7,8 @@
          CVE-2026-34909: Path traversal (read arbitrary files post-bypass)
          CVE-2026-34910: OS command injection (RCE via exposed API post-traverse)
          Affected: Dream Machine, Dream Machine Pro, Dream Router,
-                   Cloud Key, UniFi Network Server (all &lt; OS 4.1.13)
-         Chained in the wild: access bypass -> path traversal -> command injection
+                   Cloud Key, UniFi Network Server (all lt OS 4.1.13)
+         Chained in the wild: access bypass - path traversal - command injection
          Management ports: 443 (HTTPS), 8080 (HTTP inform), 8443 (HTTPS UI)
        - macOS ClickFix Terminal DMG Execution (AMOS delivery, June 2026)
          Attack: fake CAPTCHA page socially engineers victim to paste
@@ -273,7 +273,7 @@
   <!-- ================================================================
        Rule 103568  - macOS: process execution from /Volumes/ path
        After hdiutil attach mounts the DMG, the malicious binary is executed
-       directly from the /Volumes/&lt;dmg-name>/ path. Legitimate apps are installed
+       directly from the /Volumes/[dmg-nameto // path. Legitimate apps are installed
        to /Applications/ not run directly from /Volumes/.
        Level 12: execution from mounted disk image is very unusual.
        ================================================================ -->

@@ -181,7 +181,7 @@
   <rule id="103972" level="7">
     <if_group>firewall</if_group>
     <field name="data.dest_port">^3671$</field>
-    <description>KNXnet/IP: Connection to KNX building automation port 3671 on $(data.dest_ip) from $(data.src_ip) -- KNXnet/IP (port 3671) traffic detected; investigate source against authorized KNX infrastructure; correlate with rules 103973-103978 for CVE-2023-4346 exploitation signals (T1190)</description>
+    <description>KNXnet/IP: Connection to KNX building automation port 3671 on $(data.dest_ip) from $(data.src_ip)  -  KNXnet/IP (port 3671) traffic detected; investigate source against authorized KNX infrastructure; correlate with rules 103973-103978 for CVE-2023-4346 exploitation signals (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -212,7 +212,7 @@
   <rule id="103973" level="13">
     <if_sid>103972</if_sid>
     <field name="data.src_ip" negate="yes" type="pcre2">^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|127\.|::1$|fe80:)</field>
-    <description>CVE-2023-4346 KNXnet/IP: External source $(data.src_ip) connecting to KNX port 3671 on $(data.dest_ip) -- internet-routable IP accessing building automation network; KNXnet/IP is a local-network protocol with no legitimate internet exposure; active CVE-2023-4346 exploitation likely; audit KNX device BCU key states immediately (T1190)</description>
+    <description>CVE-2023-4346 KNXnet/IP: External source $(data.src_ip) connecting to KNX port 3671 on $(data.dest_ip)  -  internet-routable IP accessing building automation network; KNXnet/IP is a local-network protocol with no legitimate internet exposure; active CVE-2023-4346 exploitation likely; audit KNX device BCU key states immediately (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -241,7 +241,7 @@
   <rule id="103974" level="11">
     <if_sid>103972</if_sid>
     <field name="data.dest_ip" type="pcre2">^224\.0\.23\.12$</field>
-    <description>CVE-2023-4346 KNXnet/IP: KNX discovery multicast SEARCH_REQUEST from $(data.src_ip) to 224.0.23.12:3671 -- KNXnet/IP device discovery on the KNX multicast group; attacker enumerating KNX IP interfaces for CVE-2023-4346 BCU key bypass attack; investigate source host against authorized ETS workstation list (T1046/T1190)</description>
+    <description>CVE-2023-4346 KNXnet/IP: KNX discovery multicast SEARCH_REQUEST from $(data.src_ip) to 224.0.23.12:3671  -  KNXnet/IP device discovery on the KNX multicast group; attacker enumerating KNX IP interfaces for CVE-2023-4346 BCU key bypass attack; investigate source host against authorized ETS workstation list (T1046/T1190)</description>
     <mitre>
       <id>T1046</id>
       <id>T1190</id>
@@ -280,7 +280,7 @@
   <rule id="103975" level="12">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(KNX|EIBnet|knxnet|knxip|KNX\/IP|building.automat)</field>
-    <description>Suricata ICS: KNXnet/IP or EIBnet building automation protocol alert -- $(alert.signature) from $(alert.src_ip) to $(alert.dest_ip):$(alert.dest_port); KNX IDS signature fired; investigate source against authorized ETS workstation list for CVE-2023-4346 exploitation (T1190)</description>
+    <description>Suricata ICS: KNXnet/IP or EIBnet building automation protocol alert  -  $(alert.signature) from $(alert.src_ip) to $(alert.dest_ip):$(alert.dest_port); KNX IDS signature fired; investigate source against authorized ETS workstation list for CVE-2023-4346 exploitation (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -306,7 +306,7 @@
   <rule id="103976" level="13">
     <if_sid>86601</if_sid>
     <field name="alert.signature" type="pcre2">(?i)(KNX|EIBnet|knxnet).*(exploit|scan|enum|connect.request|BCU|program|lock|group.write|memory.write|tunnel|unauthorized)</field>
-    <description>Suricata ICS: KNX exploitation or enumeration alert -- $(alert.signature) from $(alert.src_ip) to $(alert.dest_ip):$(alert.dest_port); KNX-specific IDS signature indicating unauthorized access or BCU key write consistent with CVE-2023-4346 KNXlock attack; escalate to building operations immediately (T1190/T1499.002)</description>
+    <description>Suricata ICS: KNX exploitation or enumeration alert  -  $(alert.signature) from $(alert.src_ip) to $(alert.dest_ip):$(alert.dest_port); KNX-specific IDS signature indicating unauthorized access or BCU key write consistent with CVE-2023-4346 KNXlock attack; escalate to building operations immediately (T1190/T1499.002)</description>
     <mitre>
       <id>T1190</id>
       <id>T1499.002</id>
@@ -355,7 +355,7 @@
        still has a path to recovery. -->
   <rule id="103977" level="14">
     <regex type="pcre2">(?i)(?:KNXnet|EIBnet|knxd|linknx|openknx).*(?:CONNECT_REQUEST|BCU[_\s]key|BCU_KEY|A_Memory_Write|programming[_\s]mode|program[_\s]mode|A_GroupValue_Write)|(?:BCU[_\s]key|BCU_KEY).*(?:KNX|EIB|knxnet)|(?:KNX|knxnet|EIBnet).*(?:lock(?:ed|ing)?|unauthorized.*program|unauthorized.*BCU)</regex>
-    <description>CVE-2023-4346 KNXnet/IP: KNX management log shows programming access, BCU key write, or CONNECT_REQUEST -- $(agent.name); unauthenticated BCU key write or programming mode access is the CVE-2023-4346 attack payload; KNX device lockout may be in progress; escalate to building operations and isolate affected KNX IP interfaces immediately (T1190/T1499.002/T1078)</description>
+    <description>CVE-2023-4346 KNXnet/IP: KNX management log shows programming access, BCU key write, or CONNECT_REQUEST  -  $(agent.name); unauthenticated BCU key write or programming mode access is the CVE-2023-4346 attack payload; KNX device lockout may be in progress; escalate to building operations and isolate affected KNX IP interfaces immediately (T1190/T1499.002/T1078)</description>
     <options>alert_by_email</options>
     <mitre>
       <id>T1190</id>
@@ -397,7 +397,7 @@
   <rule id="103978" level="9" frequency="10" timeframe="60">
     <if_matched_sid>103972</if_matched_sid>
     <same_field>data.src_ip</same_field>
-    <description>CVE-2023-4346 KNXnet/IP: Rapid probe burst from $(data.src_ip) to KNX port 3671 -- 10+ connection attempts in 60 seconds from same source; automated KNX scanner or CVE-2023-4346 exploitation tool (KNXmap, xknx, knxd) fingerprint; investigate source host for unauthorized KNX tooling (T1046)</description>
+    <description>CVE-2023-4346 KNXnet/IP: Rapid probe burst from $(data.src_ip) to KNX port 3671  -  10+ connection attempts in 60 seconds from same source; automated KNX scanner or CVE-2023-4346 exploitation tool (KNXmap, xknx, knxd) fingerprint; investigate source host for unauthorized KNX tooling (T1046)</description>
     <mitre>
       <id>T1046</id>
     </mitre>

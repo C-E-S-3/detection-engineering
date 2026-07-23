@@ -64,7 +64,7 @@
   <rule id="102811" level="12">
     <if_sid>102810</if_sid>
     <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)\\(MpCmdRun|MpSigStub|MpDlpCmd|MpUXSrv|MpCopyAccelerator|mpconsole|NisSrv|ConfigSecurityPolicy)\.exe$</field>
-    <description>RoguePlanet: MsMpEng.exe spawned unexpected child $(win.eventdata.image) on $(win.eventdata.computer) -- anomalous Defender behavior; investigate for CVE-2026-50656 exploitation (T1068)</description>
+    <description>RoguePlanet: MsMpEng.exe spawned unexpected child $(win.eventdata.image) on $(win.eventdata.computer)  -  anomalous Defender behavior; investigate for CVE-2026-50656 exploitation (T1068)</description>
     <mitre>
       <id>T1068</id>
     </mitre>
@@ -80,7 +80,7 @@
   <rule id="102812" level="14">
     <if_sid>102810</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(cmd|powershell|pwsh|wscript|cscript|mshta|conhost|wsl)\.exe$</field>
-    <description>RoguePlanet: MsMpEng.exe spawned shell $(win.eventdata.image) on $(win.eventdata.computer) by user $(win.eventdata.user) -- confirmed CVE-2026-50656 exploitation vector; contains SYSTEM privilege escalation (T1068)</description>
+    <description>RoguePlanet: MsMpEng.exe spawned shell $(win.eventdata.image) on $(win.eventdata.computer) by user $(win.eventdata.user)  -  confirmed CVE-2026-50656 exploitation vector; contains SYSTEM privilege escalation (T1068)</description>
     <mitre>
       <id>T1068</id>
     </mitre>
@@ -94,7 +94,7 @@
   <rule id="102813" level="15">
     <if_sid>102812</if_sid>
     <field name="win.eventdata.integrityLevel" type="pcre2">(?i)^System$</field>
-    <description>RoguePlanet: MsMpEng.exe spawned SYSTEM-integrity shell $(win.eventdata.image) on $(win.eventdata.computer) -- CRITICAL: confirmed CVE-2026-50656 exploitation; SYSTEM privileges achieved; initiate immediate incident response (T1068)</description>
+    <description>RoguePlanet: MsMpEng.exe spawned SYSTEM-integrity shell $(win.eventdata.image) on $(win.eventdata.computer)  -  CRITICAL: confirmed CVE-2026-50656 exploitation; SYSTEM privileges achieved; initiate immediate incident response (T1068)</description>
     <mitre>
       <id>T1068</id>
     </mitre>
@@ -110,7 +110,7 @@
     <decoded_as>json</decoded_as>
     <field name="win.eventdata.eventID" type="pcre2">^(11|23)$</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)C:\\ProgramData\\Microsoft\\Windows Defender\\Scans\\.*\.(exe|dll|bat|ps1|vbs|js)$</field>
-    <description>RoguePlanet: Executable dropped in Windows Defender scan directory $(win.eventdata.targetFilename) on $(win.eventdata.computer) -- potential CVE-2026-50656 pre-exploitation staging; review file origin (T1068)</description>
+    <description>RoguePlanet: Executable dropped in Windows Defender scan directory $(win.eventdata.targetFilename) on $(win.eventdata.computer)  -  potential CVE-2026-50656 pre-exploitation staging; review file origin (T1068)</description>
     <mitre>
       <id>T1068</id>
     </mitre>
@@ -125,7 +125,7 @@
   <rule id="102815" level="13">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(mklink|New-Item.*Junction|fsutil.*hardlink|fsutil.*symlink).*(Defender|MsMpEng|WdFilter)</field>
-    <description>RoguePlanet: Symlink or junction creation targeting Defender paths by $(win.eventdata.user) on $(win.eventdata.computer) -- potential CVE-2026-50656 exploitation setup; race condition preparation (T1068)</description>
+    <description>RoguePlanet: Symlink or junction creation targeting Defender paths by $(win.eventdata.user) on $(win.eventdata.computer)  -  potential CVE-2026-50656 exploitation setup; race condition preparation (T1068)</description>
     <mitre>
       <id>T1068</id>
     </mitre>
