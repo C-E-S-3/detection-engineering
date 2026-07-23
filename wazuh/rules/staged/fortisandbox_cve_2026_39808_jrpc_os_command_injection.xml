@@ -40,7 +40,7 @@
      Attack chain:
        1. Attacker sends an HTTP POST (or GET with parameters) to the FortiSandbox
           JRPC API endpoint (/jrpc or equivalent path prefix) with a payload
-          containing OS command injection metacharacters (semicolon, pipe, &&,
+          containing OS command injection metacharacters (semicolon, pipe, &amp;&amp;,
           backtick, dollar-parenthesis) in one or more parameters.
        2. The JRPC request handler passes the unsanitized parameter value to
           an OS command execution function.
@@ -216,7 +216,7 @@
          - %3B / semicolon (;): command separator
          - %7C / pipe (|): command piping
          - %60 / backtick (`): command substitution
-         - %26%26 / &&: conditional command execution
+         - %26%26 / &amp;&amp;: conditional command execution
          - %24%28 / dollar-paren ($(...)): command substitution
          - %0A / newline (\n): command separator bypass
        This rule fires on both URL-encoded and raw metacharacter forms

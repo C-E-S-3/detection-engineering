@@ -15,7 +15,7 @@
 
      Source: The Hacker News (2026-02), Hexastrike threat analysis,
              SOC Prime SmartLoader analysis, Straiker blog
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1195.001 - Compromise Software Supply Chain (TA0001)
        T1059.007 - Command and Script Interpreter: JavaScript (TA0002)
        T1036.005 - Masquerading: Match Legitimate Name or Location (TA0005)

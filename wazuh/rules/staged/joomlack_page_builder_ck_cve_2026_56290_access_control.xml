@@ -1,7 +1,7 @@
 <!-- ============================================================
      Joomlack Page Builder CK Improper Access Control
      CVE-2026-56290  - CVSS 9.8 CRITICAL
-     MITRE ATT&CK:
+     MITRE ATT&amp;CK:
        T1190        - Exploit Public-Facing Application
        T1505.003    - Server Software Component: Web Shell
        T1136.001    - Create Account: Local Account (rogue Joomla admin)

@@ -1,7 +1,7 @@
 <!-- ===========================================================
      Cisco IOS HTTP/HTTPS Management Interface CSRF
      CVE-2008-4128 (Cisco IOS)
-     MITRE ATT&CK:
+     MITRE ATT&amp;CK:
        T1566.002 - Phishing: Spearphishing Link (CSRF delivery)
        T1098     - Account Manipulation (config change)
        T1562.004 - Impair Defenses: Disable or Modify System Firewall

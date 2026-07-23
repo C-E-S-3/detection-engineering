@@ -1,7 +1,7 @@
 <!-- ============================================================
      RoguePlanet Windows Defender Privilege Escalation Detection Rules
      CVE-2026-50656 (CVSS 7.8 HIGH, "Exploitation More Likely")
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1068  - Exploitation for Privilege Escalation
      Rule IDs: 102810-102815
      Author: SecOps Engineer (Purple Team)

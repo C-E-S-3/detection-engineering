@@ -19,7 +19,7 @@
      Author: SecOps Purple Team
      Date: 2026-06-24
 
-     MITRE ATT&CK Coverage:
+     MITRE ATT&amp;CK Coverage:
        T1486  Data Encrypted for Impact (Prinz Eugen)
        T1070.004  Indicator Removal: File Deletion (Prinz Eugen self-delete)
        T1489  Service Stop (Prinz Eugen process kill)

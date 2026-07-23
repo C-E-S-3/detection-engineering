@@ -35,7 +35,7 @@
      Author: SecOps Purple Team
      Date: 2026-06-24
 
-     MITRE ATT&CK Coverage:
+     MITRE ATT&amp;CK Coverage:
        T1190        Exploit Public-Facing Application (FortiSandbox CVE-2026-25089)
        T1059.004    Unix Shell (FortiSandbox command injection execution)
        T1040        Network Sniffing (FortiBleed sniffer deployment)
@@ -62,7 +62,7 @@
 
      Detection approach:
        - Suricata IDS: POST to /json/api or /start-vnc endpoint with JSON body
-         containing command-injection metacharacters (;, |, $(), ``, &)
+         containing command-injection metacharacters (;, |, $(), ``, &amp;)
        - Suricata: HTTP 500 burst from FortiSandbox management IP after crafted POST
        - Wazuh syslog: FortiSandbox system log unexpected process spawn
        - Correlation: probe pattern (rapid POSTs) from same source

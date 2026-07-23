@@ -1,6 +1,6 @@
 <!-- ================================================================
      Teleport Access Platform  - Security Monitoring Rules
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1078   (Valid Accounts  - unauthorized access via Teleport)
        T1110   (Brute Force  - repeated Teleport auth failures)
        T1098   (Account Manipulation  - role/user changes)

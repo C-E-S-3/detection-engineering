@@ -1,6 +1,6 @@
 <!-- ============================================================
      Spirals Ransomware: IIS Webshell Execution + WMI Mass Lateral Movement
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1190     - Exploit Public-Facing Application (TA0001 Initial Access)
        T1505.003 - Server Software Component: Web Shell (TA0003 Persistence)
        T1059.001 - Command and Scripting Interpreter: PowerShell (TA0002)

@@ -4,7 +4,7 @@
                   / CWE-284: Improper Access Control)
      Affected: KNX devices using Connection Authorization Option 1
                (BCU key feature) across all KNX IP-enabled hardware
-     MITRE ATT&CK:
+     MITRE ATT&amp;CK:
        T1190 - Exploit Public-Facing Application (TA0001 Initial Access)
        T1499.002 - Endpoint Denial of Service: Service Exhaustion Flood (TA0040 Impact)
        T1046  - Network Service Discovery (TA0007 Discovery)

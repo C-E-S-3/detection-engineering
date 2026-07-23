@@ -1,6 +1,6 @@
 <!-- ============================================================
      GoSerpent: Go-Based RAT - Southeast Asia Government Espionage
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1573.001 - Encrypted Channel: Symmetric Cryptography (ChaCha20, SHA256-keyed)
        T1560     - Archive Collected Data (ThumbcacheService - thumbcache_605a.db)
        T1003.001 - OS Credential Dumping: LSASS Memory (Mimikatz + QuarksDumpLocalHash)

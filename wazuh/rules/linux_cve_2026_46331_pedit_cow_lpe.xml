@@ -1,7 +1,7 @@
 <!-- ============================================================
      Linux Kernel Pedit COW Local Privilege Escalation Detection Rules
      CVE-2026-46331 ("pedit COW") - CVSS 4.0: AV:L/AC:L/AT:N/PR:L/UI:N (8.5 HIGH)
-     MITRE ATT&CK:
+     MITRE ATT&amp;CK:
        T1068       - Exploitation for Privilege Escalation
        T1548.001   - Setuid and Setgid (post-exploit)
        T1611       - Escape to Host (container/namespace context)

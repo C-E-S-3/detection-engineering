@@ -1,6 +1,6 @@
 <!-- ============================================================
      UAT-11795: Starland RAT Trojanized Installer + WLDR C2 Implant
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1204.002 - User Execution: Malicious File (TA0002)
        T1059.006 - Command and Scripting Interpreter: Python (TA0002)
        T1059.001 - Command and Scripting Interpreter: PowerShell (TA0002)

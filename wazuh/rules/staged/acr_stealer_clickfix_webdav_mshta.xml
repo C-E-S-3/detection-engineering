@@ -2,7 +2,7 @@
      ACR Stealer Detection Rules
      Threat: ACR Stealer - ClickFix delivery via WebDAV/MSHTA intrusion chains
      Source: Microsoft Security Blog / BleepingComputer / The Hacker News, July 2026
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1566     - Phishing (ClickFix lure via malvertising/SEO) (TA0001)
        T1218.005 - Signed Binary Proxy Execution: Mshta (TA0005)
        T1218.011 - Signed Binary Proxy Execution: Rundll32 (TA0005)

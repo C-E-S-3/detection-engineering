@@ -1,6 +1,6 @@
 <!-- Langflow CVE-2026-5027: Path Traversal Unauthenticated RCE via Cron Injection -->
 <!-- Rule IDs: 101700-101712                                                          -->
-<!-- MITRE ATT&CK: T1190 (Exploit Public-Facing Application)                         -->
+<!-- MITRE ATT&amp;CK: T1190 (Exploit Public-Facing Application)                         -->
 <!--               T1053.003 (Scheduled Task/Job: Cron)                               -->
 <!--               T1059.004 (Command and Scripting Interpreter: Unix Shell)           -->
 <!-- CVE: CVE-2026-5027 (CVSS 8.8)  - Langflow lte 1.8.4 path traversal in             -->

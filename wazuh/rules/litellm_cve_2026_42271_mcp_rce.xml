@@ -1,7 +1,7 @@
 <!-- ============================================================
      LiteLLM MCP Preview Endpoint Command Injection
      CVE-2026-42271 (BerriAI LiteLLM) + CVE-2026-48710 (Starlette BadHost)
-     MITRE ATT&CK:
+     MITRE ATT&amp;CK:
        T1190 - Exploit Public-Facing Application
        T1552 - Unsecured Credentials (API key exfiltration post-exploit)
        T1078 - Valid Accounts (credential bypass via CVE-2026-48710)

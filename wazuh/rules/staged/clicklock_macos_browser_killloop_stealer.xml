@@ -1,6 +1,6 @@
 <!-- ============================================================
      ClickLock macOS GUI Input Capture via Browser Kill-Loop Stealer
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1543.001 - Persistence: Launch Agent (TA0003)
        T1489     - Service Stop / browser kill-loop coercion (TA0005/TA0040)
        T1567     - Exfiltration Over Web Service: Telegram Bot API (TA0010)

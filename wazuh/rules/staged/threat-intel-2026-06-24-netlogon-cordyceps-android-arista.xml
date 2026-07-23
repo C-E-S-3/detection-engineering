@@ -30,7 +30,7 @@
      Author: SecOps Purple Team
      Date: 2026-06-24
 
-     MITRE ATT&CK Coverage:
+     MITRE ATT&amp;CK Coverage:
        T1190        Exploit Public-Facing Application (CVE-2026-41089 DC attack surface)
        T1210        Exploitation of Remote Services (Netlogon RPC exploitation)
        T1543.003    Create or Modify System Process: Windows Service (Netlogon crash/restart)

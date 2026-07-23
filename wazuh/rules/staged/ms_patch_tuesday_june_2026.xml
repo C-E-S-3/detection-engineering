@@ -1,6 +1,6 @@
 <!-- ============================================================
      Microsoft June 2026 Patch Tuesday  - CVE Detection Rules
-     MITRE ATT&CK:
+     MITRE ATT&amp;CK:
        T1190  - Exploit Public-Facing Application
        T1566.002 - Phishing: Spearphishing Link (Exchange XSS)
        T1210  - Exploitation of Remote Services (WinRM/RDP)

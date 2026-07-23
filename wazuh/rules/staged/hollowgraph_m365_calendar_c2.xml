@@ -49,7 +49,7 @@
      Source: Group-IB (July 2026), BleepingComputer, The Hacker
              News, The Register (all 2026-07-20)
 
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1102.002 - Web Service: Bidirectional Communication (M365 calendar dead drop)
        T1071.004 - Application Layer Protocol: DNS (DNS tunnel for Entra cred delivery)
        T1048.001 - Exfiltration Over Alternative Protocol: DNS

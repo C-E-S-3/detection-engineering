@@ -2,7 +2,7 @@
      Windows LegacyHive Local Privilege Escalation Detection Rules
      Vulnerability: LegacyHive ProfSvc zero-day (no CVE assigned as of 2026-07-19)
      Researcher: Nightmare-Eclipse (public PoC released 2026-07-15)
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1068  - Exploitation for Privilege Escalation (TA0004)
        T1112  - Modify Registry (TA0005)
        T1134  - Access Token Manipulation (TA0004)

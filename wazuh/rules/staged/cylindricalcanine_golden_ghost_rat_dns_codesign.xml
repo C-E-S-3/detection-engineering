@@ -38,7 +38,7 @@
                 detects the binary at rest; these rules detect runtime
                 execution of the same hash.
 
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1071.001 - Application Layer Protocol: Web Protocols (C2 DNS)
        T1573     - Encrypted Channel (TCP 5198 exfil channel)
        T1553.002 - Code Signing (stolen DigiCert certificates)
@@ -93,11 +93,11 @@
        Expel (2026-07-20): https://expel.com/blog/introducing-cylindricalcanine/
        The Hacker News (2026-07):
          https://thehackernews.com/2026/07/goldeneyedog-subgroup-linked-to.html
-       MITRE ATT&CK Dragon Breath G1071:
+       MITRE ATT&amp;CK Dragon Breath G1071:
          https://attack.mitre.org/groups/G1071/
-       MITRE ATT&CK T1071.001:
+       MITRE ATT&amp;CK T1071.001:
          https://attack.mitre.org/techniques/T1071/001/
-       MITRE ATT&CK T1553.002:
+       MITRE ATT&amp;CK T1553.002:
          https://attack.mitre.org/techniques/T1553/002/
      ============================================================ -->
 

@@ -1,6 +1,6 @@
 <!-- ============================================================
      Mistic Backdoor / KongTuke Access Broker Detection Rules
-     MITRE ATT&CK Techniques:
+     MITRE ATT&amp;CK Techniques:
        T1566.002 - Phishing: Spearphishing Link (Teams ClickFix delivery)
        T1574.002 - Hijack Execution Flow: DLL Side-Loading
        T1055    - Process Injection (in-memory BOF execution)
@@ -62,7 +62,7 @@
      References:
        - BleepingComputer: "Stealthy Mistic Backdoor Linked to Ransomware Access
          Broker KongTuke" (2026-06-24)
-       - MITRE ATT&CK: T1574.002 (DLL Side-Loading)
+       - MITRE ATT&amp;CK: T1574.002 (DLL Side-Loading)
      ============================================================ -->
 
 <group name="windows,kongtuke,mistic,malware,defense_evasion,credential_access,">
@@ -225,7 +225,7 @@
        command, it deletes itself and its loader DLLs.
        Detection: cmd.exe spawned by MpExtMs.exe using del or
        ping-then-delete self-deletion pattern (cmd /c ping -n 3
-       127.0.0.1 & del [path]).
+       127.0.0.1 &amp; del [path]).
        =========================================================== -->
 
   <rule id="103597" level="13">

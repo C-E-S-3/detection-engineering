@@ -5,7 +5,7 @@
      Parent file: staged/januscape_kvm_cve_2026_53359_vm_escape.xml
      Parent issue: ESKA-614 | This issue: ESKA-618
 
-     MITRE ATT&CK:
+     MITRE ATT&amp;CK:
        T1611  - Escape to Host (TA0004)
        T1068  - Exploitation for Privilege Escalation (TA0004)
        T1082  - System Information Discovery (TA0007)

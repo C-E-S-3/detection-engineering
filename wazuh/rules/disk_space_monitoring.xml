@@ -9,7 +9,7 @@
 <!--     Rule 101500 is the anchor; children refine by source/severity.        -->
 <!--   - Docker rules (101510-101519) chain off the docker base (101200).      -->
 <!--                                                                           -->
-<!-- MITRE ATT&CK:                                                             -->
+<!-- MITRE ATT&amp;CK:                                                             -->
 <!--   - T1499 (Endpoint Denial of Service): adversary-caused disk exhaustion  -->
 <!--   - T1485 (Data Destruction): disk fill to destroy logs / deny recovery   -->
 <!--   Impact tactic (TA0040)                                                  -->
