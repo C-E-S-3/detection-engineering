@@ -69,6 +69,7 @@ by Processes.dest Processes.user Processes.parent_process_name
 | tstats `security_content_summariesonly` count min(_time) as firstTime max(_time) as lastTime
 from datamodel=Endpoint.Filesystem
 where Filesystem.file_hash IN (
+    "87de3e5a8ef669589c421220cd392ae8027a8f8d3cd97d35ac339f87dcff12c8",
     "c36e15f0532569d789ba9fdbfccf6a1bb5ac2c75",
     "2a2ef9cd83bdb635bb3da2fe6b6a42c9b0cc657f",
     "43eae0fb588987107a4805ecd1cf5c301263643b")
@@ -76,8 +77,22 @@ by Filesystem.dest Filesystem.user Filesystem.file_path Filesystem.file_hash Fil
 | `drop_dm_object_name(Filesystem)`
 | `security_content_ctime(firstTime)`
 | `security_content_ctime(lastTime)`
-| eval risk_score=100, note="Confirmed SmartLoader Lua script hash — full IR response warranted"
+| eval risk_score=100, note="Confirmed SmartLoader hash — full IR response warranted"
 | table firstTime lastTime dest user file_path file_hash action risk_score note
+```
+
+### Query 2b: DNS Resolution of SmartLoader C2 Domain
+
+```spl
+| tstats `security_content_summariesonly` count min(_time) as firstTime max(_time) as lastTime
+from datamodel=Network_Resolution.DNS
+where DNS.query IN ("pasteflawwed.world", "www.pasteflawwed.world")
+by DNS.src DNS.query DNS.answer
+| `drop_dm_object_name(DNS)`
+| `security_content_ctime(firstTime)`
+| `security_content_ctime(lastTime)`
+| eval risk_score=100, note="Confirmed SmartLoader C2 domain — FakeGit July 2026 campaign; full IR response warranted"
+| table firstTime lastTime src query answer risk_score note
 ```
 
 ### Query 3: resource.txt Created or Modified in npm Package Directory
