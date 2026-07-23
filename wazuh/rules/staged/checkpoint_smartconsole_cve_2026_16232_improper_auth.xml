@@ -1,0 +1,240 @@
+<!-- ============================================================
+     Check Point SmartConsole CVE-2026-16232 Improper Authentication
+     MITRE ATT&CK Techniques:
+       T1190  - Exploit Public-Facing Application (TA0001 Initial Access)
+       T1078  - Valid Accounts: use of obtained token (TA0001/TA0005)
+       T1098  - Account Manipulation: admin account creation post-bypass (TA0003)
+       T1562.004 - Impair Defenses: Disable or Modify System Firewall (TA0005)
+     Rule IDs: 104152-104159
+     Author: SecOps Engineer (Purple Team, ESKA-632)
+     Date: 2026-07-23
+
+     Vulnerability Summary:
+
+     CVE-2026-16232 is an improper authentication vulnerability in Check Point
+     SmartConsole, the primary management application for Check Point Security
+     Gateways. An unauthenticated remote attacker can send a specially crafted
+     request to the SmartConsole management API and obtain a valid application
+     login token without providing legitimate credentials. The attacker can then
+     use the token to authenticate with full administrative privileges and
+     manage the connected Security Gateway (modify firewall policy, install
+     rules, create admin accounts, pivot to managed gateways).
+
+     CISA KEV added 2026-07-22. Federal deadline 2026-07-25 (BOD 26-04).
+     CVSS score: Critical. Exploitation is expected to be straightforward and
+     will likely be incorporated into ransomware pre-positioning toolkits.
+
+     Attack Flow:
+
+     1. Attacker probes SmartConsole management API (/web_api/ endpoint,
+        typically TCP 443 or 19009 on the Smart Management Server).
+     2. Crafted unauthenticated request to /web_api/login (or equivalent
+        token issuance endpoint) exploits the improper auth flaw.
+     3. Server returns a valid session token (sid) without credential check.
+     4. Attacker uses the token to call privileged API methods:
+        - /web_api/publish (commit policy changes)
+        - /web_api/install-policy (push rules to gateways)
+        - /web_api/add-administrator (create backdoor admin)
+        - /web_api/set-access-rule (add permissive firewall rules)
+
+     Detection Approach:
+
+     1. (104152) Base anchor: SmartConsole API login events from any source.
+        Level 5 - correlation anchor, not a standalone alert.
+     2. (104153) Login success from source with recent failed attempts (bypass
+        pattern: CVE-2026-16232 may not produce visible failures, but scanners
+        often probe before exploiting). Level 12.
+     3. (104154) Rapid login attempts from the same source (brute-force or
+        automated exploit tool probing the token endpoint). Level 12 frequency.
+     4. (104155) API authentication failure spike: multiple 401 responses
+        from the same source (pre-bypass reconnaissance). Level 11 frequency.
+     5. (104156) Privileged policy operation (install-policy, publish) logged
+        immediately after fresh SmartConsole login. Level 14.
+     6. (104157) Admin account creation via SmartConsole API (persistence
+        post-bypass: add-administrator or set-administrator). Level 14.
+     7. (104158) Off-hours SmartConsole management API authentication.
+        Level 9 - behavioral anomaly, correlate with other indicators.
+     8. (104159) Firewall policy modification (add or delete access rule) via
+        SmartConsole API - high-confidence post-exploitation pivot. Level 13.
+
+     Log Source Prerequisites:
+
+     These rules target syslog from the Check Point Smart Management Server.
+     Process names present in the logs: api_server, cpmad, mgmtd, cpwmd, cpsmd.
+     If the management server is not in the environment, rules are precautionary
+     and will not fire. Deploy now so coverage is in place if a Check Point
+     management server is onboarded or network traffic from one is observed.
+
+     For richer field extraction (srcip, username, session id), deploy a
+     Check Point syslog decoder if available. Rules are written to trigger
+     on log message content alone (no dedicated decoder required).
+
+     References:
+       - CISA KEV 2026-07-22: CVE-2026-16232
+       - Check Point advisory (expected sk###### to be published)
+       - CVSS Critical - unauthenticated remote token acquisition
+     ============================================================ -->
+
+<group name="checkpoint,smartconsole,initial_access,cve_2026_16232,">
+
+  <!-- ===========================================================
+       T1190  - SmartConsole API login anchor (correlation base)
+       Rule ID: 104152
+       Matches any SmartConsole management API authentication event
+       (success or failure) from api_server or cpmad syslog.
+       Level 5 - informational anchor used by frequency rules below.
+       =========================================================== -->
+
+  <rule id="104152" level="5">
+    <program_name>^(api_server|cpmad|mgmtd|cpwmd|cpsmd)$</program_name>
+    <regex type="pcre2">(?i)(smartconsole\s+(login|auth|session)|web[\s_-]?api\s+(login|auth|session|token)|management\s+api\s+(login|auth|session)|login\s+request\s+(received|sent)|session\s+token\s+(issued|created|granted))</regex>
+    <description>Check Point SmartConsole: management API authentication event on $(hostname) -- CVE-2026-16232 anchor (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>checkpoint_smartconsole_login,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190 / T1078  - Auth bypass: success following prior failures
+       Rule ID: 104153
+       Classic bypass pattern: attacker fails once or twice (normal
+       auth path rejected), then a crafted exploit request succeeds.
+       Frequency: 1 success within 5 minutes of 3+ failures from
+       the same source.
+       =========================================================== -->
+
+  <rule id="104153" level="12" frequency="3" timeframe="300">
+    <if_matched_sid>104152</if_matched_sid>
+    <same_srcip/>
+    <regex type="pcre2">(?i)(login\s+success|session\s+(token\s+)?(issued|created|granted|established)|authentication\s+success|authenticated\s+success|user\s+authenticated)</regex>
+    <description>Check Point SmartConsole: authentication success from $(srcip) following 3+ recent login events on $(hostname) -- possible CVE-2026-16232 improper auth bypass; token may have been obtained without valid credentials (T1190, T1078)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+      <id>T1078</id>
+    </mitre>
+    <group>checkpoint_smartconsole_bypass,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190  - Rapid SmartConsole login probes (exploit scanner)
+       Rule ID: 104154
+       Automated exploit tools or scanners probing the token endpoint
+       will generate rapid sequential login requests. Frequency:
+       6+ login events from the same source within 60 seconds.
+       =========================================================== -->
+
+  <rule id="104154" level="12" frequency="6" timeframe="60">
+    <if_matched_sid>104152</if_matched_sid>
+    <same_srcip/>
+    <description>Check Point SmartConsole: high-frequency login probes (6+ in 60s) from $(srcip) on $(hostname) -- automated CVE-2026-16232 exploit tool or token endpoint scanner detected (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>checkpoint_smartconsole_probe,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190  - SmartConsole API authentication failures (recon)
+       Rule ID: 104155
+       Multiple auth failures from the same source indicate
+       pre-exploitation reconnaissance or brute-force before
+       CVE-2026-16232 bypass attempt. 5+ failures in 2 minutes.
+       =========================================================== -->
+
+  <rule id="104155" level="11" frequency="5" timeframe="120">
+    <program_name>^(api_server|cpmad|mgmtd|cpwmd|cpsmd)$</program_name>
+    <regex type="pcre2">(?i)(login\s+fail|auth(entication)?\s+fail|invalid\s+(credentials|password|token)|unauthorized\s+(login|access)|session\s+(denied|rejected)|wrong\s+password|bad\s+credentials)</regex>
+    <same_srcip/>
+    <description>Check Point SmartConsole: repeated authentication failures (5+ in 2m) from $(srcip) on $(hostname) -- brute-force or CVE-2026-16232 pre-exploitation probe; investigate for follow-on token bypass (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>checkpoint_smartconsole_authfail,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1562.004  - Policy install/publish via SmartConsole (critical)
+       Rule ID: 104156
+       install-policy and publish are the highest-privilege API calls
+       in SmartConsole - they push firewall rule changes to gateways.
+       An attacker using CVE-2026-16232 bypass will often immediately
+       run install-policy to create a permissive backdoor rule.
+       =========================================================== -->
+
+  <rule id="104156" level="14">
+    <program_name>^(api_server|cpmad|mgmtd|cpwmd|cpsmd)$</program_name>
+    <regex type="pcre2">(?i)(install[\s_-]?policy|policy\s+install(ation)?|publish[\s_-]?session|session\s+published|policy\s+(pushed|deployed|applied|committed)|firewall\s+policy\s+(install|push|deploy))</regex>
+    <description>Check Point SmartConsole: firewall policy install or publish operation on $(hostname) -- privileged API operation that pushes rules to managed gateways; correlate with CVE-2026-16232 bypass indicators for unauthorized policy modification (T1562.004, T1190)</description>
+    <mitre>
+      <id>T1562.004</id>
+      <id>T1190</id>
+    </mitre>
+    <group>checkpoint_policy_install,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1098  - Admin account creation via SmartConsole (persistence)
+       Rule ID: 104157
+       After bypassing authentication via CVE-2026-16232, attackers
+       create a backdoor administrator account to maintain persistent
+       access to the firewall management plane even after the token
+       expires or the vulnerability is patched.
+       =========================================================== -->
+
+  <rule id="104157" level="14">
+    <program_name>^(api_server|cpmad|mgmtd|cpwmd|cpsmd)$</program_name>
+    <regex type="pcre2">(?i)(add[\s_-]?admin(istrator)?|create[\s_-]?admin(istrator)?|set[\s_-]?admin(istrator)?|new\s+admin(istrator)?\s+(created|added)|admin(istrator)?\s+(account\s+)?(created|added|provisioned)|user\s+created.*admin|admin.*user\s+created)</regex>
+    <description>Check Point SmartConsole: administrator account created or modified via management API on $(hostname) -- post-exploitation persistence tactic consistent with CVE-2026-16232 bypass; verify this was authorized (T1098, T1078)</description>
+    <mitre>
+      <id>T1098</id>
+      <id>T1078</id>
+    </mitre>
+    <group>checkpoint_admin_created,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190 / T1078  - Off-hours SmartConsole management access
+       Rule ID: 104158
+       SmartConsole management should happen during business hours.
+       Authentication events outside 07:00-20:00 are behavioral
+       anomalies that warrant investigation, especially given active
+       exploitation of CVE-2026-16232.
+       =========================================================== -->
+
+  <rule id="104158" level="9">
+    <program_name>^(api_server|cpmad|mgmtd|cpwmd|cpsmd)$</program_name>
+    <regex type="pcre2">(?i)(login\s+success|session\s+(token\s+)?(issued|created|granted|established)|authentication\s+success|user\s+authenticated)</regex>
+    <time>20:00 - 07:00</time>
+    <description>Check Point SmartConsole: management API authentication success outside business hours on $(hostname) -- off-hours management access; triage against CVE-2026-16232 active exploitation campaign (T1190, T1078)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1078</id>
+    </mitre>
+    <group>checkpoint_smartconsole_offhours,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1562.004  - Firewall access rule modification
+       Rule ID: 104159
+       Adding, deleting, or modifying access rules in SmartConsole
+       is a high-value post-exploitation action - attackers disable
+       blocking rules or add permissive rules to enable lateral
+       movement after CVE-2026-16232 bypass.
+       =========================================================== -->
+
+  <rule id="104159" level="13">
+    <program_name>^(api_server|cpmad|mgmtd|cpwmd|cpsmd)$</program_name>
+    <regex type="pcre2">(?i)(add[\s_-]?access[\s_-]?rule|delete[\s_-]?access[\s_-]?rule|set[\s_-]?access[\s_-]?rule|access\s+rule\s+(added|deleted|modified|created|changed)|firewall\s+rule\s+(added|deleted|modified|created)|security\s+policy\s+(rule\s+)?(modified|changed|updated)|network\s+(object\s+)?(added|deleted|created|modified))</regex>
+    <description>Check Point SmartConsole: firewall access rule or network object modification on $(hostname) -- policy change via management API; if correlated with CVE-2026-16232 indicators, attacker may be creating permissive rules for lateral movement (T1562.004)</description>
+    <mitre>
+      <id>T1562.004</id>
+      <id>T1190</id>
+    </mitre>
+    <group>checkpoint_rule_modified,</group>
+  </rule>
+
+</group>
