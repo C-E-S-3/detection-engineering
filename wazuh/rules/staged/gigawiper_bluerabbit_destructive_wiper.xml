@@ -45,11 +45,11 @@
      Log source prerequisites:
        - Firewall/network logs processed via the 103000 anchor (if_sid 103000)
          Required for C2 port (103901, 103902) and direct IP (103903, 103904) detections
-       - Sysmon EventID 1 (ProcessCreate) -> Wazuh SID 61603
+       - Sysmon EventID 1 (ProcessCreate) - Wazuh SID 61603
          Required for schtasks masquerade (103905)
        - Wazuh FIM (syscheck) with SHA256 hash checking enabled
          Required for binary IOC hash match (103906)
-       - Sysmon EventID 11 (FileCreate) -> Wazuh SID 61644
+       - Sysmon EventID 11 (FileCreate) - Wazuh SID 61644
          Required for .candy extension detection (103907)
 
      Severity tiers:
@@ -71,7 +71,7 @@
     <if_sid>103000</if_sid>
     <dstport>5544</dstport>
     <protocol>tcp</protocol>
-    <description>GigaWiper BLUERABBIT: outbound TCP to non-standard RabbitMQ AMQP port 5544 from $(agent.name) -- possible GigaWiper C2 fanout channel; legitimate RabbitMQ uses port 5672 (T1571)</description>
+    <description>GigaWiper BLUERABBIT: outbound TCP to non-standard RabbitMQ AMQP port 5544 from $(agent.name)  -  possible GigaWiper C2 fanout channel; legitimate RabbitMQ uses port 5672 (T1571)</description>
     <mitre>
       <id>T1571</id>
       <id>T1561.002</id>
@@ -87,7 +87,7 @@
     <if_sid>103000</if_sid>
     <dstport>7542</dstport>
     <protocol>tcp</protocol>
-    <description>GigaWiper BLUERABBIT: outbound TCP to non-standard Redis port 7542 from $(agent.name) -- possible GigaWiper secondary C2 channel; legitimate Redis uses port 6379 (T1571)</description>
+    <description>GigaWiper BLUERABBIT: outbound TCP to non-standard Redis port 7542 from $(agent.name)  -  possible GigaWiper secondary C2 channel; legitimate Redis uses port 6379 (T1571)</description>
     <mitre>
       <id>T1571</id>
       <id>T1561.002</id>
@@ -102,7 +102,7 @@
   <rule id="103903" level="15">
     <if_sid>103000</if_sid>
     <dstip>185.182.193.21</dstip>
-    <description>GigaWiper BLUERABBIT: direct connection to confirmed C2 IP 185.182.193.21 from $(agent.name) -- CRITICAL: confirmed GigaWiper C2 node (T1071.001, T1561.002)</description>
+    <description>GigaWiper BLUERABBIT: direct connection to confirmed C2 IP 185.182.193.21 from $(agent.name)  -  CRITICAL: confirmed GigaWiper C2 node (T1071.001, T1561.002)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1561.002</id>
@@ -116,7 +116,7 @@
   <rule id="103904" level="15">
     <if_sid>103000</if_sid>
     <dstip>212.8.248.104</dstip>
-    <description>GigaWiper BLUERABBIT: direct connection to confirmed C2 IP 212.8.248.104 from $(agent.name) -- CRITICAL: confirmed GigaWiper C2 node (T1071.001, T1561.002)</description>
+    <description>GigaWiper BLUERABBIT: direct connection to confirmed C2 IP 212.8.248.104 from $(agent.name)  -  CRITICAL: confirmed GigaWiper C2 node (T1071.001, T1561.002)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1561.002</id>
@@ -134,7 +134,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\schtasks\.exe$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)/tn\s+"?OneDrive\s+Update"?.*(/sc\s+MINUTE|/sc\s+minute)</field>
-    <description>GigaWiper BLUERABBIT: schtasks.exe creating "OneDrive Update" task at MINUTE interval on $(win.eventdata.computer) -- GigaWiper persistence masquerading as Microsoft OneDrive (T1053.005, T1036.004)</description>
+    <description>GigaWiper BLUERABBIT: schtasks.exe creating "OneDrive Update" task at MINUTE interval on $(win.eventdata.computer)  -  GigaWiper persistence masquerading as Microsoft OneDrive (T1053.005, T1036.004)</description>
     <mitre>
       <id>T1053.005</id>
       <id>T1036.004</id>
@@ -151,7 +151,7 @@
   <rule id="103906" level="15">
     <if_sid>550,553,554,593</if_sid>
     <regex type="pcre2">38353f95fff270f4e3a9d7add8c64666020dd668ce66e15969a736ec48cadc59|479ae5fd7274439ddfa27bc03298ebfdfc5ff17f6412acccf74d4dbd90d94218|4d0b62d3162d4be391e3ba1e191dad28e5e5d5b161cfdef60eeb4361a92d8413|6e65483764d7c25523a5bbef5be99eb42349eef39d5517c46b3a4af262a80ceb|80d83eb01f28c87a61b51f1f83805e63a791905f019bd3b87f10a10f66efab1e|874bcb1c3d050a5b5b333a2198f504fcb27927c2abdd43b07440188a380c52d5|9eaa577c8ba71646928c1c34c3145536b0498f65f26060a6ba00744bcef57644|a8b09fd4f7ff2f298b45ca602992f44b3c2ac3746bcdb182c59ab2a20c690954</regex>
-    <description>GigaWiper BLUERABBIT: confirmed SHA256 IOC hash detected by FIM on $(agent.name) -- GigaWiper/Crucio/FlockWiper binary on disk (T1561.002, T1486)</description>
+    <description>GigaWiper BLUERABBIT: confirmed SHA256 IOC hash detected by FIM on $(agent.name)  -  GigaWiper/Crucio/FlockWiper binary on disk (T1561.002, T1486)</description>
     <mitre>
       <id>T1561.002</id>
       <id>T1486</id>
@@ -168,7 +168,7 @@
   <rule id="103907" level="15">
     <if_sid>61644</if_sid>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.candy$</field>
-    <description>GigaWiper BLUERABBIT (Crucio): .candy extension file created on $(win.eventdata.computer) -- Crucio fake-ransomware encrypting files; AES wipe is UNRECOVERABLE; isolate host immediately (T1486)</description>
+    <description>GigaWiper BLUERABBIT (Crucio): .candy extension file created on $(win.eventdata.computer)  -  Crucio fake-ransomware encrypting files; AES wipe is UNRECOVERABLE; isolate host immediately (T1486)</description>
     <mitre>
       <id>T1486</id>
       <id>T1561.001</id>

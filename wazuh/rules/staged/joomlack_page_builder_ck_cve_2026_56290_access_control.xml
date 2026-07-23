@@ -25,7 +25,7 @@
          1. Unauthenticated attacker fetches the Joomla page to extract the CSRF token
          2. POST to the CK Page Builder upload endpoint with the extracted token
          3. PHP webshell is written to CK extension media directories:
-              /media/com_ckpagebuilder/&lt;path>/*.php
+              /media/com_ckpagebuilder/[pathto //*.php
          4. Attacker executes the webshell via a subsequent GET/POST request
 
        Exploitation pattern mirrors CVE-2026-48908 (JoomShaper SP Page Builder,

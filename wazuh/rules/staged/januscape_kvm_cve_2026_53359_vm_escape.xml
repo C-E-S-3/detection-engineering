@@ -5,7 +5,7 @@
      Companion CVE: CVE-2026-46113 (both patches required for full fix)
 
      Affected: Linux kernel (all versions), Proxmox VE:
-       Vulnerable:  proxmox-kernel &lt; 6.8.12-33-pve / &lt; 7.0.14-4-pve
+       Vulnerable:  proxmox-kernel lt 6.8.12-33-pve / lt 7.0.14-4-pve
        Fixed:       proxmox-kernel-6.8.12-33-pve, proxmox-kernel-7.0.14-4-pve
        Also fixed:  upstream Linux 6.17, kernel commit 81ccda30b4e8
 

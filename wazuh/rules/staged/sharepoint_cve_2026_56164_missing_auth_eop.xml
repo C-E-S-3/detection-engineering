@@ -109,7 +109,7 @@
   <rule id="103925" level="9">
     <decoded_as>json</decoded_as>
     <field name="RequestPath" type="pcre2">(?i)(?:/_api/web/(?:sitegroups|roleassignments|siteadministrators)|/_vti_bin/(?:usergroup|lists)\.asmx|/_api/SP\.Directory\.|/_layouts/15/user\.aspx)</field>
-    <description>SharePoint CVE-2026-56164: Request to privileged SharePoint REST endpoint $(RequestPath) from $(ClientHost) at $(RequestHost) -- potential missing-auth EoP exploit delivery (T1190)</description>
+    <description>SharePoint CVE-2026-56164: Request to privileged SharePoint REST endpoint $(RequestPath) from $(ClientHost) at $(RequestHost)  -  potential missing-auth EoP exploit delivery (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -128,7 +128,7 @@
     <field name="RequestMethod">POST</field>
     <field name="RequestPath" type="pcre2">(?i)/_api/contextinfo</field>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
-    <description>SharePoint CVE-2026-56164: POST to /_api/contextinfo from $(ClientHost) at $(RequestHost) returned $(DownstreamStatus) -- anonymous form digest token obtained; first step in unauthenticated privilege escalation exploit chain (T1190)</description>
+    <description>SharePoint CVE-2026-56164: POST to /_api/contextinfo from $(ClientHost) at $(RequestHost) returned $(DownstreamStatus)  -  anonymous form digest token obtained; first step in unauthenticated privilege escalation exploit chain (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -146,7 +146,7 @@
     <if_sid>103925</if_sid>
     <field name="RequestPath" type="pcre2">(?i)/_api/web/(?:sitegroups|roleassignments)</field>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
-    <description>SharePoint CVE-2026-56164: $(RequestMethod) to $(RequestPath) from $(ClientHost) returned $(DownstreamStatus) -- SiteGroups or RoleAssignments access succeeded; privilege manipulation via missing-auth exploit (T1190/T1098)</description>
+    <description>SharePoint CVE-2026-56164: $(RequestMethod) to $(RequestPath) from $(ClientHost) returned $(DownstreamStatus)  -  SiteGroups or RoleAssignments access succeeded; privilege manipulation via missing-auth exploit (T1190/T1098)</description>
     <mitre>
       <id>T1190</id>
       <id>T1098</id>
@@ -165,7 +165,7 @@
     <field name="RequestMethod">POST</field>
     <field name="RequestPath" type="pcre2">(?i)/_api/web/sitegroups\(\d+\)/users</field>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
-    <description>SharePoint CVE-2026-56164 HIGH: POST to SiteGroups users at $(RequestHost)$(RequestPath) from $(ClientHost) returned $(DownstreamStatus) -- group member added without authentication; active privilege escalation via CVE-2026-56164 (T1190/T1098)</description>
+    <description>SharePoint CVE-2026-56164 HIGH: POST to SiteGroups users at $(RequestHost)$(RequestPath) from $(ClientHost) returned $(DownstreamStatus)  -  group member added without authentication; active privilege escalation via CVE-2026-56164 (T1190/T1098)</description>
     <mitre>
       <id>T1190</id>
       <id>T1098</id>
@@ -185,7 +185,7 @@
     <field name="RequestMethod">POST</field>
     <field name="RequestPath" type="pcre2">(?i)(?:/_api/web/siteadministrators|/_vti_bin/usergroup\.asmx|/_api/web/roleassignments/addroleassignment)</field>
     <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
-    <description>SharePoint CVE-2026-56164 CRITICAL: POST to admin endpoint $(RequestPath) from $(ClientHost) returned $(DownstreamStatus) -- site administrator or full-control role granted without authentication; immediate incident response required (T1190/T1098/T1548)</description>
+    <description>SharePoint CVE-2026-56164 CRITICAL: POST to admin endpoint $(RequestPath) from $(ClientHost) returned $(DownstreamStatus)  -  site administrator or full-control role granted without authentication; immediate incident response required (T1190/T1098/T1548)</description>
     <mitre>
       <id>T1190</id>
       <id>T1098</id>
@@ -229,7 +229,7 @@
   <rule id="103931" level="12">
     <if_sid>103930</if_sid>
     <field name="win.eventdata.targetUserName" type="pcre2">(?i)(?:SharePoint|WSS_ADMIN|WSS_WPG|Farm.Admin|SP_Admin|SPWA)</field>
-    <description>SharePoint CVE-2026-56164: Member $(win.eventdata.memberName) added to SharePoint admin group $(win.eventdata.targetUserName) by $(win.eventdata.subjectUserName) -- potential unauthenticated privilege grant; correlate with HTTP exploit events on $(agent.name) (T1098)</description>
+    <description>SharePoint CVE-2026-56164: Member $(win.eventdata.memberName) added to SharePoint admin group $(win.eventdata.targetUserName) by $(win.eventdata.subjectUserName)  -  potential unauthenticated privilege grant; correlate with HTTP exploit events on $(agent.name) (T1098)</description>
     <mitre>
       <id>T1098</id>
       <id>T1190</id>
@@ -248,7 +248,7 @@
   <rule id="103932" level="13">
     <if_sid>103930</if_sid>
     <field name="win.eventdata.subjectUserName" type="pcre2">(?i)(?:IIS APPPOOL\\|w3wp|IUSR|spservice|spadmin|sp_farm|sp_service|sharepoint_service|svc_sp)</field>
-    <description>SharePoint CVE-2026-56164 HIGH: Group membership change in $(win.eventdata.targetUserName) initiated by IIS/SharePoint service account $(win.eventdata.subjectUserName) on $(agent.name) -- web process executed privilege grant; likely CVE-2026-56164 unauthenticated EoP (T1098/T1190)</description>
+    <description>SharePoint CVE-2026-56164 HIGH: Group membership change in $(win.eventdata.targetUserName) initiated by IIS/SharePoint service account $(win.eventdata.subjectUserName) on $(agent.name)  -  web process executed privilege grant; likely CVE-2026-56164 unauthenticated EoP (T1098/T1190)</description>
     <mitre>
       <id>T1098</id>
       <id>T1190</id>
@@ -279,7 +279,7 @@
   <rule id="103934" level="12">
     <if_sid>103933</if_sid>
     <field name="win.eventdata.subjectUserName" type="pcre2">(?i)(?:IIS APPPOOL\\|w3wp|IUSR|spservice|spadmin|sp_farm|sp_service|sharepoint_service|svc_sp)</field>
-    <description>SharePoint CVE-2026-56164: User account $(win.eventdata.targetUserName) created by IIS/SharePoint service account $(win.eventdata.subjectUserName) on $(agent.name) -- unauthenticated account provisioning via missing-auth exploit; possible backdoor account (T1136/T1190)</description>
+    <description>SharePoint CVE-2026-56164: User account $(win.eventdata.targetUserName) created by IIS/SharePoint service account $(win.eventdata.subjectUserName) on $(agent.name)  -  unauthenticated account provisioning via missing-auth exploit; possible backdoor account (T1136/T1190)</description>
     <mitre>
       <id>T1136</id>
       <id>T1190</id>

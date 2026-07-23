@@ -27,13 +27,13 @@
        6. WMI used to push Spirals payload to 12+ hosts simultaneously (T1047)
        7. bitsadmin.exe used to download the ransomware payload (T1197)
        8. Rust AES-128 + ECDH P-256 encryption; ransom note: RECOVERY_SECTION.log
-          Intermittent encryption applied to files > 5 MB for speed (T1486)
+          Intermittent encryption applied to files gt 5 MB for speed (T1486)
 
      Log source prerequisites:
-       - Sysmon EventID 1 (ProcessCreate)  -> Wazuh SID 61603
+       - Sysmon EventID 1 (ProcessCreate)  - Wazuh SID 61603
          Required for rules 103993 (w3wp.exe webshell), 103994 (BITS from IIS),
          103995 (BITS from shell), 103996 (WMI remote execution)
-       - Sysmon EventID 11 (FileCreate)    -> Wazuh SID 61644
+       - Sysmon EventID 11 (FileCreate)    - Wazuh SID 61644
          Required for rule 103997 (RECOVERY_SECTION.log ransom note)
 
      Severity tiers:
@@ -63,7 +63,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\w3wp\.exe$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(cmd|powershell|powershell_ise|wscript|cscript|mshta|certutil|bitsadmin|curl|wget|whoami|net|net1)\.exe$</field>
-    <description>Spirals Ransomware: IIS w3wp.exe spawned $(win.eventdata.image) as user $(win.eventdata.user) on $(win.eventdata.computer) -- ASP.NET webshell post-exploitation; command interpreter or utility executed from IIS worker process (T1505.003, T1059)</description>
+    <description>Spirals Ransomware: IIS w3wp.exe spawned $(win.eventdata.image) as user $(win.eventdata.user) on $(win.eventdata.computer)  -  ASP.NET webshell post-exploitation; command interpreter or utility executed from IIS worker process (T1505.003, T1059)</description>
     <mitre>
       <id>T1505.003</id>
       <id>T1059.001</id>
@@ -77,7 +77,7 @@
        Sysmon EventID 1: bitsadmin.exe spawned directly by w3wp.exe (BITS download)
        Spirals ransomware uses bitsadmin.exe to download its Rust payload to
        remote hosts, masquerading the transfer as a legitimate BITS job.
-       A direct w3wp.exe -> bitsadmin.exe parent-child relationship is highly
+       A direct w3wp.exe - bitsadmin.exe parent-child relationship is highly
        anomalous: no legitimate IIS application uses bitsadmin for file transfers.
        This rule provides higher severity than 103993 by isolating the BITS
        download behavior specifically from the IIS webshell context.
@@ -86,7 +86,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\w3wp\.exe$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\bitsadmin\.exe$</field>
-    <description>Spirals Ransomware: BITS download utility bitsadmin.exe spawned by IIS w3wp.exe on $(win.eventdata.computer) -- webshell-driven payload download via BITS Job masquerading as legitimate transfer; Spirals ransomware delivery technique (T1197, T1505.003)</description>
+    <description>Spirals Ransomware: BITS download utility bitsadmin.exe spawned by IIS w3wp.exe on $(win.eventdata.computer)  -  webshell-driven payload download via BITS Job masquerading as legitimate transfer; Spirals ransomware delivery technique (T1197, T1505.003)</description>
     <mitre>
       <id>T1197</id>
       <id>T1505.003</id>
@@ -108,7 +108,7 @@
     <field name="win.eventdata.image" type="pcre2">(?i)\\bitsadmin\.exe$</field>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(cmd|powershell|powershell_ise|wscript|cscript)\.exe$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(/transfer|/addfile|/create|/download|https?://)</field>
-    <description>Spirals Ransomware: bitsadmin.exe with download arguments spawned by $(win.eventdata.parentImage) on $(win.eventdata.computer) -- living-off-the-land payload delivery via BITS; consistent with Spirals ransomware lateral movement payload distribution (T1197)</description>
+    <description>Spirals Ransomware: bitsadmin.exe with download arguments spawned by $(win.eventdata.parentImage) on $(win.eventdata.computer)  -  living-off-the-land payload delivery via BITS; consistent with Spirals ransomware lateral movement payload distribution (T1197)</description>
     <mitre>
       <id>T1197</id>
     </mitre>
@@ -128,7 +128,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\wmic\.exe$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)/node:</field>
-    <description>Spirals Ransomware: wmic.exe executed with remote /node: target by $(win.eventdata.user) on $(win.eventdata.computer) -- WMI remote lateral movement preparation; Spirals uses WMI to push ransomware payload to 12+ hosts simultaneously (T1047)</description>
+    <description>Spirals Ransomware: wmic.exe executed with remote /node: target by $(win.eventdata.user) on $(win.eventdata.computer)  -  WMI remote lateral movement preparation; Spirals uses WMI to push ransomware payload to 12+ hosts simultaneously (T1047)</description>
     <mitre>
       <id>T1047</id>
     </mitre>
@@ -146,7 +146,7 @@
   <rule id="103997" level="15">
     <if_sid>61644</if_sid>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)RECOVERY_SECTION\.log$</field>
-    <description>Spirals Ransomware: CRITICAL -- RECOVERY_SECTION.log ransom note created at $(win.eventdata.targetFilename) on $(win.eventdata.computer) -- SPIRALS RANSOMWARE ACTIVELY DETONATING; isolate host immediately, initiate IR (T1486)</description>
+    <description>Spirals Ransomware: CRITICAL  -  RECOVERY_SECTION.log ransom note created at $(win.eventdata.targetFilename) on $(win.eventdata.computer)  -  SPIRALS RANSOMWARE ACTIVELY DETONATING; isolate host immediately, initiate IR (T1486)</description>
     <mitre>
       <id>T1486</id>
     </mitre>

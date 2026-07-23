@@ -31,7 +31,7 @@
   <rule id="101600" level="12">
     <if_sid>554</if_sid>
     <match>/sys/fs/bpf/</match>
-    <description>Linux: New file pinned in BPF filesystem (/sys/fs/bpf/) -- possible eBPF rootkit or program loaded (T1014)</description>
+    <description>Linux: New file pinned in BPF filesystem (/sys/fs/bpf/)  -  possible eBPF rootkit or program loaded (T1014)</description>
     <mitre>
       <id>T1014</id>
     </mitre>
@@ -49,7 +49,7 @@
   <rule id="101601" level="15">
     <if_sid>554</if_sid>
     <match>src/hooks/deps</match>
-    <description>Linux: ELF binary created at npm preinstall hook path (src/hooks/deps) -- Atomic Arch credential stealer planted via AUR supply chain (T1195.002)</description>
+    <description>Linux: ELF binary created at npm preinstall hook path (src/hooks/deps)  -  Atomic Arch credential stealer planted via AUR supply chain (T1195.002)</description>
     <mitre>
       <id>T1195.002</id>
     </mitre>
@@ -67,7 +67,7 @@
   <rule id="101602" level="15">
     <if_sid>550,553,554,593</if_sid>
     <match>6144d433f8a0316869877b5f834c801251bbb936e5f1577c5680878c7443c98b</match>
-    <description>Linux: File matching known Atomic Arch malicious SHA256 detected by FIM -- Rust ELF credential stealer / eBPF rootkit installer (T1195.002, Sonatype-2026-003775)</description>
+    <description>Linux: File matching known Atomic Arch malicious SHA256 detected by FIM  -  Rust ELF credential stealer / eBPF rootkit installer (T1195.002, Sonatype-2026-003775)</description>
     <mitre>
       <id>T1195.002</id>
     </mitre>
@@ -99,7 +99,7 @@
   <rule id="101604" level="14">
     <if_sid>101603</if_sid>
     <field name="audit.cmd" type="pcre2">(?i)(?:atomic-lockfile|js-digest|lockfile-js)</field>
-    <description>Linux: npm/bun install of known-malicious Atomic Arch package by $(audit.auid) -- AUR supply chain attack in progress (T1195.002)</description>
+    <description>Linux: npm/bun install of known-malicious Atomic Arch package by $(audit.auid)  -  AUR supply chain attack in progress (T1195.002)</description>
     <mitre>
       <id>T1195.002</id>
     </mitre>
@@ -118,7 +118,7 @@
     <decoded_as>auditd</decoded_as>
     <field name="audit.syscall">execve</field>
     <field name="audit.exe" type="pcre2">node_modules/.+/src/hooks/deps$</field>
-    <description>Linux: ELF binary deps executed from npm module hook directory by uid=$(audit.auid) -- Atomic Arch credential stealer active (T1059.004)</description>
+    <description>Linux: ELF binary deps executed from npm module hook directory by uid=$(audit.auid)  -  Atomic Arch credential stealer active (T1059.004)</description>
     <mitre>
       <id>T1059.004</id>
     </mitre>
@@ -138,7 +138,7 @@
   <rule id="101610" level="11">
     <if_sid>100600</if_sid>
     <field name="audit.key">ebpf_prog_load</field>
-    <description>Linux: BPF syscall intercepted (key=ebpf_prog_load) -- eBPF program being loaded; investigate calling process for rootkit activity (T1014)</description>
+    <description>Linux: BPF syscall intercepted (key=ebpf_prog_load)  -  eBPF program being loaded; investigate calling process for rootkit activity (T1014)</description>
     <mitre>
       <id>T1014</id>
     </mitre>
@@ -149,7 +149,7 @@
   <rule id="101611" level="15">
     <if_sid>101610</if_sid>
     <field name="audit.exe" type="pcre2">(?:^|/)(?:npm|node|bun|deps|makepkg|yay|paru|pikaur|trizen|aurutils|aura)$</field>
-    <description>Linux: eBPF program loaded by npm/bun/node or AUR build helper -- high-confidence eBPF rootkit installation from supply chain attack (T1014)</description>
+    <description>Linux: eBPF program loaded by npm/bun/node or AUR build helper  -  high-confidence eBPF rootkit installation from supply chain attack (T1014)</description>
     <mitre>
       <id>T1014</id>
     </mitre>

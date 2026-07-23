@@ -49,7 +49,7 @@
      Severity rationale:
        0   - Base anchor for GET /api/v1/flows/ (no alert)
        10  - Moderate flow enumeration from single IP (possible IDOR recon)
-       13  - High-volume flow enumeration (>10 distinct flow paths, likely IDOR attack)
+       13  - High-volume flow enumeration (gt 10 distinct flow paths, likely IDOR attack)
        0   - Base anchor for POST /api/v1/responses (no alert)
        11  - POST to /api/v1/responses (possible cross-tenant flow execution)
        14  - Flow enumeration followed by responses POST (exploitation chain)

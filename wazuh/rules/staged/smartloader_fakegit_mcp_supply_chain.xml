@@ -40,12 +40,11 @@
 
      Attack chain:
        1. Developer installs MCP server or AI skill from malicious GitHub repo
-          via: npm install <github-url> OR pip install git+<github-url>
-       2. postinstall hook invokes: luajit.exe resource.txt
+          via: npm install [github-url] OR pip install git+[github-urlgt 2. postinstall hook invokes: luajit.exe resource.txt
           resource.txt is a heavily obfuscated LuaJIT Lua script
        3. Lua stage deploys LuaJIT runtime to %LOCALAPPDATA%:
             %LOCALAPPDATA%\AudioManager\luajit.exe   (copy 1)
-            %LOCALAPPDATA%\<OfficeUpdate-path>\luajit.exe   (copy 2)
+            %LOCALAPPDATA%\[OfficeUpdate-path]\luajit.exe   (copy 2)
        4. Two scheduled tasks registered masquerading as system audio or
           Office update helpers, pointing to the LOCALAPPDATA LuaJIT binaries
        5. SmartLoader calls eth_call against a Polygon smart contract via
@@ -65,7 +64,7 @@
      Also observed: polygon-rpc.com, matic-mainnet.chainstacklabs.com
 
      Log source prerequisites (Windows):
-       - Sysmon EventID 1 (ProcessCreate) -> Wazuh decoder SID 61603
+       - Sysmon EventID 1 (ProcessCreate) - Wazuh decoder SID 61603
          Required for rules 104058-104061
        - Wazuh FIM (syscheck) monitoring %LOCALAPPDATA% and npm/pip
          install paths; SHA1 hash computation enabled in ossec.conf
@@ -118,7 +117,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(?:node|npm|npx)(?:\.(?:exe|cmd))?$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\lua(?:jit|52|53|54)?(?:\.exe)?$</field>
-    <description>SmartLoader FakeGit: LuaJIT/Lua interpreter spawned by npm/node on $(win.eventdata.computer) by $(win.eventdata.user) -- postinstall hook executing SmartLoader Lua dropper stage (T1059.007, T1195.001)</description>
+    <description>SmartLoader FakeGit: LuaJIT/Lua interpreter spawned by npm/node on $(win.eventdata.computer) by $(win.eventdata.user)  -  postinstall hook executing SmartLoader Lua dropper stage (T1059.007, T1195.001)</description>
     <mitre>
       <id>T1195.001</id>
       <id>T1059.007</id>
@@ -137,7 +136,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(?:python3?|pip3?)(?:\.exe)?$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\lua(?:jit|52|53|54)?(?:\.exe)?$</field>
-    <description>SmartLoader FakeGit: LuaJIT/Lua interpreter spawned by python/pip on $(win.eventdata.computer) by $(win.eventdata.user) -- possible pip-delivered SmartLoader postinstall hook; investigate package source (T1059.007, T1195.001)</description>
+    <description>SmartLoader FakeGit: LuaJIT/Lua interpreter spawned by python/pip on $(win.eventdata.computer) by $(win.eventdata.user)  -  possible pip-delivered SmartLoader postinstall hook; investigate package source (T1059.007, T1195.001)</description>
     <mitre>
       <id>T1195.001</id>
       <id>T1059.007</id>
@@ -157,7 +156,7 @@
     <if_sid>61615</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\lua(?:jit|52|53|54)?(?:\.exe)?$</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)\\AppData\\Local\\.*\.(exe|dll|lua|txt)$</field>
-    <description>SmartLoader FakeGit: LuaJIT writing file to LOCALAPPDATA on $(win.eventdata.computer) -- SmartLoader deploying payload or runtime copy to masquerade path (T1036.005, T1027)</description>
+    <description>SmartLoader FakeGit: LuaJIT writing file to LOCALAPPDATA on $(win.eventdata.computer)  -  SmartLoader deploying payload or runtime copy to masquerade path (T1036.005, T1027)</description>
     <mitre>
       <id>T1036.005</id>
       <id>T1027</id>
@@ -177,7 +176,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\lua(?:jit|52|53|54)?(?:\.exe)?$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\schtasks\.exe$</field>
-    <description>SmartLoader FakeGit: schtasks.exe spawned by LuaJIT on $(win.eventdata.computer) by $(win.eventdata.user) -- SmartLoader registering scheduled task for persistence (AudioManager/OfficeUpdate masquerade) (T1053.005)</description>
+    <description>SmartLoader FakeGit: schtasks.exe spawned by LuaJIT on $(win.eventdata.computer) by $(win.eventdata.user)  -  SmartLoader registering scheduled task for persistence (AudioManager/OfficeUpdate masquerade) (T1053.005)</description>
     <mitre>
       <id>T1053.005</id>
       <id>T1036.005</id>
@@ -201,7 +200,7 @@
     <decoded_as>json</decoded_as>
     <field name="dst_host|dns.question.name|network.destination.domain" type="pcre2">(?i)(?:polygon\.drpc\.org|polygon-rpc\.com|matic-mainnet\.chainstacklabs\.com|polygon-mainnet\.infura\.io|polygon-bor\.publicnode\.com|polygon\.llamarpc\.com)</field>
     <field name="process.name|src_process|application" negate="yes" type="pcre2">(?i)(?:chrome|firefox|msedge|brave|safari|chromium|opera|vivaldi|iexplore)</field>
-    <description>SmartLoader FakeGit: non-browser process connecting to Polygon JSON-RPC endpoint on $(agent.name) -- SmartLoader resolving C2 via Polygon smart contract eth_call dead-drop; blockchain-based C2 is unsinkholable via DNS (T1102.002, T1568)</description>
+    <description>SmartLoader FakeGit: non-browser process connecting to Polygon JSON-RPC endpoint on $(agent.name)  -  SmartLoader resolving C2 via Polygon smart contract eth_call dead-drop; blockchain-based C2 is unsinkholable via DNS (T1102.002, T1568)</description>
     <mitre>
       <id>T1102.002</id>
       <id>T1568</id>
@@ -216,12 +215,12 @@
        Micro). These are SHA1 hashes of resource.txt variants found
        across the 109+ malicious GitHub repos. Fires on any path.
        Requires syscheck SHA1 hash computation enabled in ossec.conf:
-         <hash_algorithm>sha1</hash_algorithm>
+         [hash_algorithm]sha1[/hash_algorithm]
        =========================================================== -->
   <rule id="104063" level="15">
     <if_sid>550,553,554,593</if_sid>
     <regex>c36e15f0532569d789ba9fdbfccf6a1bb5ac2c75|2a2ef9cd83bdb635bb3da2fe6b6a42c9b0cc657f|43eae0fb588987107a4805ecd1cf5c301263643b</regex>
-    <description>SmartLoader FakeGit: IOC hash match for SmartLoader Lua dropper script (Trojan.LUA.SMARTLOADER) detected by FIM on $(agent.name) -- confirmed SmartLoader supply chain compromise; full IR response warranted (T1195.001)</description>
+    <description>SmartLoader FakeGit: IOC hash match for SmartLoader Lua dropper script (Trojan.LUA.SMARTLOADER) detected by FIM on $(agent.name)  -  confirmed SmartLoader supply chain compromise; full IR response warranted (T1195.001)</description>
     <mitre>
       <id>T1195.001</id>
       <id>T1059.007</id>
@@ -242,7 +241,7 @@
     <field name="audit.syscall">execve</field>
     <field name="audit.exe" type="pcre2">(?i)(?:^|/)(?:npm|node|npx|python3?|pip3?)$</field>
     <field name="audit.cmd" type="pcre2">(?i)(?:^|/)lua(?:jit|5\.[1-4])?(?:\s|$)</field>
-    <description>SmartLoader FakeGit: LuaJIT/Lua spawned by npm/node/pip on $(agent.name) -- postinstall hook invoking Lua interpreter; likely SmartLoader supply chain compromise (T1059.007, T1195.001)</description>
+    <description>SmartLoader FakeGit: LuaJIT/Lua spawned by npm/node/pip on $(agent.name)  -  postinstall hook invoking Lua interpreter; likely SmartLoader supply chain compromise (T1059.007, T1195.001)</description>
     <mitre>
       <id>T1195.001</id>
       <id>T1059.007</id>
@@ -261,7 +260,7 @@
   <rule id="104065" level="15">
     <if_sid>550,553,554,593</if_sid>
     <field name="file" type="pcre2">(?i)\\AppData\\Local\\(?:AudioManager|AudioService|SoundCore|MicrosoftOffice|OfficeUpdate)\\lua(?:jit|52|53|54)?(?:\.exe)?$</field>
-    <description>SmartLoader FakeGit: LuaJIT binary created in LOCALAPPDATA masquerade directory (AudioManager/OfficeUpdate) on $(agent.name) -- confirmed SmartLoader payload deployment to persistence path (T1036.005)</description>
+    <description>SmartLoader FakeGit: LuaJIT binary created in LOCALAPPDATA masquerade directory (AudioManager/OfficeUpdate) on $(agent.name)  -  confirmed SmartLoader payload deployment to persistence path (T1036.005)</description>
     <mitre>
       <id>T1036.005</id>
       <id>T1053.005</id>

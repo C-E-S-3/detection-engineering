@@ -40,11 +40,11 @@
 
      Log source prerequisites:
        Windows:
-         - Sysmon EventID 1  (ProcessCreate)  -> Wazuh SID 61603
+         - Sysmon EventID 1  (ProcessCreate)  - Wazuh SID 61603
            Required: 103883-103886, 103888-103890
-         - Sysmon EventID 3  (NetworkConnect) -> Wazuh SID 61605
+         - Sysmon EventID 3  (NetworkConnect) - Wazuh SID 61605
            Required: 103887
-         - Sysmon EventID 11 (FileCreate)     -> Wazuh SID 61644
+         - Sysmon EventID 11 (FileCreate)     - Wazuh SID 61644
            Required: 103891
        Linux:
          - auditd execve + openat/open syscall rules forwarded to Wazuh
@@ -77,7 +77,7 @@
   <!-- ===========================================================
        Windows Layer 1: TaskWeaver Node.js Loader Delivery
        Rule IDs: 103883-103886
-       Log source: Sysmon EventID 1 (ProcessCreate) -> Wazuh SID 61603
+       Log source: Sysmon EventID 1 (ProcessCreate) - Wazuh SID 61603
 
        TaskWeaver is a Node.js-based loader delivered by attackers
        with a rogue SimpleHelp Technician session (created via
@@ -99,7 +99,7 @@
   <rule id="103883" level="13">
     <if_sid>103763</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\node(?:\.exe)?$</field>
-    <description>SimpleHelp CVE-2026-48558 / Djinn Stealer: SimpleHelp service spawned node.exe ($(win.eventdata.image)) on $(win.eventdata.computer) by $(win.eventdata.user) -- TaskWeaver Node.js loader delivery via rogue Technician session (T1190/T1059.007)</description>
+    <description>SimpleHelp CVE-2026-48558 / Djinn Stealer: SimpleHelp service spawned node.exe ($(win.eventdata.image)) on $(win.eventdata.computer) by $(win.eventdata.user)  -  TaskWeaver Node.js loader delivery via rogue Technician session (T1190/T1059.007)</description>
     <mitre>
       <id>T1190</id>
       <id>T1059.007</id>
@@ -117,7 +117,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\node(?:\.exe)?$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:eval\s*\(|Buffer\.from\s*\(|fromCharCode\s*\(|atob\s*\(|require\s*\(\s*['"]child_process['"])</field>
-    <description>TaskWeaver Node.js obfuscated loader: node.exe on $(win.eventdata.computer) launched with obfuscated inline JavaScript ($(win.eventdata.commandLine)) -- eval/Buffer.from pattern consistent with TaskWeaver inline execution (T1059.007/T1140)</description>
+    <description>TaskWeaver Node.js obfuscated loader: node.exe on $(win.eventdata.computer) launched with obfuscated inline JavaScript ($(win.eventdata.commandLine))  -  eval/Buffer.from pattern consistent with TaskWeaver inline execution (T1059.007/T1140)</description>
     <mitre>
       <id>T1059.007</id>
       <id>T1140</id>
@@ -135,7 +135,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\node(?:\.exe)?$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(?:powershell|pwsh|cmd|wscript|cscript|mshta|reg|schtasks|attrib)\.exe$</field>
-    <description>Djinn Stealer: node.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) -- TaskWeaver loader invoking OS command interpreter for credential staging or persistence (T1059.007)</description>
+    <description>Djinn Stealer: node.exe spawned $(win.eventdata.image) on $(win.eventdata.computer)  -  TaskWeaver loader invoking OS command interpreter for credential staging or persistence (T1059.007)</description>
     <mitre>
       <id>T1059.007</id>
       <id>T1059.003</id>
@@ -154,7 +154,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\node(?:\.exe)?$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:(?:\.claude|claude)[/\\]|cursor[/\\](?:storage|token|credentials)|copilot[/\\](?:config|token)|\.gemini[/\\]|codex[/\\]|\.aws[/\\]credentials|\.azure[/\\]|\.config[/\\]gcloud|gcloud[/\\]application_default|\.docker[/\\]config\.json|\.ssh[/\\]id_(?:rsa|ed25519|ecdsa|dsa)|ANTHROPIC_API_KEY|OPENAI_API_KEY|GH_TOKEN)</field>
-    <description>Djinn Stealer: node.exe on $(win.eventdata.computer) referencing credential file paths in command line ($(win.eventdata.commandLine)) -- likely targeting AI tool or cloud provider credentials (T1552.001)</description>
+    <description>Djinn Stealer: node.exe on $(win.eventdata.computer) referencing credential file paths in command line ($(win.eventdata.commandLine))  -  likely targeting AI tool or cloud provider credentials (T1552.001)</description>
     <mitre>
       <id>T1552.001</id>
     </mitre>
@@ -164,7 +164,7 @@
   <!-- ===========================================================
        Windows Layer 2: Dev Tunnels C2 Communication
        Rule IDs: 103887-103888
-       Log source: Sysmon EventID 3 (NetworkConnect) -> Wazuh SID 61605
+       Log source: Sysmon EventID 3 (NetworkConnect) - Wazuh SID 61605
 
        TaskWeaver/Djinn Stealer uses Microsoft Dev Tunnels (*.devtunnels.ms)
        as its C2 channel, masquerading as legitimate Azure developer
@@ -183,7 +183,7 @@
     <if_sid>61605</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\node(?:\.exe)?$</field>
     <field name="win.eventdata.destinationHostname" type="pcre2">(?i)(?:^|\.(?:devtunnels|tunnel\.azure)\.(?:ms|com)$)</field>
-    <description>Djinn Stealer C2: node.exe on $(win.eventdata.computer) connecting to Dev Tunnels host $(win.eventdata.destinationHostname):$(win.eventdata.destinationPort) -- TaskWeaver C2 via Microsoft Dev Tunnels masquerade (T1071.001/T1572)</description>
+    <description>Djinn Stealer C2: node.exe on $(win.eventdata.computer) connecting to Dev Tunnels host $(win.eventdata.destinationHostname):$(win.eventdata.destinationPort)  -  TaskWeaver C2 via Microsoft Dev Tunnels masquerade (T1071.001/T1572)</description>
     <mitre>
       <id>T1071.001</id>
       <id>T1572</id>
@@ -200,7 +200,7 @@
     <if_sid>61605</if_sid>
     <field name="win.eventdata.destinationHostname" type="pcre2">(?i)(?:^|\.(?:devtunnels|tunnel\.azure)\.(?:ms|com)$)</field>
     <field name="win.eventdata.image" negate="yes" type="pcre2">(?i)\\(?:devtunnel|Code|cursor|msedge|msedgewebview2|chrome|firefox)(?:\.exe)?$</field>
-    <description>Dev Tunnels anomalous connection: $(win.eventdata.image) on $(win.eventdata.computer) connecting to $(win.eventdata.destinationHostname) -- unexpected process using Dev Tunnels infrastructure; review for Djinn Stealer or unauthorized tunnel use (T1572)</description>
+    <description>Dev Tunnels anomalous connection: $(win.eventdata.image) on $(win.eventdata.computer) connecting to $(win.eventdata.destinationHostname)  -  unexpected process using Dev Tunnels infrastructure; review for Djinn Stealer or unauthorized tunnel use (T1572)</description>
     <mitre>
       <id>T1572</id>
       <id>T1071.001</id>
@@ -212,8 +212,8 @@
        Windows Layer 3: Data Staging and Exfiltration Artifacts
        Rule IDs: 103889-103891
        Log sources:
-         103889-103890: Sysmon EventID 1 (ProcessCreate) -> Wazuh SID 61603
-         103891:        Sysmon EventID 11 (FileCreate)   -> Wazuh SID 61644
+         103889-103890: Sysmon EventID 1 (ProcessCreate) - Wazuh SID 61603
+         103891:        Sysmon EventID 11 (FileCreate)   - Wazuh SID 61644
 
        Djinn Stealer collects credentials into a PAX-format tar archive
        compressed with gzip, then encrypts it with AES-256-GCM before
@@ -233,7 +233,7 @@
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\node(?:\.exe)?$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(?:tar|7z|7za|bsdtar)(?:\.exe)?$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:%(?:TEMP|TMP|LOCALAPPDATA|APPDATA)%|\\Temp\\|\\AppData\\Local\\Temp\\|\\Windows\\Temp\\)</field>
-    <description>Djinn Stealer data staging: node.exe spawned tar archiver $(win.eventdata.image) targeting temp directory on $(win.eventdata.computer) -- credential archive creation prior to exfiltration (T1560.001/T1074.001)</description>
+    <description>Djinn Stealer data staging: node.exe spawned tar archiver $(win.eventdata.image) targeting temp directory on $(win.eventdata.computer)  -  credential archive creation prior to exfiltration (T1560.001/T1074.001)</description>
     <mitre>
       <id>T1560.001</id>
       <id>T1074.001</id>
@@ -251,7 +251,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\node(?:\.exe)?$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(?:curl|wget|bitsadmin|certutil|invoke-webrequest)(?:\.exe)?$</field>
-    <description>Djinn Stealer exfiltration: node.exe spawned HTTP transfer utility $(win.eventdata.image) on $(win.eventdata.computer) -- credential exfiltration via HTTP from TaskWeaver/Djinn Stealer (T1041/T1560.001)</description>
+    <description>Djinn Stealer exfiltration: node.exe spawned HTTP transfer utility $(win.eventdata.image) on $(win.eventdata.computer)  -  credential exfiltration via HTTP from TaskWeaver/Djinn Stealer (T1041/T1560.001)</description>
     <mitre>
       <id>T1041</id>
       <id>T1560.001</id>
@@ -268,7 +268,7 @@
     <if_sid>61644</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\node(?:\.exe)?$</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)(?:(?:\\|/)(?:Temp|tmp|AppData\\Local\\Temp)(?:\\|/)[^/\\]+\.(?:tar\.gz|tgz|tar|gz)$|(?:\\|/)Temp(?:\\|/)[0-9a-f]{12,}(?:\.bin|\.dat|\.enc)?$)</field>
-    <description>Djinn Stealer staging artifact: node.exe created archive/encrypted file $(win.eventdata.targetFilename) in temp directory on $(win.eventdata.computer) -- likely PAX credential archive pre-exfiltration (T1560.001/T1074.001)</description>
+    <description>Djinn Stealer staging artifact: node.exe created archive/encrypted file $(win.eventdata.targetFilename) in temp directory on $(win.eventdata.computer)  -  likely PAX credential archive pre-exfiltration (T1560.001/T1074.001)</description>
     <mitre>
       <id>T1560.001</id>
       <id>T1074.001</id>
@@ -302,7 +302,7 @@
     <field name="audit.syscall">execve</field>
     <field name="audit.exe" type="pcre2">(?:^|/)node(?:js)?$</field>
     <field name="audit.cwd" type="pcre2">^(?:/tmp|/dev/shm|/var/tmp)</field>
-    <description>Linux TaskWeaver: node process executing from temp/shared-memory path on $(agent.name) -- TaskWeaver Node.js loader running from world-writable directory (T1059.007)</description>
+    <description>Linux TaskWeaver: node process executing from temp/shared-memory path on $(agent.name)  -  TaskWeaver Node.js loader running from world-writable directory (T1059.007)</description>
     <mitre>
       <id>T1059.007</id>
       <id>T1190</id>
@@ -322,7 +322,7 @@
     <field name="audit.syscall">execve</field>
     <field name="audit.exe" type="pcre2">(?:^|/)node(?:js)?$</field>
     <field name="audit.cmd" type="pcre2">(?i)(?:\.claude(?:/|\\)|\.config/claude|\.config/cursor|copilot(?:/|\\)|gemini(?:/|\\)|\.aws/credentials|\.config/gcloud|gcloud/application_default|\.azure(?:/|\\)|\.docker/config\.json|ANTHROPIC_API_KEY|OPENAI_API_KEY|GH_TOKEN)</field>
-    <description>Linux Djinn Stealer: node process on $(agent.name) accessing AI/cloud credential path -- credential file theft targeting AI coding tools or cloud provider keys (T1552.001)</description>
+    <description>Linux Djinn Stealer: node process on $(agent.name) accessing AI/cloud credential path  -  credential file theft targeting AI coding tools or cloud provider keys (T1552.001)</description>
     <mitre>
       <id>T1552.001</id>
     </mitre>
@@ -341,7 +341,7 @@
     <field name="audit.syscall">execve</field>
     <field name="audit.exe" type="pcre2">(?:^|/)node(?:js)?$</field>
     <field name="audit.cmd" type="pcre2">\.ssh/id_(?:rsa|ed25519|ecdsa|dsa|ecdsa_sk|ed25519_sk)</field>
-    <description>Linux Djinn Stealer: node process on $(agent.name) accessing SSH private key file -- SSH key theft for lateral movement or repository access by Djinn Stealer (T1552.004)</description>
+    <description>Linux Djinn Stealer: node process on $(agent.name) accessing SSH private key file  -  SSH key theft for lateral movement or repository access by Djinn Stealer (T1552.004)</description>
     <mitre>
       <id>T1552.004</id>
     </mitre>

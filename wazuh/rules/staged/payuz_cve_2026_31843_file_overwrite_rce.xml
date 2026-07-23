@@ -14,7 +14,7 @@
 
      Vulnerability summary:
        CVE-2026-31843 is an unauthenticated PHP file overwrite vulnerability in
-       the pay-uz Laravel payment gateway package (version &lt;=2.2.24, CVSS 9.8).
+       the pay-uz Laravel payment gateway package (version lte 2.2.24, CVSS 9.8).
        The pay-uz plugin exposes API endpoints (/api/payuz/ or /payuz/) without
        authentication enforcement. A vulnerable endpoint accepts arbitrary file
        path and content parameters, allowing attackers to overwrite existing PHP

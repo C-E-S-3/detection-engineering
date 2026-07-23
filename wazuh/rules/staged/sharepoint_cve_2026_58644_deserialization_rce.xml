@@ -61,7 +61,7 @@
        5. Post-Exploitation: Common second-stage actions observed in the wild:
           - PowerShell download cradle to stage a reverse shell or Cobalt
             Strike beacon (w3wp.exe spawning powershell.exe)
-          - Webshell drop to /_layouts/, /sites/<name>/, or %SystemDrive%\inetpub
+          - Webshell drop to /_layouts/, /sites/[name]/, or %SystemDrive%\inetpub
             (w3wp.exe creating .aspx, .asmx, or .ashx files)
           - LOLBin execution for lateral movement staging (certutil, bitsadmin)
           - Host enumeration (whoami, ipconfig, nltest) for situational awareness
@@ -168,7 +168,7 @@
 <group name="initial_access,exploit_pubfacing,sharepoint,cisa_kev,cve_2026_58644,">
 
   <!-- ===========================================================
-       Layer 1: Process Execution (Sysmon EventID 1 -> Wazuh SID 61603)
+       Layer 1: Process Execution (Sysmon EventID 1 - Wazuh SID 61603)
        Rule IDs: 103979-103982
 
        CVE-2026-58644 achieves code execution within the SharePoint IIS
@@ -207,9 +207,9 @@
        tools invoked by .NET deserialization gadget chains targeting
        SharePoint. Typical patterns observed in the wild:
 
-         - powershell.exe -enc <base64>   : download cradle for reverse shell
+         - powershell.exe -enc [base64]   : download cradle for reverse shell
          - powershell.exe -nop -w hidden  : Cobalt Strike stager
-         - csc.exe /out:<tmp>.dll         : in-memory C# compilation of implant
+         - csc.exe /out:[tmp].dll         : in-memory C# compilation of implant
 
        There is no legitimate operational reason for the SharePoint IIS
        worker process to spawn PowerShell or a .NET compiler. Any match
@@ -218,7 +218,7 @@
   <rule id="103980" level="14">
     <if_sid>103979</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(powershell|pwsh|csc|vbc|jsc)\.exe$</field>
-    <description>SharePoint CVE-2026-58644: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) as $(win.eventdata.user) -- near-certain deserialization RCE; PowerShell download cradle or .NET in-memory compilation post-exploit; initiate incident response (T1190/T1059.001)</description>
+    <description>SharePoint CVE-2026-58644: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) as $(win.eventdata.user)  -  near-certain deserialization RCE; PowerShell download cradle or .NET in-memory compilation post-exploit; initiate incident response (T1190/T1059.001)</description>
     <mitre>
       <id>T1190</id>
       <id>T1059.001</id>
@@ -232,8 +232,8 @@
        second-stage payloads from attacker-controlled infrastructure using
        native Windows binaries (Living Off The Land Binaries):
 
-         - certutil.exe -urlcache -f <url>    : HTTP download, decodes base64
-         - bitsadmin /transfer <url> <dest>   : BITS download, evades some AV
+         - certutil.exe -urlcache -f [url]    : HTTP download, decodes base64
+         - bitsadmin /transfer [url] [dest]   : BITS download, evades some AV
          - mshta.exe http://...               : remote HTA payload execution
          - wscript.exe / cscript.exe          : script execution
          - curl.exe / wget.exe                : direct HTTP download
@@ -245,7 +245,7 @@
   <rule id="103981" level="13">
     <if_sid>103979</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(certutil|bitsadmin|mshta|wscript|cscript|curl|wget)\.exe$</field>
-    <description>SharePoint CVE-2026-58644: w3wp.exe spawned download LOLBin $(win.eventdata.image) on $(win.eventdata.computer) as $(win.eventdata.user) -- second-stage payload staging after deserialization RCE; attacker retrieving implant from external infrastructure (T1190/T1105)</description>
+    <description>SharePoint CVE-2026-58644: w3wp.exe spawned download LOLBin $(win.eventdata.image) on $(win.eventdata.computer) as $(win.eventdata.user)  -  second-stage payload staging after deserialization RCE; attacker retrieving implant from external infrastructure (T1190/T1105)</description>
     <mitre>
       <id>T1190</id>
       <id>T1105</id>
@@ -267,10 +267,8 @@
           deploying a full implant.
 
           Examples:
-            nslookup.exe <attacker-owned-domain>
-            ping.exe -n 1 <attacker-owned-domain>
-
-       2. Post-exploit host enumeration (first-stage recon):
+            nslookup.exe [attacker-owned-domain]
+            ping.exe -n 1 [attacker-owned-domaingt 2. Post-exploit host enumeration (first-stage recon):
           After confirming RCE via OOB callback, attackers issue rapid
           host-enumeration commands to gather situational awareness before
           lateral movement:
@@ -288,7 +286,7 @@
   <rule id="103982" level="12">
     <if_sid>103979</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(nslookup|ping|hostname|whoami|ipconfig|nltest|net|net1|arp|tracert|systeminfo|tasklist)\.exe$</field>
-    <description>SharePoint CVE-2026-58644: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) as $(win.eventdata.user) -- OOB callback or post-exploit host enumeration; DNS OOB (nslookup/ping to attacker domain) confirms deserialization RCE; review child process command line for external domain targets (T1190/T1046)</description>
+    <description>SharePoint CVE-2026-58644: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) as $(win.eventdata.user)  -  OOB callback or post-exploit host enumeration; DNS OOB (nslookup/ping to attacker domain) confirms deserialization RCE; review child process command line for external domain targets (T1190/T1046)</description>
     <mitre>
       <id>T1190</id>
       <id>T1046</id>
@@ -317,11 +315,11 @@
        webshells on ASP.NET / IIS platforms.
 
        Common webshell deployment paths observed in SharePoint exploitation:
-         - C:\inetpub\wwwroot\wss\VirtualDirectories\...\<name>.aspx
+         - C:\inetpub\wwwroot\wss\VirtualDirectories\...\[name].aspx
          - C:\Program Files\Common Files\Microsoft Shared\web server extensions\
-           \LAYOUTS\<name>.aspx
+           \LAYOUTS\[name].aspx
          - C:\Program Files\Common Files\Microsoft Shared\web server extensions\
-           \isapi\<name>.asmx
+           \isapi\[name].asmx
 
        Any file creation event matching this rule requires immediate incident
        response: identify the created file, analyze for webshell content,
@@ -337,7 +335,7 @@
     <field name="win.eventdata.eventID" type="pcre2">^11$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\w3wp\.exe$</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.(aspx|asmx|ashx|svc|cshtml|vbhtml)$</field>
-    <description>SharePoint CVE-2026-58644 CRITICAL: w3wp.exe created web script file $(win.eventdata.targetFilename) on $(win.eventdata.computer) -- WEBSHELL DROP confirmed; persistent backdoor established after deserialization RCE; initiate immediate incident response, isolate host, preserve forensic image (T1505.003/T1190)</description>
+    <description>SharePoint CVE-2026-58644 CRITICAL: w3wp.exe created web script file $(win.eventdata.targetFilename) on $(win.eventdata.computer)  -  WEBSHELL DROP confirmed; persistent backdoor established after deserialization RCE; initiate immediate incident response, isolate host, preserve forensic image (T1505.003/T1190)</description>
     <options>alert_by_email</options>
     <mitre>
       <id>T1505.003</id>
@@ -389,7 +387,7 @@
     <decoded_as>json</decoded_as>
     <field name="RequestMethod">POST</field>
     <field name="RequestPath" type="pcre2">(?i)(?:/_vti_bin/(?:client\.svc|authentication\.asmx|webs\.asmx|sitedata\.asmx|usergroup\.asmx|lists\.asmx|search\.asmx)|/_layouts/(?:15|16)/[^/]+\.(?:aspx|asmx|ashx)|/_api/(?:contextinfo|web(?:$|/))|/sites/[^/]+/_vti_bin/|/sites/[^/]+/_layouts/)</field>
-    <description>SharePoint CVE-2026-58644: HTTP POST to pre-auth-accessible SharePoint endpoint from $(ClientHost) at $(RequestHost)$(RequestPath) -- potential unauthenticated deserialization exploit delivery (T1190); correlate with host-side process events on the SharePoint server</description>
+    <description>SharePoint CVE-2026-58644: HTTP POST to pre-auth-accessible SharePoint endpoint from $(ClientHost) at $(RequestHost)$(RequestPath)  -  potential unauthenticated deserialization exploit delivery (T1190); correlate with host-side process events on the SharePoint server</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -415,7 +413,7 @@
   <rule id="103985" level="11">
     <if_sid>103984</if_sid>
     <field name="DownstreamStatus" type="pcre2">^5\d{2}$</field>
-    <description>SharePoint CVE-2026-58644: POST to pre-auth SharePoint endpoint at $(RequestHost)$(RequestPath) from $(ClientHost) returned HTTP $(DownstreamStatus) -- deserialization exception likely; active exploit probe or gadget chain refinement in progress; check for repeated 500s from same source IP and correlate with host-side w3wp.exe events (T1190)</description>
+    <description>SharePoint CVE-2026-58644: POST to pre-auth SharePoint endpoint at $(RequestHost)$(RequestPath) from $(ClientHost) returned HTTP $(DownstreamStatus)  -  deserialization exception likely; active exploit probe or gadget chain refinement in progress; check for repeated 500s from same source IP and correlate with host-side w3wp.exe events (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>

@@ -60,7 +60,7 @@
   <rule id="103914" level="12">
     <if_group>web,accesslog</if_group>
     <regex type="pcre2">POST\s+/api/v1/run/</regex>
-    <description>JADEPUFFER/CVE-2025-3248: POST request to Langflow /api/v1/run/ execution endpoint on $(agent.name) -- CVE-2025-3248 exploit surface; monitor for Python subprocess spawning (T1190)</description>
+    <description>JADEPUFFER/CVE-2025-3248: POST request to Langflow /api/v1/run/ execution endpoint on $(agent.name)  -  CVE-2025-3248 exploit surface; monitor for Python subprocess spawning (T1190)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -78,7 +78,7 @@
   <rule id="103915" level="14">
     <if_sid>550,553,554</if_sid>
     <field name="file" type="pcre2">(?i)(\.anthropic|\.config/anthropic|\.gemini|\.cursor/config|\.config/gh/hosts|\.aws/credentials|\.config/gcloud/credentials|\.azure/credentials|\.ssh/id_rsa|claude[_-]api[_-]key|ANTHROPIC_API_KEY|GEMINI_API_KEY|OPENAI_API_KEY)</field>
-    <description>JADEPUFFER/CVE-2025-3248: AI or cloud API credential file accessed on $(agent.name) -- JADEPUFFER exfiltrates Claude/Gemini/AWS/GCP API keys after Langflow RCE; verify accessing process (T1552.001)</description>
+    <description>JADEPUFFER/CVE-2025-3248: AI or cloud API credential file accessed on $(agent.name)  -  JADEPUFFER exfiltrates Claude/Gemini/AWS/GCP API keys after Langflow RCE; verify accessing process (T1552.001)</description>
     <mitre>
       <id>T1552.001</id>
       <id>T1005</id>
@@ -97,7 +97,7 @@
   <rule id="103916" level="14">
     <if_sid>103000</if_sid>
     <regex type="pcre2">\.trycloudflare\.com</regex>
-    <description>JADEPUFFER/CVE-2025-3248: outbound connection to trycloudflare.com tunnel C2 from $(agent.name) -- JADEPUFFER uses Cloudflare tunnels for C2 after Langflow RCE; bidirectional C2 via web service (T1102.002)</description>
+    <description>JADEPUFFER/CVE-2025-3248: outbound connection to trycloudflare.com tunnel C2 from $(agent.name)  -  JADEPUFFER uses Cloudflare tunnels for C2 after Langflow RCE; bidirectional C2 via web service (T1102.002)</description>
     <mitre>
       <id>T1102.002</id>
       <id>T1071.001</id>
@@ -118,7 +118,7 @@
     <field name="audit.execve.a0" type="pcre2">(?i)(python3?|pip3?)$</field>
     <field name="audit.ppid" negate="no" type="pcre2">.+</field>
     <field name="audit.execve.a1" type="pcre2">(?i)(-c\s+|subprocess|requests|urllib|socket|base64)</field>
-    <description>JADEPUFFER/CVE-2025-3248: Python spawned with inline code or network module args on $(agent.name) by $(audit.auid) -- possible Langflow RCE payload execution; verify parent process (T1059.006, T1190)</description>
+    <description>JADEPUFFER/CVE-2025-3248: Python spawned with inline code or network module args on $(agent.name) by $(audit.auid)  -  possible Langflow RCE payload execution; verify parent process (T1059.006, T1190)</description>
     <mitre>
       <id>T1059.006</id>
       <id>T1190</id>
@@ -135,7 +135,7 @@
   <rule id="103918" level="15" frequency="3" timeframe="60">
     <if_matched_sid>103915</if_matched_sid>
     <same_field>agent.name</same_field>
-    <description>JADEPUFFER/CVE-2025-3248: CREDENTIAL SWEEP -- 3+ API key files accessed in 60s on $(agent.name) -- JADEPUFFER autonomous credential exfiltration; CRITICAL: isolate host and rotate all AI/cloud credentials (T1552.001)</description>
+    <description>JADEPUFFER/CVE-2025-3248: CREDENTIAL SWEEP  -  3+ API key files accessed in 60s on $(agent.name)  -  JADEPUFFER autonomous credential exfiltration; CRITICAL: isolate host and rotate all AI/cloud credentials (T1552.001)</description>
     <mitre>
       <id>T1552.001</id>
       <id>T1190</id>

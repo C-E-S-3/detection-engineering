@@ -170,7 +170,7 @@
   <rule id="104129" level="11" frequency="5" timeframe="60">
     <if_matched_sid>104128</if_matched_sid>
     <same_field>data.src_ip</same_field>
-    <description>DD-WRT CVE-2021-27137: SSDP scanner -- 5+ UDP port 1900 probes from $(data.src_ip) within 60 s; automated UPnP reconnaissance consistent with C0XMO Gafgyt Python scanner probing for DD-WRT routers vulnerable to stack buffer overflow; block source IP and audit internal UPnP exposure (T1190)</description>
+    <description>DD-WRT CVE-2021-27137: SSDP scanner  -  5+ UDP port 1900 probes from $(data.src_ip) within 60 s; automated UPnP reconnaissance consistent with C0XMO Gafgyt Python scanner probing for DD-WRT routers vulnerable to stack buffer overflow; block source IP and audit internal UPnP exposure (T1190)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1190</id>
@@ -198,7 +198,7 @@
   <rule id="104130" level="14">
     <if_group>firewall</if_group>
     <field name="data.dest_ip">^217\.160\.125\.125$</field>
-    <description>IOC: C0XMO Gafgyt dropper contact -- outbound to 217.160.125.125 (Germany; CVE-2021-27137 DD-WRT exploit dropper; port 15527; multi-arch ELF payloads for ARM/MIPS/PowerPC); a DD-WRT router or LAN host is downloading the C0XMO botnet payload after successful exploit; isolate affected device and inspect for /tmp/.cache artifacts (T1105, T1496)</description>
+    <description>IOC: C0XMO Gafgyt dropper contact  -  outbound to 217.160.125.125 (Germany; CVE-2021-27137 DD-WRT exploit dropper; port 15527; multi-arch ELF payloads for ARM/MIPS/PowerPC); a DD-WRT router or LAN host is downloading the C0XMO botnet payload after successful exploit; isolate affected device and inspect for /tmp/.cache artifacts (T1105, T1496)</description>
     <mitre>
       <id>T1105</id>
       <id>T1496</id>
@@ -225,7 +225,7 @@
   <rule id="104131" level="14">
     <if_sid>86601</if_sid>
     <field name="alert.dest_ip" type="pcre2">^217\.160\.125\.125$</field>
-    <description>Suricata: C0XMO Gafgyt dropper traffic -- connection to 217.160.125.125 (CVE-2021-27137 DD-WRT exploit dropper/scanner server; port 15527); network IDS confirms dropper fetch from compromised DD-WRT or Linux pivot host; inspect /tmp/.cache on all reachable LAN devices and block IOC IP at perimeter (T1105, T1496)</description>
+    <description>Suricata: C0XMO Gafgyt dropper traffic  -  connection to 217.160.125.125 (CVE-2021-27137 DD-WRT exploit dropper/scanner server; port 15527); network IDS confirms dropper fetch from compromised DD-WRT or Linux pivot host; inspect /tmp/.cache on all reachable LAN devices and block IOC IP at perimeter (T1105, T1496)</description>
     <mitre>
       <id>T1105</id>
       <id>T1496</id>
@@ -253,7 +253,7 @@
     <if_group>command</if_group>
     <match>wget|curl</match>
     <field name="data.command" type="pcre2">(?i)(wget|curl).{0,200}:15527\b</field>
-    <description>DD-WRT CVE-2021-27137 / C0XMO: $(data.command) -- wget or curl fetching from port 15527, the C0XMO Gafgyt dropper distribution port (217.160.125.125:15527); host is likely a Linux pivot used to deliver the DD-WRT exploit or has itself been compromised; inspect /tmp/.cache for ELF binaries and terminate suspicious processes (T1105)</description>
+    <description>DD-WRT CVE-2021-27137 / C0XMO: $(data.command)  -  wget or curl fetching from port 15527, the C0XMO Gafgyt dropper distribution port (217.160.125.125:15527); host is likely a Linux pivot used to deliver the DD-WRT exploit or has itself been compromised; inspect /tmp/.cache for ELF binaries and terminate suspicious processes (T1105)</description>
     <mitre>
       <id>T1105</id>
     </mitre>
@@ -311,7 +311,7 @@
     <field name="data.dest_port">^1900$</field>
     <field name="data.src_ip" type="pcre2">^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)</field>
     <field name="data.dest_ip" type="pcre2">^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)</field>
-    <description>DD-WRT CVE-2021-27137 / C0XMO: Internal host $(data.src_ip) sending SSDP M-SEARCH to $(data.dest_ip):1900 -- LAN-to-LAN UDP 1900 scanning is the C0XMO Gafgyt propagation pattern; compromised DD-WRT router or Linux host is running the embedded Python SSDP scanner to recruit additional vulnerable UPnP devices; isolate source host and audit all internal DD-WRT devices for UPnP exposure (T1584.005, T1190)</description>
+    <description>DD-WRT CVE-2021-27137 / C0XMO: Internal host $(data.src_ip) sending SSDP M-SEARCH to $(data.dest_ip):1900  -  LAN-to-LAN UDP 1900 scanning is the C0XMO Gafgyt propagation pattern; compromised DD-WRT router or Linux host is running the embedded Python SSDP scanner to recruit additional vulnerable UPnP devices; isolate source host and audit all internal DD-WRT devices for UPnP exposure (T1584.005, T1190)</description>
     <mitre>
       <id>T1584.005</id>
       <id>T1190</id>

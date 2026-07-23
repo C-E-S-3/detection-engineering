@@ -3,14 +3,14 @@
      Sources:
        - CVE-2026-25089: Fortinet FortiSandbox OS Command Injection (CVSS 9.8 Critical)
          Unauthenticated RCE via crafted JSON input to VNC start API endpoint
-         Affected: FortiSandbox 4.2.x (&lt;=4.2.8), 4.4.x (&lt;=4.4.8), 5.0.x (&lt;=5.0.5)
+         Affected: FortiSandbox 4.2.x (lte 4.2.8), 4.4.x (lte 4.4.8), 5.0.x (lte 5.0.5)
                    FortiSandbox Cloud 5.0.4-5.0.5, PaaS 5.0.4-5.0.5
          Fortinet advisory FG-IR-26-141; not yet in CISA KEV but CVSS 9.8
          Fix: upgrade to 5.0.6+, 4.4.9+, 4.2.9+
        - FortiBleed Campaign (SOCRadar, June 24, 2026)
          Russian-speaking threat actors; 430,000+ FortiGate devices targeted since Feb 2026
-         TTPs: brute-force credential spray -> custom sniffer deployment on compromised firewall
-               -> harvest auth credentials from network traffic -> lateral movement
+         TTPs: brute-force credential spray - custom sniffer deployment on compromised firewall
+               - harvest auth credentials from network traffic - lateral movement
          No single CVE  - exploitation of weak credentials + sniffer deployment via FortiOS CLI
        - SprySOCKS Windows/Linux Backdoor (June 16, 2026)
          China-linked; previously Linux-only; new Windows variants: WIN_DRV (kernel driver),
@@ -24,7 +24,7 @@
          OXLOADER: staged delivery via TEMP directory, obfuscated PowerShell drop.
        - NarwhalRAT / ScarCruft APT37 (June 16, 2026)
          North Korea-linked APT; spear-phishing with fake Microsoft Account security alerts.
-         Delivery: ZIP -> LNK -> mshta/PowerShell -> NarwhalRAT DLL in AppData.
+         Delivery: ZIP - LNK - mshta/PowerShell - NarwhalRAT DLL in AppData.
          MITRE: T1566.001, T1204.002, T1547.009
        - ShapedPlugin WordPress Supply Chain + Gravity SMTP CVE-2026-4020
          ShapedPlugin: backdoor in Product Slider Pro, Real Testimonials Pro, Smart Post Show Pro
@@ -144,7 +144,7 @@
 
      TTPs observed:
        1. Credential spray against FortiGate SSL-VPN and admin interfaces
-       2. Successful login from new IP -> deploy custom sniffer via DIAG SNIFFER
+       2. Successful login from new IP - deploy custom sniffer via DIAG SNIFFER
        3. Sniffer captures cleartext/session credentials from passing traffic
        4. Harvested credentials used for lateral movement
 
@@ -290,7 +290,7 @@
   <!-- Rule 103611  - Linux: SprySOCKS long-lived outbound connection from system process
        Linux variant of SprySOCKS establishes persistent outbound TCP connections
        from processes that should not have external network access (system daemons).
-       High port (>10000) outbound from init, systemd-journal, dbus, or similar daemons.
+       High port (gt 10000) outbound from init, systemd-journal, dbus, or similar daemons.
        Level 11: daemon with unexpected outbound connection; moderate confidence. -->
   <rule id="103611" level="11">
     <if_sid>100600</if_sid>
@@ -333,7 +333,7 @@
      CastleStealer: targets Chrome/Firefox credentials, crypto wallets, Telegram
 
      Detection approach:
-       - Windows: process chain  - browser (Chrome/Edge/Firefox) download -> temp execution
+       - Windows: process chain  - browser (Chrome/Edge/Firefox) download - temp execution
        - Windows: CastleStealer credential path access (AppData\Local\Google\Chrome\User Data)
        - Windows: OXLOADER staging via multiple consecutive executable drops in TEMP
        - Suricata: OXLOADER C2 beaconing domain pattern
@@ -431,12 +431,12 @@
      T1566.001 (Phishing: Spearphishing Attachment) / T1204.002 (User Execution: Malicious File)
      T1547.009 (Boot/Logon Autostart: Shortcut Modification)
      North Korea-linked ScarCruft group; fake Microsoft Account security alerts
-     Delivery: phishing email -> ZIP -> LNK -> mshta.exe -> PowerShell -> NarwhalRAT DLL
+     Delivery: phishing email - ZIP - LNK - mshta.exe - PowerShell - NarwhalRAT DLL
      Persistence: rundll32 launching DLL from AppData via Registry Run key
 
      Detection approach:
        - Windows: LNK file execution from ZIP extraction path (User\AppData\Downloads)
-       - Windows: mshta.exe -> PowerShell download chain
+       - Windows: mshta.exe - PowerShell download chain
        - Windows: rundll32 loading DLL from AppData with known NarwhalRAT argument
        - Windows: Registry Run key set to rundll32 AppData DLL (persistence)
      ============================================================== -->
@@ -463,9 +463,9 @@
   <!-- Rule 103619  - Windows: mshta.exe spawning PowerShell download (NarwhalRAT stage 2)
        After LNK executes mshta.exe, it runs an HTA script that launches PowerShell
        to download the NarwhalRAT DLL payload from attacker C2.
-       mshta.exe -> powershell.exe with -enc or IEX(New-Object Net.WebClient).DownloadString
+       mshta.exe - powershell.exe with -enc or IEX(New-Object Net.WebClient).DownloadString
        is the characteristic NarwhalRAT stage-2 chain.
-       Level 13: mshta -> PowerShell download is near-certain malicious payload delivery. -->
+       Level 13: mshta - PowerShell download is near-certain malicious payload delivery. -->
   <rule id="103619" level="13">
     <if_sid>61603</if_sid>
     <field name="win.system.eventID" type="pcre2">^1$</field>

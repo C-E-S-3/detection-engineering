@@ -43,7 +43,7 @@
   <rule id="103830" level="14">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)schtasks.*\s(gentlemen_system|UpdateGU2|UpdateSvc2|DefSvc)\b</field>
-    <description>Gentlemen Ransomware: Campaign scheduled task created via schtasks -- Storm-2697 persistence (T1053.005)</description>
+    <description>Gentlemen Ransomware: Campaign scheduled task created via schtasks  -  Storm-2697 persistence (T1053.005)</description>
     <mitre>
       <id>T1053.005</id>
       <id>T1486</id>
@@ -56,7 +56,7 @@
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^4698$</field>
     <field name="win.eventdata.taskName" type="pcre2">(?i)(gentlemen_system|UpdateGU2|UpdateSvc2|DefSvc)</field>
-    <description>Gentlemen Ransomware: Campaign scheduled task registered in Task Scheduler -- Storm-2697 persistence (T1053.005)</description>
+    <description>Gentlemen Ransomware: Campaign scheduled task registered in Task Scheduler  -  Storm-2697 persistence (T1053.005)</description>
     <mitre>
       <id>T1053.005</id>
       <id>T1486</id>
@@ -74,7 +74,7 @@
     <if_sid>61644</if_sid>
     <field name="win.system.eventID">^11$</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.umc16h$</field>
-    <description>Gentlemen Ransomware: Encrypted file with .umc16h extension created -- active encryption in progress (T1486)</description>
+    <description>Gentlemen Ransomware: Encrypted file with .umc16h extension created  -  active encryption in progress (T1486)</description>
     <mitre>
       <id>T1486</id>
     </mitre>
@@ -98,7 +98,7 @@
     <if_sid>61644</if_sid>
     <field name="win.system.eventID">^11$</field>
     <field name="win.eventdata.targetFilename" type="pcre2">(?i)gentlemen\.bmp$</field>
-    <description>Gentlemen Ransomware: Wallpaper bitmap gentlemen.bmp dropped -- Storm-2697 post-encryption artifact (T1486)</description>
+    <description>Gentlemen Ransomware: Wallpaper bitmap gentlemen.bmp dropped  -  Storm-2697 post-encryption artifact (T1486)</description>
     <mitre>
       <id>T1486</id>
     </mitre>
@@ -109,7 +109,7 @@
   <rule id="103835" level="15" frequency="10" timeframe="60">
     <if_matched_sid>103832</if_matched_sid>
     <same_field>agent.name</same_field>
-    <description>Gentlemen Ransomware: Mass file encryption in progress -- 10+ .umc16h files created in 60s (T1486)</description>
+    <description>Gentlemen Ransomware: Mass file encryption in progress  -  10+ .umc16h files created in 60s (T1486)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1486</id>
@@ -121,7 +121,7 @@
   <rule id="103836" level="15">
     <if_sid>103833</if_sid>
     <if_matched_sid>103832</if_matched_sid>
-    <description>Gentlemen Ransomware: CONFIRMED INFECTION -- ransom note and encrypted files on same host (T1486)</description>
+    <description>Gentlemen Ransomware: CONFIRMED INFECTION  -  ransom note and encrypted files on same host (T1486)</description>
     <mitre>
       <id>T1486</id>
     </mitre>
@@ -137,7 +137,7 @@
   <rule id="103837" level="14">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(psexec|psexec64).*\\\\[^\\]+\\C\$\\Temp\\</field>
-    <description>Gentlemen Ransomware: PsExec copying binary to remote C$\Temp -- worm spreading stage (T1570)</description>
+    <description>Gentlemen Ransomware: PsExec copying binary to remote C$\Temp  -  worm spreading stage (T1570)</description>
     <mitre>
       <id>T1570</id>
       <id>T1486</id>
@@ -149,7 +149,7 @@
   <rule id="103838" level="13">
     <if_sid>61603</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)wmic\s+/node:.*process\s+call\s+create.*C:\\Temp\\</field>
-    <description>Gentlemen Ransomware: WMIC remote process creation from C:\Temp -- worm lateral movement (T1047/T1570)</description>
+    <description>Gentlemen Ransomware: WMIC remote process creation from C:\Temp  -  worm lateral movement (T1047/T1570)</description>
     <mitre>
       <id>T1047</id>
       <id>T1570</id>
@@ -161,7 +161,7 @@
   <rule id="103839" level="15">
     <if_sid>103837</if_sid>
     <if_matched_sid>103830</if_matched_sid>
-    <description>Gentlemen Ransomware: PsExec worm spreading AND campaign task creation on same host -- active worm campaign (T1570/T1053.005)</description>
+    <description>Gentlemen Ransomware: PsExec worm spreading AND campaign task creation on same host  -  active worm campaign (T1570/T1053.005)</description>
     <options>no_full_log</options>
     <mitre>
       <id>T1570</id>

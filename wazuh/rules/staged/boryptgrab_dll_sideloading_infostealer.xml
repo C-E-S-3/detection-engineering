@@ -62,7 +62,7 @@
     <field name="win.system.eventID">^7$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\WinGUP\.exe$</field>
     <field name="win.eventdata.imageLoaded" type="pcre2">(?i)\\libcurl\.dll$</field>
-    <description>BoryptGrab CONFIRMED: WinGUP.exe sideloaded libcurl.dll from $(win.eventdata.imageLoaded) on $(agent.name) -- trojanized libcurl.dll activates COM/SafeArray reflective loader for credential harvest; initiate host investigation (T1574.002)</description>
+    <description>BoryptGrab CONFIRMED: WinGUP.exe sideloaded libcurl.dll from $(win.eventdata.imageLoaded) on $(agent.name)  -  trojanized libcurl.dll activates COM/SafeArray reflective loader for credential harvest; initiate host investigation (T1574.002)</description>
     <mitre>
       <id>T1574.002</id>
     </mitre>
@@ -80,7 +80,7 @@
     <field name="win.system.eventID">^7$</field>
     <field name="win.eventdata.imageLoaded" type="pcre2">(?i)\\libcurl\.dll$</field>
     <field name="win.eventdata.imageLoaded" type="pcre2" negate="yes">(?i)\\(?:Windows\\System32|Windows\\SysWOW64|curl|Git\\mingw|Program\s*Files[^\\]*\\(?:curl|Git|CMake)|Microsoft\\Edge|Google\\Chrome|Mozilla\\Firefox)\\</field>
-    <description>BoryptGrab: libcurl.dll loaded from non-standard path $(win.eventdata.imageLoaded) by $(win.eventdata.image) on $(agent.name) -- potential DLL sideloading vector; BoryptGrab places rogue libcurl.dll alongside WinGUP.exe in user-writable directories (T1574.002)</description>
+    <description>BoryptGrab: libcurl.dll loaded from non-standard path $(win.eventdata.imageLoaded) by $(win.eventdata.image) on $(agent.name)  -  potential DLL sideloading vector; BoryptGrab places rogue libcurl.dll alongside WinGUP.exe in user-writable directories (T1574.002)</description>
     <mitre>
       <id>T1574.002</id>
     </mitre>
@@ -103,7 +103,7 @@
   <rule id="103958" level="13">
     <if_group>syscheck</if_group>
     <field name="syscheck.path" type="pcre2">(?i)\\AppData\\(?:Roaming|Local)\\(?:Bitcoin\\wallets|Ethereum\\keystore|Exodus\\exodus\.wallet|Electrum\\wallets|Monero\\wallets|Ledger\s*Live|Atomic|Coinbase\s*Wallet|Trust\s*Wallet|exodus\.wallet|com\.ledger|Binance|Armory|Electrum-LTC|Wasabi\s*Wallet)</field>
-    <description>BoryptGrab: cryptocurrency wallet storage accessed at $(syscheck.path) -- BoryptGrab targets 41+ wallets; verify whether WinGUP.exe or an unexpected process triggered this FIM event (T1555)</description>
+    <description>BoryptGrab: cryptocurrency wallet storage accessed at $(syscheck.path)  -  BoryptGrab targets 41+ wallets; verify whether WinGUP.exe or an unexpected process triggered this FIM event (T1555)</description>
     <mitre>
       <id>T1555</id>
     </mitre>
@@ -119,7 +119,7 @@
   <rule id="103959" level="13">
     <if_group>syscheck</if_group>
     <field name="syscheck.path" type="pcre2">(?i)\\AppData\\(?:Local|Roaming)\\(?:Google\\Chrome|Microsoft\\Edge|BraveSoftware\\Brave-Browser|Opera\s*Software|Vivaldi|360Browser|Comodo)\\User\s*Data\\[^\\]+\\(?:Login\s*Data(?:\s*-journal)?|Web\s*Data|Cookies|History)$</field>
-    <description>BoryptGrab: browser credential or session store file modified at $(syscheck.path) -- BoryptGrab targets 19+ browsers for password/cookie harvest; correlate with WinGUP.exe process activity (T1555.003)</description>
+    <description>BoryptGrab: browser credential or session store file modified at $(syscheck.path)  -  BoryptGrab targets 19+ browsers for password/cookie harvest; correlate with WinGUP.exe process activity (T1555.003)</description>
     <mitre>
       <id>T1555.003</id>
     </mitre>
@@ -144,7 +144,7 @@
     <field name="win.system.eventID">^1$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(?:rundll32|regsvr32|mshta|wscript|cscript)\.exe$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)\\(?:Temp|Downloads|Desktop|Documents|AppData\\(?:Local|Roaming))\\[^\\]+\.(?:dll|ocx|ax)(?:\s|,|$)</field>
-    <description>BoryptGrab: $(win.eventdata.image) loading DLL from user-writable path on $(agent.name): $(win.eventdata.commandLine) -- matches COM/SafeArray reflective loader pattern used by BoryptGrab for process injection (T1055/T1218)</description>
+    <description>BoryptGrab: $(win.eventdata.image) loading DLL from user-writable path on $(agent.name): $(win.eventdata.commandLine)  -  matches COM/SafeArray reflective loader pattern used by BoryptGrab for process injection (T1055/T1218)</description>
     <mitre>
       <id>T1055</id>
       <id>T1218</id>
@@ -169,7 +169,7 @@
     <field name="win.system.eventID">^1$</field>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\WinGUP\.exe$</field>
     <field name="win.eventdata.image" type="pcre2">(?i)\\(?:cmd|powershell|pwsh|conhost|wscript|cscript|mshta|bitsadmin|certutil|curl)\.exe$</field>
-    <description>BoryptGrab: WinGUP.exe spawned suspicious child $(win.eventdata.image) on $(agent.name) -- Notepad++ updater should not spawn shells; trojanized libcurl.dll likely active and executing post-exploitation (T1574.002/T1059.003)</description>
+    <description>BoryptGrab: WinGUP.exe spawned suspicious child $(win.eventdata.image) on $(agent.name)  -  Notepad++ updater should not spawn shells; trojanized libcurl.dll likely active and executing post-exploitation (T1574.002/T1059.003)</description>
     <mitre>
       <id>T1574.002</id>
       <id>T1059.003</id>
@@ -193,7 +193,7 @@
   <rule id="103962" level="14">
     <if_group>syscheck</if_group>
     <field name="syscheck.path" type="pcre2">(?i)\\AppData\\(?:Local|Roaming)\\(?:Google\\Chrome|Microsoft\\Edge|BraveSoftware\\Brave-Browser)\\User\s*Data\\[^\\]+\\Local\s*Extension\s*Settings\\(?:nkbihfbeogaeaoehlefnkodbefgpgknn|nanjmdknhkinifnkgdcggcfnhdaammmj|egjidjbpglichdcondbcbdnbeeppgdph|bfnaelmomeahhmniioccaoke[a-z]{6}|aeachknmefphepccionboohckonoeemg|ojggmchlghnjlapmfbnjholfjkiidbch)</field>
-    <description>BoryptGrab: browser crypto wallet extension storage accessed at $(syscheck.path) -- matches MetaMask (nkbihf), Coinbase Wallet (aeachk), or Phantom (bfnael) extension IDs targeted by BoryptGrab; wallet key material may be exfiltrated (T1539/T1555)</description>
+    <description>BoryptGrab: browser crypto wallet extension storage accessed at $(syscheck.path)  -  matches MetaMask (nkbihf), Coinbase Wallet (aeachk), or Phantom (bfnael) extension IDs targeted by BoryptGrab; wallet key material may be exfiltrated (T1539/T1555)</description>
     <mitre>
       <id>T1539</id>
       <id>T1555</id>
@@ -209,11 +209,11 @@
   <!-- High-confidence BoryptGrab kill chain: 3+ indicators in 5 minutes.
        When 3 or more BoryptGrab-tagged alerts fire on the same host within
        300 seconds, this indicates an active infection progressing through
-       the kill chain (WinGUP exec -> DLL load -> credential harvest).
+       the kill chain (WinGUP exec - DLL load - credential harvest).
        Level 15: confirmed BoryptGrab infection; initiate incident response. -->
   <rule id="103963" level="15" frequency="3" timeframe="300">
     <if_matched_group>boryptgrab</if_matched_group>
-    <description>BoryptGrab ACTIVE INFECTION: 3+ kill chain indicators in 5 minutes on $(agent.name) -- DLL sideloading campaign confirmed; isolate endpoint and initiate incident response (T1574.002/T1555/T1055)</description>
+    <description>BoryptGrab ACTIVE INFECTION: 3+ kill chain indicators in 5 minutes on $(agent.name)  -  DLL sideloading campaign confirmed; isolate endpoint and initiate incident response (T1574.002/T1555/T1055)</description>
     <mitre>
       <id>T1574.002</id>
       <id>T1555</id>
@@ -231,7 +231,7 @@
   <rule id="103964" level="12">
     <if_group>syscheck</if_group>
     <field name="syscheck.path" type="pcre2">(?i)\\(?:Temp|Downloads|Desktop|Documents)\\WinGUP\.exe$</field>
-    <description>BoryptGrab: WinGUP.exe created in user-writable directory $(syscheck.path) -- Notepad++ updater should not appear outside Program Files; BoryptGrab distributes via fake GitHub repos; delete file and check git clone history (T1574.002/T1195.001)</description>
+    <description>BoryptGrab: WinGUP.exe created in user-writable directory $(syscheck.path)  -  Notepad++ updater should not appear outside Program Files; BoryptGrab distributes via fake GitHub repos; delete file and check git clone history (T1574.002/T1195.001)</description>
     <mitre>
       <id>T1574.002</id>
       <id>T1195.001</id>

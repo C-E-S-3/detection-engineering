@@ -53,17 +53,17 @@
                 1kkkkddd[.]com (supplemental C2 / staging)
 
      Log source prerequisites:
-       - Sysmon EventID 1 (ProcessCreate)  -> Wazuh SID 61603
+       - Sysmon EventID 1 (ProcessCreate)  - Wazuh SID 61603
          Required for rules 104026, 104027, 104030.
          Sysmon must capture CommandLine, ParentImage, and Image fields.
-       - Sysmon EventID 8 (CreateRemoteThread) -> Wazuh SID 61644 + eventID=8
+       - Sysmon EventID 8 (CreateRemoteThread) - Wazuh SID 61644 + eventID=8
          Required for rule 104028.
          Sysmon must have EventID 8 logging enabled (off by default in
          minimal configs; add to sysmon_config.xml under CreateRemoteThread).
-       - Windows Security / System EventID 7045 (new service install) -> Wazuh SID 60103
+       - Windows Security / System EventID 7045 (new service install) - Wazuh SID 60103
          Required for rule 104029.
          Enabled by default in all Windows environments with Wazuh agent.
-       - Network/firewall logs -> Wazuh SID 103000
+       - Network/firewall logs - Wazuh SID 103000
          Required for rules 104031 and 104032.
          Source: FortiGate, pfSense, Windows Filtering Platform (WFP), Sysmon EventID 3.
 
@@ -198,7 +198,7 @@
        Windows system binaries that legitimately create threads in svchost.
 
        NOTE: Sysmon EventID 8 logging must be explicitly enabled in the
-       Sysmon configuration. Add <CreateRemoteThread onmatch="exclude"/>
+       Sysmon configuration. Add [CreateRemoteThread onmatch="exclude"/]
        with exclusions for known-good system processes to reduce noise.
 
        False positives: security products (EDRs, AV engines) and some

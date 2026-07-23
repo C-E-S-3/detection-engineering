@@ -14,7 +14,7 @@
        - Varonis Threat Labs (2026-06-16)
        - threat-intel/2026-06-16_varonis-ghosttree-ntfs-junction-edr-bypass.md
      Log sources:
-       - Sysmon EventID 1 (Process Creation) -> Wazuh SID 61603
+       - Sysmon EventID 1 (Process Creation) - Wazuh SID 61603
      Coverage notes:
        - GhostTree requires only 2 OS commands (mklink /J or PowerShell
          New-Item -ItemType Junction) and no admin privileges
@@ -45,7 +45,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\cmd\.exe$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)mklink\s+/J\s+</field>
-    <description>GhostTree: NTFS junction created via mklink /J by $(win.eventdata.user) on $(win.eventdata.computer) -- review for EDR scanner bypass (T1562.001/T1222.001)</description>
+    <description>GhostTree: NTFS junction created via mklink /J by $(win.eventdata.user) on $(win.eventdata.computer)  -  review for EDR scanner bypass (T1562.001/T1222.001)</description>
     <mitre>
       <id>T1562.001</id>
       <id>T1222.001</id>
@@ -57,7 +57,7 @@
   <rule id="102701" level="13">
     <if_sid>102700</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)mklink\s+/J\s+.*(\\temp\\|\\tmp\\|\\public\\|\\programdata\\|\\appdata\\|%temp%|%appdata%|%localappdata%)</field>
-    <description>GhostTree: NTFS recursive junction created in user-writable path -- EDR scanner bypass technique active (T1562.001). Command: $(win.eventdata.commandLine)</description>
+    <description>GhostTree: NTFS recursive junction created in user-writable path  -  EDR scanner bypass technique active (T1562.001). Command: $(win.eventdata.commandLine)</description>
     <mitre>
       <id>T1562.001</id>
       <id>T1070</id>
@@ -69,7 +69,7 @@
   <rule id="102702" level="14">
     <if_sid>102700</if_sid>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(wscript|mshta|regsvr32|rundll32|cmstp|bitsadmin|certutil|powershell)\.exe$</field>
-    <description>GhostTree: NTFS junction created by scripting engine parent $(win.eventdata.parentImage) -- likely payload staging for EDR bypass (T1562.001/T1070)</description>
+    <description>GhostTree: NTFS junction created by scripting engine parent $(win.eventdata.parentImage)  -  likely payload staging for EDR bypass (T1562.001/T1070)</description>
     <mitre>
       <id>T1562.001</id>
       <id>T1070</id>
@@ -90,7 +90,7 @@
     <if_sid>61603</if_sid>
     <field name="win.eventdata.image" type="pcre2">(?i)\\powershell(\.exe|_ise\.exe)?$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)New-Item\s+.*-ItemType\s+(Junction|SymbolicLink|HardLink)</field>
-    <description>GhostTree: NTFS junction/link created via PowerShell New-Item by $(win.eventdata.user) -- review for EDR scanner bypass (T1562.001/T1222.001)</description>
+    <description>GhostTree: NTFS junction/link created via PowerShell New-Item by $(win.eventdata.user)  -  review for EDR scanner bypass (T1562.001/T1222.001)</description>
     <mitre>
       <id>T1562.001</id>
       <id>T1222.001</id>
@@ -102,7 +102,7 @@
   <rule id="102704" level="13">
     <if_sid>102703</if_sid>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(\\temp\\|\\tmp\\|\\public\\|\\programdata\\|\\appdata\\|%temp%|%appdata%|%localappdata%)</field>
-    <description>GhostTree: PowerShell NTFS junction created in user-writable staging path -- EDR scanner bypass active (T1562.001). Command: $(win.eventdata.commandLine)</description>
+    <description>GhostTree: PowerShell NTFS junction created in user-writable staging path  -  EDR scanner bypass active (T1562.001). Command: $(win.eventdata.commandLine)</description>
     <mitre>
       <id>T1562.001</id>
       <id>T1070</id>
@@ -124,7 +124,7 @@
     <field name="win.eventdata.image" type="pcre2">(?i)\\powershell(\.exe|_ise\.exe)?$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(-EncodedCommand|-enc)\s+</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(Junction|mklink|/J)</field>
-    <description>GhostTree: PowerShell encoded command containing junction keywords by $(win.eventdata.user) -- possible obfuscated GhostTree EDR bypass (T1562.001)</description>
+    <description>GhostTree: PowerShell encoded command containing junction keywords by $(win.eventdata.user)  -  possible obfuscated GhostTree EDR bypass (T1562.001)</description>
     <mitre>
       <id>T1562.001</id>
       <id>T1027</id>
@@ -138,7 +138,7 @@
     <field name="win.eventdata.commandLine" type="pcre2">(?i)mklink\s+/J\s+</field>
     <field name="win.eventdata.parentImage" type="pcre2">(?i)\\(wscript|mshta|regsvr32|rundll32|cmstp)\.exe$</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)(\\temp\\|\\tmp\\|\\public\\|\\programdata\\|\\appdata\\)</field>
-    <description>GhostTree CRITICAL: NTFS junction in temp path created by dropper process $(win.eventdata.parentImage) -- active EDR evasion payload staging (T1562.001/T1070)</description>
+    <description>GhostTree CRITICAL: NTFS junction in temp path created by dropper process $(win.eventdata.parentImage)  -  active EDR evasion payload staging (T1562.001/T1070)</description>
     <mitre>
       <id>T1562.001</id>
       <id>T1070</id>

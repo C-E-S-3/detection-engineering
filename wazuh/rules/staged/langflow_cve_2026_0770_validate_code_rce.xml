@@ -21,13 +21,13 @@
        1. (Optional) POST /api/v1/login with default credentials
           username=langflow password=langflow when AUTO_LOGIN is enabled,
           to obtain a JWT for the authenticated code injection path.
-       2. POST /api/v1/validate/code with JSON {"code": "<payload>"}
-          where <payload> is a Python function using default argument
+       2. POST /api/v1/validate/code with JSON {"code": "[payload]"}
+          where [payload] is a Python function using default argument
           expressions that embed __import__('subprocess').run().
        3. exec() compiles the function definition, evaluating default
           args and running the OS command immediately.
        4. Generator .throw() raises an exception carrying "OUTPUT:\n
-          <command_result>", which propagates as an HTTP 5xx error body.
+          [command_result]", which propagates as an HTTP 5xx error body.
 
      Exploit kernel (simplified from EDB-52597):
        {"code": "def x(_=(lambda r: (_ for _ in ()).throw(
@@ -175,7 +175,7 @@
 
        The canonical CVE-2026-0770 PoC (EDB-52597) uses Python's
        generator .throw() mechanism to raise an exception whose
-       message contains "OUTPUT:\n<os command result>". exec()
+       message contains "OUTPUT:\n[os command result]". exec()
        propagates this exception to the Langflow API handler, which
        returns an HTTP 5xx Internal Server Error with the exception
        body. A 5xx from /api/v1/validate/code is therefore the
