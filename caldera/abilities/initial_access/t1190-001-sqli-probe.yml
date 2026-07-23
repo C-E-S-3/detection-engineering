@@ -1,0 +1,21 @@
+- id: a1190001-0000-4000-8001-000000000001
+  name: T1190 SQL Injection Probe
+  description: >
+    Sends a classic SQL injection payload (' OR 1=1--) in the query string to
+    the web target. Intended to trigger Wazuh rule 100822 (SQLi pattern in HTTP
+    request path). Uses curl; expects an HTTP response code in stdout and does
+    not require the injection to succeed.
+  tactic: initial_access
+  technique:
+    attack_id: T1190
+    name: Exploit Public-Facing Application
+  platforms:
+    linux:
+      sh:
+        command: |
+          curl -sk -o /dev/null -w "sqli_probe status=%{http_code}\n" \
+            "http://#{app.web_target}/search?q=%27+OR+1%3D1--" \
+            -H "X-Purple-Team-Exercise: phase2-t1190-sqli" \
+            --max-time 10 2>&1 || true
+        cleanup: |
+          true

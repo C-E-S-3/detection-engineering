@@ -1,0 +1,21 @@
+- id: a1190002-0000-4000-8002-000000000002
+  name: T1190 Path Traversal Probe
+  description: >
+    Sends path traversal sequences (../../etc/passwd) in the URL path to the web
+    target. Intended to trigger Wazuh rule 100823 (path traversal pattern in HTTP
+    request path). The request is expected to fail or return a non-200; only the
+    Traefik access log entry matters for detection.
+  tactic: initial_access
+  technique:
+    attack_id: T1190
+    name: Exploit Public-Facing Application
+  platforms:
+    linux:
+      sh:
+        command: |
+          curl -sk -o /dev/null -w "path_traversal status=%{http_code}\n" \
+            "http://#{app.web_target}/static/..%2F..%2Fetc%2Fpasswd" \
+            -H "X-Purple-Team-Exercise: phase2-t1190-traversal" \
+            --max-time 10 2>&1 || true
+        cleanup: |
+          true

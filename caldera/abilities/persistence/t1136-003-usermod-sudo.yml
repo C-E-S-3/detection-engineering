@@ -1,0 +1,25 @@
+- id: a1136003-0000-4000-8003-000000000003
+  name: T1136 usermod Add pt_testuser to sudo Group
+  description: >
+    Ensures pt_testuser exists (creates if absent), then runs usermod -aG sudo
+    pt_testuser. Intended to trigger Wazuh rules 100856 (user added to
+    privileged group) and 100855 (/etc/group FIM alert). Cleanup removes the
+    user from the sudo group and deletes the account.
+    Requires auditd execve rule: -a always,exit -F arch=b64 -S execve -k execve
+    Requires Wazuh FIM monitoring of /etc/group.
+  tactic: persistence
+  technique:
+    attack_id: T1136
+    name: Create Account
+  platforms:
+    linux:
+      sh:
+        command: |
+          useradd -m -s /bin/bash -c "Purple Team Phase2 Test Account" pt_testuser 2>/dev/null || true
+          usermod -aG sudo pt_testuser 2>&1
+          groups pt_testuser 2>&1
+          echo "usermod_sudo_test complete: pt_testuser added to sudo group"
+        cleanup: |
+          gpasswd -d pt_testuser sudo 2>/dev/null || true
+          userdel -r pt_testuser 2>/dev/null || true
+          echo "usermod_sudo_cleanup: pt_testuser removed from sudo and deleted"

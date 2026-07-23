@@ -1,0 +1,22 @@
+- id: a1136001-0000-4000-8001-000000000001
+  name: T1136 useradd Create Test Account
+  description: >
+    Creates a local test user account (pt_testuser) via useradd. Intended to
+    trigger Wazuh rules 100850 (useradd executed) and 100858 (PAM syslog new
+    user creation). The account is named to be clearly identifiable as a purple
+    team test artifact. Cleanup removes the account and home directory.
+    Requires auditd execve rule: -a always,exit -F arch=b64 -S execve -k execve
+  tactic: persistence
+  technique:
+    attack_id: T1136
+    name: Create Account
+  platforms:
+    linux:
+      sh:
+        command: |
+          useradd -m -s /bin/bash -c "Purple Team Phase2 Test Account" pt_testuser 2>&1 || true
+          id pt_testuser 2>&1 || true
+          echo "useradd_test complete: account pt_testuser"
+        cleanup: |
+          userdel -r pt_testuser 2>/dev/null || true
+          echo "useradd_cleanup: pt_testuser removed"

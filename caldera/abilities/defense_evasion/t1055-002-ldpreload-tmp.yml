@@ -1,0 +1,22 @@
+- id: a1055002-0000-4000-8002-000000000002
+  name: T1055 LD_PRELOAD Shared Library Injection via /tmp
+  description: >
+    Copies a benign binary to /tmp/ with a .so extension and then invokes a
+    command with LD_PRELOAD set to that path. The LD_PRELOAD execve() event is
+    captured by auditd and intended to trigger Wazuh rule 100833 (LD_PRELOAD
+    set to suspicious /tmp path). The .so file is a renamed copy of /bin/ls
+    and contains no actual injection payload. Cleanup removes the test file.
+    Requires auditd execve rule: -a always,exit -F arch=b64 -S execve -k execve
+  tactic: defense_evasion
+  technique:
+    attack_id: T1055
+    name: Process Injection
+  platforms:
+    linux:
+      sh:
+        command: |
+          cp /bin/ls /tmp/pt_phase2_inject.so 2>/dev/null || true
+          LD_PRELOAD=/tmp/pt_phase2_inject.so ls /dev/null 2>&1 || true
+          echo "ldpreload_test complete: LD_PRELOAD=/tmp/pt_phase2_inject.so"
+        cleanup: |
+          rm -f /tmp/pt_phase2_inject.so 2>/dev/null || true

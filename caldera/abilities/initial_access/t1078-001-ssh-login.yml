@@ -1,0 +1,25 @@
+- id: a1078001-0000-4000-8001-000000000001
+  name: T1078 SSH Login From Exercise Host
+  description: >
+    Performs an SSH login from the Caldera implant host to the target using a
+    pre-deployed key. Intended to trigger Wazuh rule 100840 (successful SSH
+    authentication from a first-seen or exercise-host IP). The login executes
+    a benign marker command and exits. Requires #{host.target.user} to have an
+    authorized key in place on #{host.target} before the exercise runs.
+  tactic: initial_access
+  technique:
+    attack_id: T1078
+    name: Valid Accounts
+  platforms:
+    linux:
+      sh:
+        command: |
+          ssh -o StrictHostKeyChecking=no \
+              -o BatchMode=yes \
+              -o ConnectTimeout=10 \
+              -o IdentitiesOnly=yes \
+              -i #{host.ssh.keyfile} \
+              #{host.target.user}@#{host.target} \
+              "echo T1078_LOGIN_MARKER_$(hostname)_$(date -u +%Y%m%dT%H%M%SZ)" 2>&1 || true
+        cleanup: |
+          true

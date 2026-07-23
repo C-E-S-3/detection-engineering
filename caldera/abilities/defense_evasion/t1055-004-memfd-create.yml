@@ -1,0 +1,31 @@
+- id: a1055004-0000-4000-8004-000000000004
+  name: T1055 memfd_create Fileless Injection
+  description: >
+    Calls the memfd_create(2) syscall via Python ctypes to create an anonymous
+    in-memory file descriptor. This is the first step of fileless shared-object
+    injection (load a .so into an anonymous fd without touching disk). Intended
+    to trigger Wazuh rule 100837 (memfd_create called). The fd is immediately
+    closed; no shellcode or library is actually loaded.
+    Requires auditd syscall monitoring for memfd_create (or a fallback execve rule).
+  tactic: defense_evasion
+  technique:
+    attack_id: T1055
+    name: Process Injection
+  platforms:
+    linux:
+      sh:
+        command: |
+          python3 -c "
+          import ctypes, ctypes.util, os
+          libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
+          MFD_CLOEXEC = 1
+          fd = libc.memfd_create(b'pt_phase2_test', MFD_CLOEXEC)
+          err = ctypes.get_errno()
+          if fd >= 0:
+              print(f'memfd_create returned fd={fd} (success)')
+              os.close(fd)
+          else:
+              print(f'memfd_create failed: errno={err}')
+          " 2>&1 || true
+        cleanup: |
+          true

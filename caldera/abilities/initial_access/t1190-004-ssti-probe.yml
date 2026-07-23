@@ -1,0 +1,21 @@
+- id: a1190004-0000-4000-8004-000000000004
+  name: T1190 Server-Side Template Injection Probe
+  description: >
+    Sends a Jinja2/Twig SSTI canary payload ({{7*7}}) in the query string to the
+    web target. Intended to trigger Wazuh rule 100827 (SSTI pattern in HTTP
+    request path). Detection does not require template evaluation to succeed;
+    the Traefik log entry with the double-brace payload drives the alert.
+  tactic: initial_access
+  technique:
+    attack_id: T1190
+    name: Exploit Public-Facing Application
+  platforms:
+    linux:
+      sh:
+        command: |
+          curl -sk -o /dev/null -w "ssti_probe status=%{http_code}\n" \
+            "http://#{app.web_target}/render?template=%7B%7B7%2A7%7D%7D" \
+            -H "X-Purple-Team-Exercise: phase2-t1190-ssti" \
+            --max-time 10 2>&1 || true
+        cleanup: |
+          true

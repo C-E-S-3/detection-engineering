@@ -1,0 +1,28 @@
+- id: a1055001-0000-4000-8001-000000000001
+  name: T1055 ptrace PTRACE_ATTACH
+  description: >
+    Calls ptrace(PTRACE_ATTACH, ppid) against the parent process of the current
+    shell. The call will normally fail with EPERM unless the implant is root, but
+    the syscall itself is what auditd captures. Intended to trigger Wazuh rules
+    100830 (ptrace PTRACE_ATTACH) and 100831 (PTRACE_ATTACH by non-debugger).
+    Requires auditd to be configured with:
+      -a always,exit -F arch=b64 -S ptrace -F a0=0x10 -k process_injection
+  tactic: defense_evasion
+  technique:
+    attack_id: T1055
+    name: Process Injection
+  platforms:
+    linux:
+      sh:
+        command: |
+          python3 -c "
+          import ctypes, os
+          libc = ctypes.CDLL(None)
+          PTRACE_ATTACH = 16
+          target = os.getppid()
+          ret = libc.ptrace(PTRACE_ATTACH, target, 0, 0)
+          err = ctypes.get_errno()
+          print(f'ptrace(PTRACE_ATTACH, {target}) ret={ret} errno={err}')
+          " 2>&1 || true
+        cleanup: |
+          true
