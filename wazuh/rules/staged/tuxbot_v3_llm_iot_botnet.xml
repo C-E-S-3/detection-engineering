@@ -1,5 +1,5 @@
 <!-- ============================================================
-     TuxBot v3: LLM-Assisted IoT Botnet — Iranian-Nexus, SHA512 DGA, P2P C2
+     TuxBot v3: LLM-Assisted IoT Botnet - Iranian-Nexus, SHA512 DGA, P2P C2
      MITRE ATT&amp;CK Techniques:
        T1568.002 - Domain Generation Algorithms (SHA512-seeded DGA backup C2)
        T1573     - Encrypted Channel (TCP 2222 with SSH-2.0-CNC-Control-Server banner)
@@ -25,7 +25,7 @@
        - Primary C2: 209.182.237.133 (Singapore; TCP 2222; SSH-2.0-CNC-Control-Server banner)
        - Shared infra: 185.10.68.127 (Keksec/TuxBot overlap; flagged malicious May 2026)
        - Dev domain: digikalas.online (Arvan Cloud CDN; leaked via Git log in TuxBot sample)
-       - TCP 2222 is non-standard for legitimate IoT device egress — alert broadly on it
+       - TCP 2222 is non-standard for legitimate IoT device egress - alert broadly on it
        - SHA512 DGA generates additional domains; block digikalas.online as known seed anchor
        - TuxBot targets IoT architectures: ARM, MIPS, MIPSEL, MIPS64, x86_64, PowerPC, RISC-V
      Severity tiers:
@@ -39,9 +39,9 @@
   <!-- ===========================================================
        Firewall: Outbound traffic to TuxBot v3 primary C2 IP
        Rule IDs: 104103-104105
-       209.182.237.133 — TuxBot v3 primary C2 server in Singapore;
+       209.182.237.133 - TuxBot v3 primary C2 server in Singapore;
        TCP 2222 with SSH-2.0-CNC-Control-Server banner (Unit 42).
-       185.10.68.127 — Shared infra with Keksec/Kaitori botnet ecosystem;
+       185.10.68.127 - Shared infra with Keksec/Kaitori botnet ecosystem;
        flagged malicious May 2026 by threat intel feeds.
        Both IPs should be blocked at the perimeter; any outbound
        contact from a homelab host strongly indicates compromise.
@@ -86,7 +86,7 @@
   <!-- ===========================================================
        DNS: Lookup for TuxBot developer infrastructure domain
        Rule IDs: 104106-104107
-       digikalas.online — developer domain leaked via Git log in a
+       digikalas.online - developer domain leaked via Git log in a
        TuxBot v3 sample; hosted on Iran's Arvan Cloud CDN. Any DNS
        query for this domain from a homelab host indicates compromise
        or active TuxBot C2 communication (DNS TXT polling channel).
@@ -157,7 +157,7 @@
        warrants investigation. This rule is broader than the IOC-
        specific rules above and may catch DGA-resolved C2 domains.
        TuxBot also presents SSH banner SSH-2.0-CNC-Control-Server
-       on port 2222 — a highly specific IoT botnet indicator.
+       on port 2222 - a highly specific IoT botnet indicator.
        =========================================================== -->
 
   <!-- Firewall: outbound TCP 2222 to any external IP -->
