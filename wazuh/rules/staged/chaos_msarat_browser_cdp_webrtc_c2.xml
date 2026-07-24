@@ -1,0 +1,139 @@
+<!-- ============================================================
+     Chaos / msaRAT: Browser-Resident C2 via Chrome DevTools Protocol + WebRTC
+     Cisco Talos Report 2026-07-23
+
+     Threat:
+       msaRAT is a new RAT component of the Chaos malware family.
+       After delivery via a fake Microsoft Update MSI installer
+       (update_ms.msi from 172.86.126.18:443), the dropper injects
+       msaRAT into the victim's running browser process.
+
+       msaRAT attaches to Chrome/Edge via the Chrome DevTools Protocol
+       (CDP) on the loopback debug port (default 127.0.0.1:9222) and
+       uses the browser's own WebRTC stack to establish a peer channel
+       to an attacker-controlled Cloudflare Workers signaling server
+       at is-01-ast.ols-img-12.workers.dev.
+
+       Detection challenge: All C2 traffic appears to originate from
+       the browser process (chrome.exe, msedge.exe) not the malicious
+       loader, bypassing process-based network controls.
+
+     IOCs:
+       Staging IP:  172.86.126.18 (TCP 443, path /update_ms.msi)
+       C2 domain:   is-01-ast.ols-img-12.workers.dev (Cloudflare Workers)
+
+     MITRE ATT&amp;CK Techniques:
+       T1055     - Process Injection (injection into browser process)
+       T1555     - Credentials from Password Stores (browser cred theft)
+       T1102.001 - Web Service: One-Way Communication (Cloudflare Workers C2)
+       T1071.001 - Application Layer Protocol: Web Protocols (WebRTC/DTLS)
+       T1105     - Ingress Tool Transfer (MSI from 172.86.126.18)
+       T1036     - Masquerading (fake Microsoft Update MSI name)
+
+     Rule IDs: 104168-104174
+     Author: Audit Engineer (ESKA threat intel)
+     Date: 2026-07-24
+     Source: Cisco Talos - Chaos/msaRAT Browser CDP WebRTC C2 (2026-07-23)
+
+     Log source prerequisites:
+       Rules 104168-104170 (network IOC detection):
+         Wazuh threat_intel_ioc_network.xml must be active (SID 100610+).
+         These rules chain on IOC-match events from that rule set.
+         Alternatively: Zeek/Suricata DNS + HTTP logs decoded as JSON.
+       Rules 104171-104172 (process/endpoint detection):
+         Sysmon Event ID 1 (ProcessCreate) forwarded via Wazuh.
+         Wazuh SID 61603 (Sysmon process create) used as parent SID.
+       Rules 104173-104174 (auditd Linux equivalent):
+         auditd execve events decoded by wazuh-logcollector (decoded_as=auditd).
+         Applicable if victim is a Linux host with browser.
+     ============================================================ -->
+
+<group name="command_and_control,defense_evasion,chaos,msarat,browser_cdp,webrtc_c2,etherhiding,">
+
+  <!-- T1105: DNS lookup for known msaRAT staging domain -->
+  <rule id="104168" level="14">
+    <if_sid>100610,100611,100612</if_sid>
+    <field name="ioc_value" type="pcre2">(?i)172\.86\.126\.18|is-01-ast\.ols-img-12\.workers\.dev</field>
+    <description>Chaos/msaRAT IOC: Known staging IP or C2 domain contacted - $(ioc_value) from $(src_ip) - browser CDP implant C2 channel (T1102.001)</description>
+    <mitre>
+      <id>T1105</id>
+      <id>T1102</id>
+    </mitre>
+    <group>chaos,msarat,ioc_hit,command_and_control,webrtc_c2,</group>
+  </rule>
+
+  <!-- T1036: MSI download with masqueraded Microsoft Update filename -->
+  <rule id="104169" level="13">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)/update_ms\.msi|/ms_update.*\.msi|/microsoft.?update.*\.msi</field>
+    <field name="RequestMethod">GET</field>
+    <description>Chaos/msaRAT: Download of masqueraded Microsoft Update MSI $(RequestPath) from $(ClientHost) - Chaos dropper staging (T1036/T1105)</description>
+    <mitre>
+      <id>T1036</id>
+      <id>T1105</id>
+    </mitre>
+    <group>chaos,msarat,staging,masquerading,</group>
+  </rule>
+
+  <!-- T1071.001/T1102: WebRTC to Cloudflare Workers (*.workers.dev) from browser process -->
+  <rule id="104170" level="12">
+    <decoded_as>json</decoded_as>
+    <field name="dest_domain" type="pcre2">(?i)\.workers\.dev$</field>
+    <field name="proto" type="pcre2">(?i)udp|webrtc</field>
+    <description>Chaos/msaRAT: UDP/WebRTC connection to Cloudflare Workers domain $(dest_domain) from $(src_ip) - potential msaRAT WebRTC C2 channel (T1071.001/T1102)</description>
+    <mitre>
+      <id>T1071</id>
+      <id>T1102</id>
+    </mitre>
+    <group>chaos,msarat,webrtc_c2,command_and_control,</group>
+  </rule>
+
+  <!-- T1055: Chrome/Edge started with remote-debugging-port flag (CDP enablement) -->
+  <rule id="104171" level="14">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:chrome|msedge|chromium).*--remote-debugging-port=\d+</field>
+    <description>Chaos/msaRAT: Browser launched with CDP remote debugging enabled ($(win.eventdata.commandLine)) - msaRAT attaches via this port for process injection (T1055)</description>
+    <mitre>
+      <id>T1055</id>
+    </mitre>
+    <group>chaos,msarat,process_injection,browser_cdp,defense_evasion,</group>
+  </rule>
+
+  <!-- T1055: Non-browser parent process spawning Chrome with debug flag - injection preparation -->
+  <rule id="104172" level="15">
+    <if_sid>104171</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)(?:cmd\.exe|powershell|msiexec|rundll32|regsvr32|wscript|cscript|explorer|svchost)</field>
+    <description>Chaos/msaRAT: Browser with CDP debug flag spawned by suspicious parent $(win.eventdata.parentImage) on $(win.eventdata.computer) - msaRAT process injection prep (T1055)</description>
+    <mitre>
+      <id>T1055</id>
+      <id>T1036</id>
+    </mitre>
+    <group>chaos,msarat,process_injection,browser_cdp,high_confidence,</group>
+  </rule>
+
+  <!-- T1055: msiexec.exe executing payload from temp path (Chaos dropper MSI install) -->
+  <rule id="104173" level="13">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)msiexec\.exe</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)/i.*(?:temp|appdata|programdata).*\.msi|update_ms\.msi</field>
+    <description>Chaos/msaRAT: msiexec executing MSI from user-writable path ($(win.eventdata.commandLine)) - Chaos dropper installation pattern (T1105/T1036)</description>
+    <mitre>
+      <id>T1105</id>
+      <id>T1036</id>
+    </mitre>
+    <group>chaos,msarat,execution,staging,</group>
+  </rule>
+
+  <!-- T1071.001: Repeated WebRTC/STUN connections from browser to unusual destinations -->
+  <rule id="104174" level="12" frequency="5" timeframe="120">
+    <if_matched_sid>104170</if_matched_sid>
+    <same_field>src_ip</same_field>
+    <description>Chaos/msaRAT: 5+ WebRTC connections to Cloudflare Workers from $(src_ip) in 2 minutes - persistent browser-resident C2 beaconing pattern (T1071.001)</description>
+    <mitre>
+      <id>T1071</id>
+      <id>T1102</id>
+    </mitre>
+    <group>chaos,msarat,webrtc_c2,command_and_control,high_confidence,</group>
+  </rule>
+
+</group>

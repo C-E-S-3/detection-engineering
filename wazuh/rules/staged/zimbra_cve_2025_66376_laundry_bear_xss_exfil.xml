@@ -1,0 +1,158 @@
+<!-- ============================================================
+     Zimbra CVE-2025-66376: LAUNDRY BEAR SVR Zero-Click XSS Email Exfiltration
+     CISA Advisory AA26-204A | CVSS 9.8 Critical
+
+     Threat:
+       CVE-2025-66376 is a zero-click cross-site scripting (XSS)
+       vulnerability in Zimbra Collaboration Suite (ZCS) webmail.
+       When a victim opens or previews a specially crafted email,
+       injected JavaScript executes in the Zimbra webmail session
+       context with no further user interaction required.
+
+       The script silently exfiltrates:
+         - Mailbox contents (emails, attachments)
+         - Address book and contacts
+         - Session cookies enabling persistent access
+
+       Data is transmitted to attacker-controlled endpoints via
+       HTTP POST or WebSocket. No attacker interaction required
+       after initial email delivery.
+
+     Threat Actor: LAUNDRY BEAR (Russia SVR-nexus)
+       Previously associated with Czech/Slovak government targeting,
+       European diplomatic entity campaigns, and Ghostwriter-adjacent
+       disinformation operations.
+
+     Affected: ZCS 9.x before 9.0.0 P45, ZCS 10.x before 10.0.12,
+               ZCS 10.1.x before 10.1.4
+     Patch: Available 2026-07-11 (Zimbra); CISA urges immediate patching
+
+     MITRE ATT&amp;CK Techniques:
+       T1190     - Exploit Public-Facing Application (XSS in webmail)
+       T1566.001 - Phishing: Spearphishing Attachment (email delivery)
+       T1059.007 - Command and Scripting Interpreter: JavaScript
+       T1185     - Browser Session Hijacking (session cookie theft)
+       T1114     - Email Collection (mailbox exfiltration)
+       T1539     - Steal Web Session Cookie
+       T1041     - Exfiltration over C2 Channel (HTTP POST from browser)
+
+     Rule IDs: 104160-104167
+     Author: Audit Engineer (ESKA threat intel)
+     Date: 2026-07-24
+     Source: CISA AA26-204A, NVD CVE-2025-66376
+
+     Log source prerequisites:
+       All rules (Zimbra web access detection):
+         Traefik or nginx access log in JSON format forwarded to Wazuh.
+         Required fields: RequestMethod, RequestPath, RequestHost,
+         DownstreamStatus, ClientHost, RequestHeader_User-Agent.
+         Decoder: built-in Wazuh JSON decoder (decoded_as=json).
+       Rule 104165-104166 (Zimbra server outbound):
+         Network flow or Zeek connection logs from Zimbra server egress.
+         Fields: src_ip, dest_ip, dest_port, proto (decoded_as=json).
+       Rule 104167 (Zimbra app log):
+         Zimbra mail server log (mailbox.log or audit.log) forwarded
+         via Wazuh localfile. Decoder: custom or syslog fallback.
+     ============================================================ -->
+
+<group name="initial_access,exploit_pubfacing,credential_access,zimbra,xss,laundry_bear,cve_2025_66376,">
+
+  <!-- T1190: POST to Zimbra mail endpoint with large body - potential XSS payload injection -->
+  <rule id="104160" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="RequestHost" type="pcre2">(?i)zimbra|zcs|mail\.</field>
+    <field name="RequestMethod">POST</field>
+    <description>Zimbra: POST to mail host $(RequestHost) from $(ClientHost) - anchor for CVE-2025-66376 chain</description>
+    <group>zimbra,exploit_pubfacing,cve_2025_66376,</group>
+  </rule>
+
+  <!-- T1190: POST to Zimbra compose or send endpoint - XSS payload delivery vector -->
+  <rule id="104161" level="12">
+    <if_sid>104160</if_sid>
+    <field name="RequestPath" type="pcre2">(?i)/service/(?:soap|mail|upload)|/zimbra/(?:mail|h/)?(?:compose|send|upload)</field>
+    <description>Zimbra CVE-2025-66376: POST to mail/compose/upload endpoint from $(ClientHost) to $(RequestHost) - potential XSS email injection (T1190/LAUNDRY BEAR)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1566</id>
+    </mitre>
+    <group>zimbra,exploit_pubfacing,initial_access,cve_2025_66376,</group>
+  </rule>
+
+  <!-- T1185/T1539: Suspicious access to Zimbra auth/preauth endpoint from unusual source -->
+  <rule id="104162" level="13">
+    <decoded_as>json</decoded_as>
+    <field name="RequestHost" type="pcre2">(?i)zimbra|zcs|mail\.</field>
+    <field name="RequestPath" type="pcre2">(?i)/service/(?:preauth|auth|login)|/zimbra/(?:preauth|auth)</field>
+    <field name="RequestMethod">POST</field>
+    <description>Zimbra CVE-2025-66376: POST to preauth/auth endpoint from $(ClientHost) - possible session token theft use (T1185/T1539/LAUNDRY BEAR)</description>
+    <mitre>
+      <id>T1185</id>
+      <id>T1539</id>
+    </mitre>
+    <group>zimbra,credential_access,cve_2025_66376,laundry_bear,</group>
+  </rule>
+
+  <!-- T1185: Zimbra auth succeeded then immediate large data access - cookie replay after XSS exfil -->
+  <rule id="104163" level="14">
+    <if_sid>104162</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^2\d{2}$</field>
+    <description>Zimbra CVE-2025-66376: Auth endpoint returned 2xx from $(ClientHost) - successful auth may indicate stolen session cookie replay after XSS (T1185/T1539)</description>
+    <mitre>
+      <id>T1185</id>
+      <id>T1539</id>
+      <id>T1078</id>
+    </mitre>
+    <group>zimbra,credential_access,cve_2025_66376,laundry_bear,high_confidence,</group>
+  </rule>
+
+  <!-- T1114: Multiple rapid GET requests to Zimbra mailbox after session - enumeration/exfil -->
+  <rule id="104164" level="14" frequency="10" timeframe="60">
+    <if_matched_sid>104161</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>Zimbra CVE-2025-66376: 10+ rapid POST requests to mail endpoints from $(ClientHost) in 60s - mailbox exfiltration pattern (T1114/LAUNDRY BEAR)</description>
+    <mitre>
+      <id>T1114</id>
+      <id>T1041</id>
+    </mitre>
+    <group>zimbra,collection,exfiltration,cve_2025_66376,laundry_bear,high_confidence,</group>
+  </rule>
+
+  <!-- T1041: Zimbra server making outbound HTTPS to non-standard destination - exfil via injected JS -->
+  <rule id="104165" level="14">
+    <decoded_as>json</decoded_as>
+    <field name="src_ip" type="pcre2">.+</field>
+    <field name="dest_port" type="pcre2">^443$</field>
+    <field name="proto">tcp</field>
+    <field name="service" type="pcre2">(?i)zimbra|java|tomcat</field>
+    <description>Zimbra server process making outbound HTTPS connection from $(src_ip) to $(dest_ip):443 - possible data exfiltration from CVE-2025-66376 XSS (T1041)</description>
+    <mitre>
+      <id>T1041</id>
+    </mitre>
+    <group>zimbra,exfiltration,cve_2025_66376,laundry_bear,network,</group>
+  </rule>
+
+  <!-- T1114: Access to Zimbra REST API for contact/calendar bulk export - SVR collection pattern -->
+  <rule id="104166" level="13">
+    <decoded_as>json</decoded_as>
+    <field name="RequestHost" type="pcre2">(?i)zimbra|zcs|mail\.</field>
+    <field name="RequestPath" type="pcre2">(?i)/service/(?:home|dav|rest|export)|/zimbra/(?:contacts|calendar|export)</field>
+    <field name="RequestMethod" type="pcre2">GET|POST</field>
+    <description>Zimbra CVE-2025-66376: Access to contacts/calendar export endpoint from $(ClientHost) - SVR collection pattern for email exfil (T1114)</description>
+    <mitre>
+      <id>T1114</id>
+    </mitre>
+    <group>zimbra,collection,cve_2025_66376,laundry_bear,</group>
+  </rule>
+
+  <!-- T1114: Zimbra audit log shows bulk mail access from new IP - post-XSS exfil indicator -->
+  <rule id="104167" level="12">
+    <program_name>zimbramail</program_name>
+    <match type="pcre2">(?i)(?:cmd=getMsg|cmd=search|cmd=getConv).*obo=|audit.*zimbra.*GetItem|ExportContacts|GetContactsRequest</match>
+    <description>Zimbra CVE-2025-66376: Bulk mail collection SOAP command in Zimbra log - mailbox exfiltration activity (T1114/LAUNDRY BEAR)</description>
+    <mitre>
+      <id>T1114</id>
+    </mitre>
+    <group>zimbra,collection,exfiltration,cve_2025_66376,laundry_bear,</group>
+  </rule>
+
+</group>
