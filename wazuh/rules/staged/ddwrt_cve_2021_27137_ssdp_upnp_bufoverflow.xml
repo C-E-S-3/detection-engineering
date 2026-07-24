@@ -1,6 +1,6 @@
 <!-- ============================================================
      DD-WRT CVE-2021-27137: SSDP/UPnP Stack Buffer Overflow
-     C0XMO Gafgyt Variant — Multi-Architecture IoT Botnet
+     C0XMO Gafgyt Variant - Multi-Architecture IoT Botnet
 
      Threat:
        CVE-2021-27137 is a stack-based buffer overflow in the UPnP
@@ -296,9 +296,9 @@
        Once C0XMO infects a DD-WRT router or Linux host, it deploys
        an embedded Python scanner that probes the local LAN for
        additional UPnP-enabled devices vulnerable to CVE-2021-27137
-       and other IoT exploits. Internal SSDP scanning — where a LAN
+       and other IoT exploits. Internal SSDP scanning - where a LAN
        host sends UDP M-SEARCH to multiple other internal IPs on
-       port 1900 — is abnormal behavior for most homelab devices.
+       port 1900 - is abnormal behavior for most homelab devices.
        Routers and IoT devices should not initiate M-SEARCH probes
        across subnets; only UPnP control point software (e.g. media
        servers) would legitimately query port 1900, and only within
