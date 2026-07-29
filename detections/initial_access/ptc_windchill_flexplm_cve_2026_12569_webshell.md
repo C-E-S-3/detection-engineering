@@ -78,6 +78,7 @@ by Endpoint.Filesystem.dest Endpoint.Filesystem.user Endpoint.Filesystem.file_na
 
 | Actor | References |
 |-------|-----------|
+| Hazy Scorpius (Cl0p ransomware affiliate) | [Unit 42 — Hazy Scorpius CVE-2026-12569 Campaign (2026-07-28)](https://raw.githubusercontent.com/PaloAltoNetworks/Unit42-timely-threat-intel/b38f364/2026-07-28-Hazy-Scorpius-Exploitation-of-CVE-2026-12569.txt), [MITRE ATT&CK — Cl0p (G0158)](https://attack.mitre.org/groups/G0158/) |
 | Unknown opportunistic actors (CVE-2026-12569 exploitation, June 2026) | [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog), [NVD CVE-2026-12569](https://nvd.nist.gov/vuln/detail/CVE-2026-12569) |
 
 ## References
@@ -88,3 +89,4 @@ by Endpoint.Filesystem.dest Endpoint.Filesystem.user Endpoint.Filesystem.file_na
 - [MITRE ATT&CK — T1505.003 Web Shell](https://attack.mitre.org/techniques/T1505/003/)
 - [NVD — CVE-2026-12569](https://nvd.nist.gov/vuln/detail/CVE-2026-12569)
 - [Threat Intel Report — CVE-2026-12569 JSP Webshell Active Exploitation](../../threat-intel/2026-06-26_cisa-kev-ptc-windchill-cve-2026-12569-flexplm-rce-webshell.md)
+- [Threat Intel Report — Hazy Scorpius (Cl0p) CVE-2026-12569 Campaign with IOCs (2026-07-29)](../../threat-intel/2026-07-29_unit42-paloaltonetworks-com-hazy-scorpius-cve-2026-12569-clop-exploitation.md)
