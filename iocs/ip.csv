@@ -240,3 +240,8 @@ indicator,source,date_added,context
 8.19.75.217,https://www.cisa.gov/known-exploited-vulnerabilities-catalog,2026-07-29,CVE-2026-16812 Arista VeloCloud Orchestrator OS command injection; confirmed attacker source IP from active exploitation; CISA KEV July 2026
 206.72.242.124,https://www.cisa.gov/known-exploited-vulnerabilities-catalog,2026-07-29,CVE-2026-16812 Arista VeloCloud Orchestrator OS command injection; confirmed attacker source IP from active exploitation; CISA KEV July 2026
 206.72.242.162,https://www.cisa.gov/known-exploited-vulnerabilities-catalog,2026-07-29,CVE-2026-16812 Arista VeloCloud Orchestrator OS command injection; confirmed attacker source IP from active exploitation; CISA KEV July 2026
+144.31.38.215,xlab-dysphoria,2026-07-31,Dysphoria botnet decoded C2 relay node (decoded from ENS TXT record 12e7:13d7); relay runs on compromised victim host not attacker infrastructure
+138.226.246.94,microsoft-shinyhunters,2026-07-31,ShinyHunters (UNC6661) Salesforce exfil API activity - Klue integration observed June 11 2026; Microsoft Security Blog July 13 2026
+212.86.125.24,microsoft-shinyhunters,2026-07-31,ShinyHunters (UNC6661) campaign infrastructure 2026; Microsoft Security Blog July 13 2026
+213.111.148.90,microsoft-shinyhunters,2026-07-31,ShinyHunters (UNC6661) campaign infrastructure 2026; Microsoft Security Blog July 13 2026
+94.154.32.160,microsoft-shinyhunters,2026-07-31,ShinyHunters (UNC6661) campaign infrastructure 2026; Microsoft Security Blog July 13 2026
