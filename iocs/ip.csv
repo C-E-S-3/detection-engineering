@@ -245,3 +245,4 @@ indicator,source,date_added,context
 212.86.125.24,microsoft-shinyhunters,2026-07-31,ShinyHunters (UNC6661) campaign infrastructure 2026; Microsoft Security Blog July 13 2026
 213.111.148.90,microsoft-shinyhunters,2026-07-31,ShinyHunters (UNC6661) campaign infrastructure 2026; Microsoft Security Blog July 13 2026
 94.154.32.160,microsoft-shinyhunters,2026-07-31,ShinyHunters (UNC6661) campaign infrastructure 2026; Microsoft Security Blog July 13 2026
+31.77.227.104,https://raw.githubusercontent.com/stamparm/maltrail/master/trails/static/malware/mirai.txt,2026-08-01,Mirai/HexStresser DDoS-for-hire botnet C2 IP; HexStresser commercial DDoS service infrastructure; added to maltrail July 31 2026
