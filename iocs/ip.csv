@@ -245,4 +245,32 @@ indicator,source,date_added,context
 212.86.125.24,microsoft-shinyhunters,2026-07-31,ShinyHunters (UNC6661) campaign infrastructure 2026; Microsoft Security Blog July 13 2026
 213.111.148.90,microsoft-shinyhunters,2026-07-31,ShinyHunters (UNC6661) campaign infrastructure 2026; Microsoft Security Blog July 13 2026
 94.154.32.160,microsoft-shinyhunters,2026-07-31,ShinyHunters (UNC6661) campaign infrastructure 2026; Microsoft Security Blog July 13 2026
+<<<<<<< HEAD
 31.77.227.104,https://raw.githubusercontent.com/stamparm/maltrail/master/trails/static/malware/mirai.txt,2026-08-01,Mirai/HexStresser DDoS-for-hire botnet C2 IP; HexStresser commercial DDoS service infrastructure; added to maltrail July 31 2026
+84.32.102.230,https://www.bleepingcomputer.com/news/security/online-ad-firm-adforms-script-compromised-to-steal-cryptocurrency/,2026-08-02,C2 server for Adform ad network JavaScript supply chain crypto clipboard hijacker (July 27 2026); port 7744
+37.60.255.218,https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-attacks/,2026-08-02,C2 server — Unit 42 multi-actor malicious npm/PyPI supply chain campaign (July 2026)
+45.9.148.93,https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-attacks/,2026-08-02,C2 server — Unit 42 multi-actor malicious npm/PyPI supply chain campaign (July 2026)
+47.98.255.144,https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-attacks/,2026-08-02,C2 server (Alibaba Cloud) — Unit 42 malicious npm/PyPI packages (July 2026)
+64.176.198.19,https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-attacks/,2026-08-02,C2 server — Unit 42 multi-actor malicious npm/PyPI supply chain campaign (July 2026)
+64.227.183.144,https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-attacks/,2026-08-02,C2 server (DigitalOcean) — Unit 42 malicious npm/PyPI packages (July 2026)
+90.189.217.244,https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-attacks/,2026-08-02,C2 server — Unit 42 multi-actor malicious npm/PyPI supply chain campaign (July 2026)
+103.179.142.69,https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-attacks/,2026-08-02,C2 server — Unit 42 multi-actor malicious npm/PyPI supply chain campaign (July 2026)
+103.179.142.105,https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-attacks/,2026-08-02,C2 server — Unit 42 multi-actor malicious npm/PyPI supply chain campaign (July 2026)
+128.199.217.232,https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-attacks/,2026-08-02,C2 server (DigitalOcean) — Unit 42 malicious npm/PyPI packages (July 2026)
+135.181.241.80,https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-attacks/,2026-08-02,C2 server (Hetzner) — Unit 42 malicious npm/PyPI packages (July 2026)
+151.115.53.100,https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-attacks/,2026-08-02,C2 server — Unit 42 multi-actor malicious npm/PyPI supply chain campaign (July 2026)
+157.173.114.28,https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-attacks/,2026-08-02,C2 server — Unit 42 multi-actor malicious npm/PyPI supply chain campaign (July 2026)
+178.238.226.8,https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-attacks/,2026-08-02,C2 server — Unit 42 multi-actor malicious npm/PyPI supply chain campaign (July 2026)
+212.2.237.74,https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-attacks/,2026-08-02,C2 server — Unit 42 multi-actor malicious npm/PyPI supply chain campaign (July 2026)
+31.57.243.154,https://www.microsoft.com/en-us/security/blog/2026/07/31/captivecrunch-midnight-blizzard-targets-travelers-worldwide-for-malware-delivery-and-credential-theft/,2026-08-02,"APT29 CaptiveCrunch attacker infrastructure (ports 443, 2000)"
+38.146.28.75,https://www.microsoft.com/en-us/security/blog/2026/07/31/captivecrunch-midnight-blizzard-targets-travelers-worldwide-for-malware-delivery-and-credential-theft/,2026-08-02,"APT29 CaptiveCrunch attacker infrastructure (ports 4000, 8443)"
+38.146.28.132,https://www.microsoft.com/en-us/security/blog/2026/07/31/captivecrunch-midnight-blizzard-targets-travelers-worldwide-for-malware-delivery-and-credential-theft/,2026-08-02,APT29 CaptiveCrunch attacker infrastructure (port 443)
+104.194.159.150,https://www.microsoft.com/en-us/security/blog/2026/07/31/captivecrunch-midnight-blizzard-targets-travelers-worldwide-for-malware-delivery-and-credential-theft/,2026-08-02,APT29 CaptiveCrunch attacker infrastructure (port 443)
+107.189.26.194,https://www.microsoft.com/en-us/security/blog/2026/07/31/captivecrunch-midnight-blizzard-targets-travelers-worldwide-for-malware-delivery-and-credential-theft/,2026-08-02,APT29 CaptiveCrunch attacker infrastructure (port 443)
+213.145.86.112,https://www.microsoft.com/en-us/security/blog/2026/07/31/captivecrunch-midnight-blizzard-targets-travelers-worldwide-for-malware-delivery-and-credential-theft/,2026-08-02,APT29 CaptiveCrunch — ChocoShell C2 server
+138.197.202.81,https://www.microsoft.com/en-us/security/blog/2026/07/31/captivecrunch-midnight-blizzard-targets-travelers-worldwide-for-malware-delivery-and-credential-theft/,2026-08-02,APT29 CaptiveCrunch infrastructure (port 3000) — maltrail-sourced
+138.68.160.124,https://www.microsoft.com/en-us/security/blog/2026/07/31/captivecrunch-midnight-blizzard-targets-travelers-worldwide-for-malware-delivery-and-credential-theft/,2026-08-02,APT29 CaptiveCrunch infrastructure (port 3000) — maltrail-sourced
+165.22.146.161,https://www.microsoft.com/en-us/security/blog/2026/07/31/captivecrunch-midnight-blizzard-targets-travelers-worldwide-for-malware-delivery-and-credential-theft/,2026-08-02,APT29 CaptiveCrunch infrastructure (port 3000) — maltrail-sourced
+216.126.224.95,https://www.microsoft.com/en-us/security/blog/2026/07/31/captivecrunch-midnight-blizzard-targets-travelers-worldwide-for-malware-delivery-and-credential-theft/,2026-08-02,APT29 CaptiveCrunch infrastructure (port 3000) — maltrail-sourced
+31.172.83.142,https://www.microsoft.com/en-us/security/blog/2026/07/31/captivecrunch-midnight-blizzard-targets-travelers-worldwide-for-malware-delivery-and-credential-theft/,2026-08-02,APT29 CaptiveCrunch infrastructure (port 4000) — maltrail-sourced
+84.200.154.162,https://www.microsoft.com/en-us/security/blog/2026/07/31/captivecrunch-midnight-blizzard-targets-travelers-worldwide-for-malware-delivery-and-credential-theft/,2026-08-02,APT29 CaptiveCrunch infrastructure (port 4000) — maltrail-sourced
