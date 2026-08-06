@@ -245,7 +245,6 @@ indicator,source,date_added,context
 212.86.125.24,microsoft-shinyhunters,2026-07-31,ShinyHunters (UNC6661) campaign infrastructure 2026; Microsoft Security Blog July 13 2026
 213.111.148.90,microsoft-shinyhunters,2026-07-31,ShinyHunters (UNC6661) campaign infrastructure 2026; Microsoft Security Blog July 13 2026
 94.154.32.160,microsoft-shinyhunters,2026-07-31,ShinyHunters (UNC6661) campaign infrastructure 2026; Microsoft Security Blog July 13 2026
-<<<<<<< HEAD
 31.77.227.104,https://raw.githubusercontent.com/stamparm/maltrail/master/trails/static/malware/mirai.txt,2026-08-01,Mirai/HexStresser DDoS-for-hire botnet C2 IP; HexStresser commercial DDoS service infrastructure; added to maltrail July 31 2026
 84.32.102.230,https://www.bleepingcomputer.com/news/security/online-ad-firm-adforms-script-compromised-to-steal-cryptocurrency/,2026-08-02,C2 server for Adform ad network JavaScript supply chain crypto clipboard hijacker (July 27 2026); port 7744
 37.60.255.218,https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-attacks/,2026-08-02,C2 server — Unit 42 multi-actor malicious npm/PyPI supply chain campaign (July 2026)
