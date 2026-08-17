@@ -308,3 +308,14 @@ indicator,source,date_added,context
 178.238.234.36,https://github.com/stamparm/maltrail/commit/7d6600a,2026-08-12,Grandoreiro banking trojan C2; Contabo GmbH; HTTPS port 443; LinkedIn malspam campaign; maltrail 2026-08-11
 178.238.234.137,https://github.com/stamparm/maltrail/commit/7d6600a,2026-08-12,Grandoreiro banking trojan C2; Contabo GmbH; HTTPS port 443; LinkedIn malspam campaign; maltrail 2026-08-11
 46.30.188[.]13,https://www.acronis.com/en/tru/posts/patchcord-new-malware-cluster-targets-afghan-telecom-and-south-asian-critical-infrastructure/,2026-08-15,APT36 PATCHCORD/SHEETCORD/HACKERAI central C2 server; TCP port 8080; resolves appstoore[.]solutions; also hosts SuperShell C2 webshell manager; Transparent Tribe targeting Afghan telecom and South Asian infrastructure; Acronis TRU August 13 2026
+216.167.26.154,https://unit42.paloaltonetworks.com/enibot-huntbot-iot-botnet-campaign/,2026-08-17,ENIBot/HuntBot IoT botnet primary C2; TCP ports 1337/1338; DDoS-for-hire (HTTP flood/Slowloris/RUDY); Unit42 2026-08-14
+192.204.41.160,https://unit42.paloaltonetworks.com/enibot-huntbot-iot-botnet-campaign/,2026-08-17,ENIBot/HuntBot IoT botnet secondary C2; TCP ports 1337/1338; Unit42 2026-08-14
+176.65.139.99,https://unit42.paloaltonetworks.com/enibot-huntbot-iot-botnet-campaign/,2026-08-17,ENIBot/HuntBot C2 and payload download server; TCP ports 1337/1338; Unit42 2026-08-14
+176.65.139.7,https://unit42.paloaltonetworks.com/enibot-huntbot-iot-botnet-campaign/,2026-08-17,ENIBot/HuntBot C2 and payload download server; TCP ports 1337/1338; Unit42 2026-08-14
+176.65.139.11,https://unit42.paloaltonetworks.com/enibot-huntbot-iot-botnet-campaign/,2026-08-17,ENIBot/HuntBot C2 and payload download server; TCP ports 1337/1338; Unit42 2026-08-14
+176.65.139.69,https://unit42.paloaltonetworks.com/enibot-huntbot-iot-botnet-campaign/,2026-08-17,ENIBot/HuntBot C2 and payload download server; TCP ports 1337/1338; Unit42 2026-08-14
+176.65.139.59,https://unit42.paloaltonetworks.com/enibot-huntbot-iot-botnet-campaign/,2026-08-17,ENIBot/HuntBot C2 and payload download server; TCP ports 1337/1338; Unit42 2026-08-14
+47.88.78.148,https://blog.talosintelligence.com/dissecting-the-jwr-phishing-framework/,2026-08-17,JWR Phishing-as-a-Service hosting infrastructure; Alibaba Cloud (AS45102); multiple phishing kit domains hosted; Cisco Talos August 2026
+47.90.223.199,https://blog.talosintelligence.com/dissecting-the-jwr-phishing-framework/,2026-08-17,JWR Phishing-as-a-Service hosting infrastructure; Alibaba Cloud (AS45102); Cisco Talos August 2026
+43.156.227.15,https://blog.talosintelligence.com/dissecting-the-jwr-phishing-framework/,2026-08-17,JWR Phishing-as-a-Service hosting infrastructure; Alibaba Cloud (AS45102); Cisco Talos August 2026
+43.160.241.151,https://blog.talosintelligence.com/dissecting-the-jwr-phishing-framework/,2026-08-17,JWR Phishing-as-a-Service hosting infrastructure; Alibaba Cloud (AS45102); Cisco Talos August 2026
