@@ -319,3 +319,5 @@ indicator,source,date_added,context
 47.90.223.199,https://blog.talosintelligence.com/dissecting-the-jwr-phishing-framework/,2026-08-17,JWR Phishing-as-a-Service hosting infrastructure; Alibaba Cloud (AS45102); Cisco Talos August 2026
 43.156.227.15,https://blog.talosintelligence.com/dissecting-the-jwr-phishing-framework/,2026-08-17,JWR Phishing-as-a-Service hosting infrastructure; Alibaba Cloud (AS45102); Cisco Talos August 2026
 43.160.241.151,https://blog.talosintelligence.com/dissecting-the-jwr-phishing-framework/,2026-08-17,JWR Phishing-as-a-Service hosting infrastructure; Alibaba Cloud (AS45102); Cisco Talos August 2026
+45.158.196.184,https://www.zscaler.com/blogs/security-research/c2looper-new-backdoor-likely-tied-ransomware-github-c2,2026-08-18,C2looper backdoor C2 server; TCP port 8888; GitHub-based C2 mechanism; likely ransomware affiliated; Zscaler ThreatLabz 2026-08-18
+45.158.196.23,https://www.zscaler.com/blogs/security-research/c2looper-new-backdoor-likely-tied-ransomware-github-c2,2026-08-18,C2looper backdoor C2 server; TCP port 8888; GitHub-based C2 mechanism; likely ransomware affiliated; Zscaler ThreatLabz 2026-08-18
