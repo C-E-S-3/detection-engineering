@@ -330,3 +330,10 @@ indicator,source,date_added,context
 31.77.138.55,https://raw.githubusercontent.com/stamparm/maltrail/master/trails/static/malware/cidbot.txt,2026-08-19,CidBot/HypeAgent Layer 7 DDoS botnet C2; HTTP flood/Slowloris malware; stamparm/maltrail 2026-08-18
 78.40.209.113,https://raw.githubusercontent.com/stamparm/maltrail/master/trails/static/malware/cidbot.txt,2026-08-19,CidBot/HypeAgent Layer 7 DDoS botnet C2; HTTP flood/Slowloris malware; stamparm/maltrail 2026-08-18
 94.26.3.211,https://raw.githubusercontent.com/stamparm/maltrail/master/trails/static/malware/cidbot.txt,2026-08-19,CidBot/HypeAgent Layer 7 DDoS botnet C2; HTTP flood/Slowloris malware; stamparm/maltrail 2026-08-18
+107.189.18.7,https://cloud.google.com/blog/topics/threat-intelligence/distinct-clusters-target-individuals-of-interest-to-russia,2026-08-21,APT29 sub-clusters (UNC6293/UNC7005/UNC5976) phishing infrastructure; Google GTIG 2026-08-20
+196.251.107.171,https://cloud.google.com/blog/topics/threat-intelligence/distinct-clusters-target-individuals-of-interest-to-russia,2026-08-21,APT29 sub-clusters phishing infrastructure; Google GTIG 2026-08-20
+27.124.2.46,https://github.com/Cisco-Talos/IOCs/blob/main/2026/08/UAT-10147%20deploys%20SPECTRE.json,2026-08-21,UAT-10147 SPECTRE cross-platform implant C2; Cisco Talos August 2026
+27.124.2.48,https://github.com/Cisco-Talos/IOCs/blob/main/2026/08/UAT-10147%20deploys%20SPECTRE.json,2026-08-21,UAT-10147 SPECTRE cross-platform implant C2; Cisco Talos August 2026
+27.124.2.52,https://github.com/Cisco-Talos/IOCs/blob/main/2026/08/UAT-10147%20deploys%20SPECTRE.json,2026-08-21,UAT-10147 SPECTRE cross-platform implant C2; Cisco Talos August 2026
+139.180.197.150,https://github.com/Cisco-Talos/IOCs/blob/main/2026/08/UAT-10147%20deploys%20SPECTRE.json,2026-08-21,UAT-10147 SPECTRE C2 (also used in agentic AI campaign port 54321); Cisco Talos August 2026
+18.140.163.186,https://github.com/Cisco-Talos/IOCs/blob/main/2026/08/UAT-10147%20integrates%20agentic%20AI.json,2026-08-21,UAT-10147 agentic AI campaign payload hosting / C2; Cisco Talos August 2026
