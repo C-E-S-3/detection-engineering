@@ -664,3 +664,6 @@ vip.niupilao.vip,https://github.com/Cisco-Talos/IOCs/blob/main/2026/08/UAT-10147
 udvyiwvfs.cyou,https://github.com/Cisco-Talos/IOCs/blob/main/2026/08/UAT-10147%20deploys%20SPECTRE.json,2026-08-21,UAT-10147 SPECTRE C2 / malware staging; Cisco Talos August 2026
 adminapi.tippusoni.in,https://github.com/Cisco-Talos/IOCs/blob/main/2026/08/UAT-10147%20integrates%20agentic%20AI.json,2026-08-21,UAT-10147 agentic AI campaign payload staging host (pr.exe/svchosts.exe/dll.zip); Cisco Talos August 2026
 kl21177.com,https://github.com/Cisco-Talos/IOCs/blob/main/2026/08/UAT-10147%20integrates%20agentic%20AI.json,2026-08-21,UAT-10147 agentic AI campaign malware distribution / batch file hosting; Cisco Talos August 2026
+dysphor1a.zya.me,https://github.com/stamparm/maltrail/blob/master/trails/static/malware/dysphor1a_ransomware.txt,2026-08-22,Dysphor1a ransomware clearnet infrastructure; Maltrail August 2026
+normalhunters0x.surge.sh,https://github.com/stamparm/maltrail/blob/master/trails/static/malware/dysphor1a_ransomware.txt,2026-08-22,Dysphor1a ransomware clearnet infrastructure; Maltrail August 2026
+y3maveiwszbnrziufbbberx74cvrdcsf72nxzuqxzv7ppdmmqzffazid.onion,https://github.com/stamparm/maltrail/blob/master/trails/static/malware/dysphor1a_ransomware.txt,2026-08-22,Dysphor1a ransomware Tor hidden service (payment/negotiation portal); Maltrail August 2026
