@@ -667,3 +667,20 @@ kl21177.com,https://github.com/Cisco-Talos/IOCs/blob/main/2026/08/UAT-10147%20in
 dysphor1a.zya.me,https://github.com/stamparm/maltrail/blob/master/trails/static/malware/dysphor1a_ransomware.txt,2026-08-22,Dysphor1a ransomware clearnet infrastructure; Maltrail August 2026
 normalhunters0x.surge.sh,https://github.com/stamparm/maltrail/blob/master/trails/static/malware/dysphor1a_ransomware.txt,2026-08-22,Dysphor1a ransomware clearnet infrastructure; Maltrail August 2026
 y3maveiwszbnrziufbbberx74cvrdcsf72nxzuqxzv7ppdmmqzffazid.onion,https://github.com/stamparm/maltrail/blob/master/trails/static/malware/dysphor1a_ransomware.txt,2026-08-22,Dysphor1a ransomware Tor hidden service (payment/negotiation portal); Maltrail August 2026
+cctvv2[.]com,https://github.com/Zimperium/IOC/tree/master/2026-08-ToxicPanda,2026-08-24,ToxicPanda 2.0 Android banking trojan C2 panel (/panel endpoint); Zimperium zLabs August 2026
+www.v17001[.]com,https://github.com/Zimperium/IOC/tree/master/2026-08-ToxicPanda,2026-08-24,ToxicPanda 2.0 Android banking trojan C2 panel (/panel endpoint); Zimperium zLabs August 2026
+www.w17907[.]com,https://github.com/Zimperium/IOC/tree/master/2026-08-ToxicPanda,2026-08-24,ToxicPanda 2.0 Android banking trojan C2 panel (/panel endpoint); Zimperium zLabs August 2026
+g8688808[.]com,https://github.com/Zimperium/IOC/tree/master/2026-08-ToxicPanda,2026-08-24,ToxicPanda 2.0 Android banking trojan C2; Zimperium zLabs August 2026
+googleplaydown[.]com,https://github.com/Zimperium/IOC/tree/master/2026-08-ToxicPanda,2026-08-24,ToxicPanda 2.0 phishing distribution site impersonating Google Play; Zimperium zLabs August 2026
+xcmtxc1oam1.s3.ap-south-1.amazonaws[.]com,https://github.com/Zimperium/IOC/tree/master/2026-08-ToxicPanda,2026-08-24,ToxicPanda 2.0 AWS S3 payload staging bucket (ap-south-1); Zimperium zLabs August 2026
+ui920fht4m1.s3.mx-central-1.amazonaws[.]com,https://github.com/Zimperium/IOC/tree/master/2026-08-ToxicPanda,2026-08-24,ToxicPanda 2.0 AWS S3 payload staging bucket (mx-central-1); Zimperium zLabs August 2026
+osy4u8pmu.s3.ap-southeast-1.amazonaws[.]com,https://github.com/Zimperium/IOC/tree/master/2026-08-ToxicPanda,2026-08-24,ToxicPanda 2.0 AWS S3 payload staging bucket (ap-southeast-1); Zimperium zLabs August 2026
+ejjsi5fbl.s3.ap-southeast-1.amazonaws[.]com,https://github.com/Zimperium/IOC/tree/master/2026-08-ToxicPanda,2026-08-24,ToxicPanda 2.0 AWS S3 payload staging bucket (ap-southeast-1); Zimperium zLabs August 2026
+svhc5arco.s3.ap-southeast-1.amazonaws[.]com,https://github.com/Zimperium/IOC/tree/master/2026-08-ToxicPanda,2026-08-24,ToxicPanda 2.0 AWS S3 payload staging bucket (ap-southeast-1); Zimperium zLabs August 2026
+cardoor[.]cn,https://securelist.com/android-head-unit-malware/121106/,2026-08-24,MoYu Group DoFun head-unit malware MQTT update broker abused via legitimate TWCore updater; Kaspersky Securelist August 2026
+mymoyu[.]shop,https://github.com/deepfield/public-research/blob/main/ipmoyu/report.md,2026-08-24,MoYu Group / BADBOX 2.0 residential-proxy botnet parent C2 domain; observed alongside DoFun head-unit campaign
+task.mymoyu[.]shop,https://github.com/deepfield/public-research/blob/main/ipmoyu/report.md,2026-08-24,MoYu Group activation endpoint (/cpc/api/client/active) for BADBOX 2.0 clients including DoFun head units
+moyu88[.]xyz,https://github.com/deepfield/public-research/blob/main/ipmoyu/report.md,2026-08-24,MoYu Group / BADBOX 2.0 C2 domain
+ziyemy[.]shop,https://github.com/deepfield/public-research/blob/main/ipmoyu/report.md,2026-08-24,MoYu Group / BADBOX 2.0 C2 domain
+edisajalsjfdfh[.]shop,https://github.com/deepfield/public-research/blob/main/ipmoyu/report.md,2026-08-24,MoYu Group / BADBOX 2.0 C2 domain
+ipmoyu[.]com,https://github.com/deepfield/public-research/blob/main/ipmoyu/report.md,2026-08-24,MoYu Group operator-branded residential-proxy service domain (zhima proxy)

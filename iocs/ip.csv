@@ -337,3 +337,5 @@ indicator,source,date_added,context
 27.124.2.52,https://github.com/Cisco-Talos/IOCs/blob/main/2026/08/UAT-10147%20deploys%20SPECTRE.json,2026-08-21,UAT-10147 SPECTRE cross-platform implant C2; Cisco Talos August 2026
 139.180.197.150,https://github.com/Cisco-Talos/IOCs/blob/main/2026/08/UAT-10147%20deploys%20SPECTRE.json,2026-08-21,UAT-10147 SPECTRE C2 (also used in agentic AI campaign port 54321); Cisco Talos August 2026
 18.140.163.186,https://github.com/Cisco-Talos/IOCs/blob/main/2026/08/UAT-10147%20integrates%20agentic%20AI.json,2026-08-21,UAT-10147 agentic AI campaign payload hosting / C2; Cisco Talos August 2026
+144.217.243.201,https://securelist.com/android-head-unit-malware/121106/,2026-08-24,MoYu Group HTTP module loader for DoFun Android head-unit malware (path /vr34der34/); Kaspersky Securelist August 2026
+165.154.202.29,https://github.com/deepfield/public-research/blob/main/ipmoyu/report.md,2026-08-24,MoYu Group / BADBOX 2.0 zhima residential-proxy relay (exit-node ports 9999/5555/7777)
