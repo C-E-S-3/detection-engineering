@@ -339,3 +339,5 @@ indicator,source,date_added,context
 18.140.163.186,https://github.com/Cisco-Talos/IOCs/blob/main/2026/08/UAT-10147%20integrates%20agentic%20AI.json,2026-08-21,UAT-10147 agentic AI campaign payload hosting / C2; Cisco Talos August 2026
 144.217.243.201,https://securelist.com/android-head-unit-malware/121106/,2026-08-24,MoYu Group HTTP module loader for DoFun Android head-unit malware (path /vr34der34/); Kaspersky Securelist August 2026
 165.154.202.29,https://github.com/deepfield/public-research/blob/main/ipmoyu/report.md,2026-08-24,MoYu Group / BADBOX 2.0 zhima residential-proxy relay (exit-node ports 9999/5555/7777)
+104[.]64[.]211[.]22,https://www.seqrite.com/blog/operation-quicsilver-china-nexus-actor-targets-myanmar-diplomats-via-vhd-delivered-go-backdoor/,2026-08-25,Operation QUICSILVER QUICAgent C2 server (UDP/443 QUIC protocol); China-nexus APT targeting Myanmar diplomats
+67.213.118.179,https://www.cisa.gov/known-exploited-vulnerabilities-catalog,2026-08-25,CVE-2026-21962 Oracle WebLogic Proxy Plug-in exploitation source IP; first observed in honeypot telemetry within hours of initial PoC release; 140000+ attacks in first 12 days
