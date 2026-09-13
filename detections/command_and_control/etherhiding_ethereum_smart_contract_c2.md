@@ -97,6 +97,7 @@ Secondary techniques: T1008 (Fallback Channels — blockchain provides fallback 
 
 | Actor | Relationship to Detection |
 |-------|--------------------------|
+| Dark Caracal (MITRE G0070) | GoCaracal extended build (August 2026, Arctic Wolf Labs) uses `eth_getStorageAt` against a "BulletproofC2" Solidity contract on Ethereum mainnet as a fallback C2 when the primary off-chain channel is unavailable; operator rotates burned C2 by updating a single contract storage slot; 23/24 primary C2s on AEZA Group (AS210644) bulletproof hosting; targets Latin America (Venezuela confirmed; Brazil/Ecuador/Chile/Colombia/El Salvador/Uruguay assessed) |
 | Sandworm / UAC-0145 (GRU Unit 74455) | Adopted EtherHiding for FluidLeech/LoadLoop C2 domain resolution in July 2026 ClickFix campaign targeting Ukraine; Ethereum contract stores current C2 domain; SCOUTCURL resolves via `eth_call` |
 | ViteVenom / PolinRider (DPRK-attributed) | Uses TRON and Aptos blockchain for XOR decryption key delivery in malicious npm package `postinstall` hooks; related blockchain C2 technique (TRON rather than Ethereum) |
 | UAT-11795 (Starland RAT campaign) | Uses Polygon blockchain smart contract as fallback C2 when primary HTTP endpoints are unreachable; Polygon is EVM-compatible and uses the same JSON-RPC `eth_call` API |
@@ -110,3 +111,4 @@ Secondary techniques: T1008 (Fallback Channels — blockchain provides fallback 
 - [MITRE ATT&CK — T1008: Fallback Channels](https://attack.mitre.org/techniques/T1008/)
 - [MITRE ATT&CK — Sandworm Team (G0034)](https://attack.mitre.org/groups/G0034/)
 - [Threat Intel Report — UAC-0145 Sandworm ClickFix Ukraine (2026-07-17)](../../threat-intel/2026-07-17_cert-gov-ua-uac-0145-sandworm-clickfix-ukraine.md)
+- [Threat Intel Report — GoCaracal Dark Caracal SVG Phishing + Ethereum C2 Latin America (2026-08-27 / 2026-09-13)](../../threat-intel/2026-09-13_arcticwolf-gocaracal-dark-caracal-svg-phishing-ethereum-c2-latin-america.md)
