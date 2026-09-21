@@ -14,6 +14,7 @@ Detections for techniques adversaries use to move through a network, including r
 | [Medusa SMB/WMI Lateral Execution](medusa_smb_wmi_exec.md) | T1021.002, T1047 | Invoke-SMBExec and Invoke-WMIExec PowerShell lateral movement tools |
 | [Medusa Lateral Movement Indicators](medusa_lateral_indicators.md) | T1021.002, T1003.001 | Medusa-specific lateral movement patterns including admin share access and credential dumping |
 | [RMM Tool Abuse for Lateral Movement](rmm_tool_abuse_lateral_movement.md) | T1219, T1021.001 | Unauthorized ScreenConnect, AnyDesk, TeamViewer, and other RMM tools launched from scripting engine parents or installed as persistent services |
+| [APT36 RUSTYMOVE — USB Removable Media Malware Propagation](apt36_rustymove_usb_removable_media_spreading.md) | T1091 | APT36 (Transparent Tribe) RUSTYMOVE Rust tool copies pre-staged malware to all attached USB/SD/MMC media for air-gap propagation; detects executable file writes to non-system drives and repeated removable-drive enumeration via WMI |
 
 ---
 
@@ -25,3 +26,4 @@ Detections for techniques adversaries use to move through a network, including r
 | Lazarus Group (HIDDEN COBRA) | Nation-State APT (DPRK) | Remote services, SMB lateral movement with stolen credentials | [MITRE - Lazarus Group (G0032)](https://attack.mitre.org/groups/G0032/) |
 | Scattered Spider (UNC3944) | Cybercrime / ALPHV Affiliate | ScreenConnect and other RMM tools for lateral movement and persistence | [MITRE - Scattered Spider (G1015)](https://attack.mitre.org/groups/G1015/) |
 | LockBit Affiliates | RaaS Affiliates | AnyDesk and TeamViewer post-compromise for persistent access and ransomware staging | [MITRE - LockBit (S1091)](https://attack.mitre.org/software/S1091/) |
+| APT36 (Transparent Tribe) | Nation-State APT (Pakistan) | RUSTYMOVE USB air-gap propagation tool; RUSTYSHADE Rust backdoor with GitHub private repo C2 | [MITRE - APT36 (G0134)](https://attack.mitre.org/groups/G0134/); [Zscaler Operation RapidRust (Sep 2026)](https://www.zscaler.com/blogs/security-research/operation-rapidrust-apt36-deploys-rustyshade-rustymove-psnatch-and-bashnatch) |

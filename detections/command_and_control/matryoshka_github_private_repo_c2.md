@@ -70,10 +70,12 @@ Secondary: T1105 (Ingress Tool Transfer — payload download from GitHub release
 |-------|-------|
 | HollowFrame / Matryoshka campaign (Unattributed) | Go loader + Rust backdoor targeting law firms via spear-phishing LNK; GitHub private repo variant of Matryoshka uses GitHub API for two-way C2; Group-IB July 2026 |
 | SmartLoader Gang (FakeGit) | Abuses public GitHub repositories for payload staging; detected by Godloader and SmartLoader existing detections; GitHub private repo C2 is a newer and stealthier variant |
+| APT36 (Transparent Tribe, G0134) | RUSTYSHADE Rust backdoor uses private GitHub repos as two-way C2 dead drop via command.txt/results.txt; AES-256-GCM encrypted; Operation RapidRust campaign targeting Indian/Afghan government and defense, Aug–Sep 2026; Zscaler ThreatLabz |
 
 ## References
 
 - [Group-IB — HollowFrame & Matryoshka: Novel Malware Targeting Law Firms (2026-07-31)](https://www.group-ib.com/blog/hollowframe-matryoshka-law-firm-campaign/)
+- [Zscaler ThreatLabz — Operation RapidRust: APT36 RUSTYSHADE GitHub C2 (2026-09-19)](https://www.zscaler.com/blogs/security-research/operation-rapidrust-apt36-deploys-rustyshade-rustymove-psnatch-and-bashnatch)
 - [MITRE ATT&CK — T1102.001: Web Service: Dead Drop Resolver](https://attack.mitre.org/techniques/T1102/001/)
 - [MITRE ATT&CK — T1574.002: DLL Side-Loading](https://attack.mitre.org/techniques/T1574/002/)
 - [MITRE ATT&CK — T1497: Virtualization/Sandbox Evasion](https://attack.mitre.org/techniques/T1497/)
