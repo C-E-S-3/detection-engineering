@@ -728,3 +728,75 @@ credits.offices-analytics[.]com,https://www.welivesecurity.com/en/eset-research/
 winmanage-me[.]network,https://cloud.google.com/blog/topics/threat-intelligence/shinyhunters-renewed-mass-exploitation-campaign-targeting-oracle-peoplesoft,2026-09-25,UNC6240 (ShinyHunters) MeshCentral C2 domain; September 2026 renewed Oracle PeopleSoft CVE-2026-35273 campaign; MeshAgent connects via wss://winmanage-me.network:443/agent.ashx; masquerades as Windows remote management; Google GTIG September 2026
 toria[.]app,https://securelist.com/macsync-new-version/121383/,2026-09-28,MacSync macOS infostealer delivery domain; fake Toria cryptocurrency wallet website distributed via X and Telegram; DMG contains multi-stage dropper chain with iCloud Calendar C2; Kaspersky September 2026
 corp.tripswithengine[.]com,https://www.microsoft.com/en-us/security/blog/2026/09/28/needymantis-unpacking-a-post-compromise-malware-family-used-in-targeted-operations/,2026-09-29,NeedyMantis WebSocket C2 domain; Storm-3069 post-compromise malware; TLS port 443 URI /library/zip/; XOR+RC4+compression encrypted traffic; Microsoft September 2026
+adswre[.]cfd,https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/,2026-09-29,RMM phishing delivery domain; trojanized MSP360/ScreenConnect installer lure; Microsoft September 2026
+trews[.]cfd,https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/,2026-09-29,RMM phishing delivery domain; ScreenConnect download redirect; Microsoft September 2026
+adsaw[.]cfd,https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/,2026-09-29,RMM phishing lure landing page; trojanized MSP360 delivery; Microsoft September 2026
+sdfghj[.]rd-team[.]ru,https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/,2026-09-29,RMM phishing C2/callback domain; MSP360 attacker management server; Microsoft September 2026
+swedcorry[.]stefneyv[.]com,https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/,2026-09-29,RMM phishing lure hosting subdomain; trojanized installer distribution; Microsoft September 2026
+ojsuyw[.]niyari[.]org,https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/,2026-09-29,RMM phishing lure hosting subdomain; Microsoft September 2026
+bunstar[.]harej[.]si,https://www.microsoft.com/en-us/security/blog/2026/09/29/phishing-abuses-rmm-tools-persistent-access/,2026-09-29,RMM phishing lure hosting subdomain; Microsoft September 2026
+etia[.]ca,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard (COLDRIVER/SEABORGIUM) RedFlick campaign phishing/C2 infrastructure; Russia FSB Centre 18; Microsoft September 2026
+groy[.]cc,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard RedFlick campaign phishing infrastructure; Microsoft September 2026
+gliderrompercycl[.]com,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard RedFlick campaign phishing/C2 domain; Microsoft September 2026
+muvb[.]net,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard CosmicPulse C2 domain; RedFlick campaign; Microsoft September 2026
+divekickspolic[.]org,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard RedFlick campaign phishing infrastructure; Microsoft September 2026
+matjk[.]click,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard RedFlick phishing link domain; Microsoft September 2026
+bpdaersa[.]click,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard RedFlick phishing link domain; Microsoft September 2026
+stuseamandesilt[.]org,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard RedFlick campaign phishing infrastructure; Microsoft September 2026
+itechx[.]tel,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard CosmicPulse C2 domain; RedFlick campaign; Microsoft September 2026
+guach[.]net,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard CosmicPulse C2 domain; RedFlick campaign; Microsoft September 2026
+ruten[.]observer,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard RedFlick campaign phishing infrastructure; Microsoft September 2026
+byveo[.]org,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard RedFlick campaign phishing infrastructure; Microsoft September 2026
+secure-dns-hub[.]com,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard BAITSWITCH decoy redirect domain; redirects analysts while real victims go to C2; Microsoft September 2026
+qumel[.]link,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard RedFlick phishing link domain; Microsoft September 2026
+cyrna[.]top,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard RedFlick campaign phishing infrastructure; Microsoft September 2026
+drasw[.]club,https://www.microsoft.com/en-us/security/blog/2026/09/29/star-blizzard-refines-phishing-and-malware-delivery-with-the-redflick-technique/,2026-09-29,Star Blizzard RedFlick campaign phishing infrastructure; Microsoft September 2026
+avanade[.]cc,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; custom RAT distributed as fake backup/RMM software; Unit42 September 2026
+backupplanetwealthagta[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+beehstwithust[.]org,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+blessingsbe[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+bootbackup[.]com,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT delivery domain; fake backup software download; Unit42 September 2026
+bootprivate[.]com,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT delivery domain; Unit42 September 2026
+cashyejrudga[.]live,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+childofwhho[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+connectprivae[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+criopifileeworking[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+datavaseffhjurd[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+electomm[.]sbs,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+emef[.]info,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+emsafetoproceedtaward[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+evobasin[.]info,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+ghxstworkingagent[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+greateshystfqsh[.]one,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+gsop[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+hr4hire[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+installapp[.]cc,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT distribution domain; Unit42 September 2026
+jokermav[.]online,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+kresyuhjance[.]help,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+llgoldassociates[.]com,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+magicislanding[.]lol,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+outfitstryon[.]info,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+palnetworkingleup[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+piejaholoop[.]org,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+planetbizzingupcleananddirt[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+planetvocalfortesttheteas[.]cyou,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+planetvocalfortheteas[.]cyou,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+planetwealthonlycleancoffe[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+planetwealthonlycleantea[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+planetworkingclassrewor[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+planetworkingfortwo[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+planetwrokingclassforagemt[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+plnetcorresnifagenttea[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+qualityfilesghost[.]live,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+redjohntiger[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+rizkidworikingjuice[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+runtownagtabackup[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+selfpnl001[.]com,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+sunbeitnetwork[.]com,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+unrealjustcoffe[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+unrelioaworkinghun[.]top,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT C2 domain; Unit42 September 2026
+acrobat-reader-installer[.]com,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT delivery; vendor impersonation domain mimicking Adobe Acrobat; Unit42 September 2026
+03webzoominvite[.]us,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AgtaBackup RAT delivery; vendor impersonation domain mimicking Zoom invite; Unit42 September 2026
+hitrelay[.]com,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,Browser locker scareware traffic relay; routes malvertising victims to AWS Amplify-hosted scareware; Unit42 September 2026
+blog.birdjournal[.]com,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,Compromised legitimate blog used as cloaking layer for browser locker scareware delivery; tech support fraud; Unit42 September 2026
+main[.]d1sgde6tm4rzhv[.]amplifyapp[.]com,https://github.com/PaloAltoNetworks/Unit42-timely-threat-intel,2026-09-28,AWS Amplify-hosted browser locker scareware page; fake Microsoft security alert; vishing callback +1(844)449-0284; Unit42 September 2026
