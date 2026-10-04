@@ -633,3 +633,4 @@ ca14ad0344dc7216f6da29a5cbe4237d886cc5257e8c3a48fb4885a311c9b800,sha256,https://
 e2eb7703047b37b28dc34e6990205d758a2454b39bc655b460606745fadcb530,sha256,https://blog.talosintelligence.com/uat-11587/,2026-10-02,UAT-11587 Antino backdoor component; Cisco Talos September 2026
 e7e3b0bcd6798634adf8b49d305f3a7b7682e4b76db549682a183c5a186df4bb,sha256,https://blog.talosintelligence.com/uat-11587/,2026-10-02,UAT-11587 Antino backdoor component; Cisco Talos September 2026
 fdbd047031c13a17c9f491c9355f44d587584ebe2b8927be8482e6c236c8e1c1,sha256,https://blog.talosintelligence.com/uat-11587/,2026-10-02,UAT-11587 Antino backdoor component; Cisco Talos September 2026
+02b4571470d83163d103112f07f1c434,md5,https://rewterz.com/threat-advisory/sharepoint-0-day-exploited-to-deploy-warlock-ransomware-active-iocs,2026-10-04,Warlock ransomware component (Storm-2603/Gold Salem/Longlegs); SharePoint exploitation campaign targeting critical infrastructure; Rewterz October 2026
