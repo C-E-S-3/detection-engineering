@@ -399,3 +399,9 @@ indicator,source,date_added,context
 139[.]180[.]152[.]138,https://labs.beazley.security/advisories/BSL-A1216,2026-10-04,WHIPSHOT PHP webshell payload hosting for CVE-2026-88771/CVE-2026-88772 Citrix NetScaler exploitation; Beazley Security October 2026
 77[.]83[.]199[.]39,https://labs.beazley.security/advisories/BSL-A1216,2026-10-04,WHIPSHOT PHP webshell payload hosting for CVE-2026-88771/CVE-2026-88772 Citrix NetScaler exploitation; Beazley Security October 2026
 104[.]248[.]244[.]66,https://labs.beazley.security/advisories/BSL-A1216,2026-10-04,WHIPSHOT/SLAPSHOT exfiltration/tunneling infrastructure for CVE-2026-88771/CVE-2026-88772 Citrix NetScaler exploitation; Beazley Security October 2026
+213.209.159.55,CISA KEV / Security Community,2026-10-04,CVE-2026-88779 Citrix NetScaler SAML exploitation source; PitScaler 2 active exploitation IP
+200.107.207.26,Oligo Security / Rapid7,2026-10-05,Cl0p CVE-2025-61882 Oracle EBS exploitation / exfiltration infrastructure
+185.181.60.11,Oligo Security / Rapid7,2026-10-05,Cl0p CVE-2025-61882 Oracle EBS exploitation / exfiltration infrastructure
+161.97.99.49,Oligo Security / Rapid7,2026-10-05,Cl0p CVE-2025-61882 Oracle EBS exploitation / exfiltration infrastructure
+162.55.17.215,Oligo Security / Rapid7,2026-10-05,Cl0p CVE-2025-61882 Oracle EBS exploitation / exfiltration infrastructure
+104.194.11.200,Oligo Security / Rapid7,2026-10-05,Cl0p CVE-2025-61882 Oracle EBS exploitation / exfiltration infrastructure
