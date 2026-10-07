@@ -827,3 +827,8 @@ wellnesscaremed[.]com,Trellix / Zscaler ThreatLabz,2026-10-05,APT28 Operation Ne
 freefoodaid[.]com,Trellix / Zscaler ThreatLabz,2026-10-05,APT28 Operation Neusploit infrastructure; C2 or payload staging domain
 wellnessmedcare[.]org,Trellix / Zscaler ThreatLabz,2026-10-05,APT28 Operation Neusploit infrastructure; C2 or payload staging domain
 oa[.]88tech[.]me,Oligo Security / Rapid7,2026-10-05,Cl0p CVE-2025-61882 Oracle EBS extortion victim contact / payment portal
+cloud.g-drive[.]cam,https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/,2026-10-07,CL-STA-1178 Blinder Tunnel — fake Google Drive lure domain used in parallel credential-harvesting operation against Israeli entity
+googeldrive[.]cam,https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/,2026-10-07,CL-STA-1178 Blinder Tunnel — typosquatted Google Drive phishing domain; Iraqi critical infrastructure campaign
+drivegoogel[.]cam,https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/,2026-10-07,CL-STA-1178 Blinder Tunnel — typosquatted Google Drive phishing domain; Iraqi critical infrastructure campaign
+googelmeet[.]online,https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/,2026-10-07,CL-STA-1178 Blinder Tunnel — fake Google Meet phishing domain
+meetonline[.]cam,https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/,2026-10-07,CL-STA-1178 Blinder Tunnel — fake Google Meet phishing domain

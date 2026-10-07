@@ -4,7 +4,7 @@
 
 Detects .NET AppDomain Manager Injection (T1574.014), a technique where an attacker places a trojanized XML `.config` file in the same directory as a legitimate .NET application. The config file specifies an attacker-controlled `AppDomainManager` subclass in a malicious DLL; when the legitimate application launches, the .NET runtime automatically loads the malicious DLL and executes the attacker's code before the application's own code runs. This bypasses application allowlisting because the host process is a trusted, signed binary.
 
-Observed in the wild by **Nimbus Manticore** (IRGC-linked Iranian APT) starting February 2026, using the technique to deliver MiniJunk and MiniFast implants. The technique is also documented in the MITRE ATT&CK framework as applicable to any threat actor seeking to abuse .NET application trust.
+Observed in the wild by **Nimbus Manticore** (IRGC-linked Iranian APT) starting February 2026, using the technique to deliver MiniJunk and MiniFast implants. Also used by **CL-STA-1178** (Iran-nexus, Unit 42 designation) in the **Blinder Tunnel** campaign (March–April 2026, reported October 6 2026) targeting Iraqi critical infrastructure: the actor delivered a weaponized `.csproj` Visual Studio project file via recruitment-themed spear-phishing, which triggered AppDomainManager hijacking via MSBuild to load `RuntimeBroker.dll` (ShelbyLoader V2). The technique is also documented in the MITRE ATT&CK framework as applicable to any threat actor seeking to abuse .NET application trust.
 
 Key detection signals:
 - `.config` files created in standard program directories by unexpected writers (e.g., browsers, document viewers, scripting engines)
@@ -92,6 +92,7 @@ False positive sources: legitimate software updates that deploy `.config` files 
 | Actor | References |
 |-------|-----------|
 | Nimbus Manticore (IRGC-linked Iranian APT) | [Check Point Research — Fast and Furious (2026-05-22)](https://research.checkpoint.com/2026/fast-and-furious-nimbus-manticore-operations-during-the-iranian-conflict/) |
+| CL-STA-1178 (Iran-nexus, Blinder Tunnel campaign) | [Unit 42 — Blinder Tunnel (2026-10-06)](https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/) |
 
 ## References
 
@@ -99,3 +100,4 @@ False positive sources: legitimate software updates that deploy `.config` files 
 - [MITRE ATT&CK T1574.014 — AppDomain Manager Injection](https://attack.mitre.org/techniques/T1574/014/)
 - [Unit 42 — MiniJunk V2 Disclosure](https://unit42.paloaltonetworks.com/)
 - [THN — Iranian Hackers Deploy MiniFast and MiniJunk V2](https://thehackernews.com/2026/05/iranian-hackers-deploy-minifast-and.html)
+- [Unit 42 — Blinder Tunnel: CL-STA-1178 GitHub C2 and ShelbyLoader V2 (2026-10-06)](https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/)
