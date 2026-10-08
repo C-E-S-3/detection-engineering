@@ -832,3 +832,5 @@ googeldrive[.]cam,https://unit42.paloaltonetworks.com/blinder-tunnel-targets-cri
 drivegoogel[.]cam,https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/,2026-10-07,CL-STA-1178 Blinder Tunnel — typosquatted Google Drive phishing domain; Iraqi critical infrastructure campaign
 googelmeet[.]online,https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/,2026-10-07,CL-STA-1178 Blinder Tunnel — fake Google Meet phishing domain
 meetonline[.]cam,https://unit42.paloaltonetworks.com/blinder-tunnel-targets-critical-infrastructure/,2026-10-07,CL-STA-1178 Blinder Tunnel — fake Google Meet phishing domain
+malwarescan[.]xyz,https://www.lumen.com/blog/en-us/canto-incognito-tracking-the-poellm-malware,2026-10-08,PoeLLM/Canto Incognito — infrastructure domain registered early in the campaign; hosted on 57.131.5.211
+raw.githubusercontent.com/cavecrew/proj/main/banner.png,https://checkmarx.com/zero-post/malfex-npm-malware-campaign-three-payloads-and-an-adversary-that-signs-their-work/,2026-10-08,MALFEX campaign — GitHub raw URL hosting steganographic banner.png payload carrier containing Overlord RAT loader

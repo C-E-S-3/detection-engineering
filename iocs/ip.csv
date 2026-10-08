@@ -405,3 +405,13 @@ indicator,source,date_added,context
 161.97.99.49,Oligo Security / Rapid7,2026-10-05,Cl0p CVE-2025-61882 Oracle EBS exploitation / exfiltration infrastructure
 162.55.17.215,Oligo Security / Rapid7,2026-10-05,Cl0p CVE-2025-61882 Oracle EBS exploitation / exfiltration infrastructure
 104.194.11.200,Oligo Security / Rapid7,2026-10-05,Cl0p CVE-2025-61882 Oracle EBS exploitation / exfiltration infrastructure
+92.119.164.50,https://www.lumen.com/blog/en-us/canto-incognito-tracking-the-poellm-malware,2026-10-08,PoeLLM/Canto Incognito cryptomining botnet — active C2 server as of 2026-10-07; communicates over ports 3778/5001/5002/9999
+103.249.201.108,https://www.lumen.com/blog/en-us/canto-incognito-tracking-the-poellm-malware,2026-10-08,PoeLLM/Canto Incognito cryptomining botnet — active C2 server as of 2026-10-07
+178.128.14.204,https://www.lumen.com/blog/en-us/canto-incognito-tracking-the-poellm-malware,2026-10-08,PoeLLM/Canto Incognito cryptomining botnet — active C2 server as of 2026-10-07
+191.37.28.160,https://www.lumen.com/blog/en-us/canto-incognito-tracking-the-poellm-malware,2026-10-08,PoeLLM/Canto Incognito — historical C2 IP (active 2026-04-13 to 2026-05-16)
+89.39.253.46,https://www.lumen.com/blog/en-us/canto-incognito-tracking-the-poellm-malware,2026-10-08,PoeLLM/Canto Incognito — historical C2 IP (active 2026-04-14 to 2026-06-24)
+120.224.114.212,https://www.lumen.com/blog/en-us/canto-incognito-tracking-the-poellm-malware,2026-10-08,PoeLLM/Canto Incognito — historical C2 IP (active 2026-05-09 to 2026-09-08)
+5.78.73.122,https://www.lumen.com/blog/en-us/canto-incognito-tracking-the-poellm-malware,2026-10-08,PoeLLM/Canto Incognito — historical C2 IP (active 2026-06-08 to 2026-08-22)
+15.204.178.28,https://www.lumen.com/blog/en-us/canto-incognito-tracking-the-poellm-malware,2026-10-08,PoeLLM/Canto Incognito — historical C2 IP (active 2026-06-14 to 2026-08-17)
+92.119.165.74,https://www.lumen.com/blog/en-us/canto-incognito-tracking-the-poellm-malware,2026-10-08,PoeLLM/Canto Incognito — historical C2 IP (active 2026-07-01 to 2026-07-23)
+57.131.5.211,https://www.lumen.com/blog/en-us/canto-incognito-tracking-the-poellm-malware,2026-10-08,PoeLLM/Canto Incognito — infrastructure server hosting malwarescan[.]xyz domain
