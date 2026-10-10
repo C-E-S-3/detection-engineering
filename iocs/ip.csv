@@ -415,3 +415,4 @@ indicator,source,date_added,context
 15.204.178.28,https://www.lumen.com/blog/en-us/canto-incognito-tracking-the-poellm-malware,2026-10-08,PoeLLM/Canto Incognito — historical C2 IP (active 2026-06-14 to 2026-08-17)
 92.119.165.74,https://www.lumen.com/blog/en-us/canto-incognito-tracking-the-poellm-malware,2026-10-08,PoeLLM/Canto Incognito — historical C2 IP (active 2026-07-01 to 2026-07-23)
 57.131.5.211,https://www.lumen.com/blog/en-us/canto-incognito-tracking-the-poellm-malware,2026-10-08,PoeLLM/Canto Incognito — infrastructure server hosting malwarescan[.]xyz domain
+38.244.50[.]120,https://www.crowdstrike.com/blog/adversary-use-of-ai-coding-agents-artex-south-korea-finance/,2026-10-08,ARTEX AI agent infrastructure server used in South Korean financial sector intrusion campaign (Kookmin Bank, Hana Bank, BNK Busan Bank); China-based suspected actor; CrowdStrike October 2026
