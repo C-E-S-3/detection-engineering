@@ -45,6 +45,7 @@ Detections for techniques adversaries use to avoid detection, including abuse of
 | [KREMLIN Chromium Secure Preferences HMAC Forgery](kremlin_chromium_secure_preferences_hmac_forgery.md) | T1176, T1574.002 | KREMLIN (REF9334) banking trojan force-installs malicious Chrome/Edge extension by forging Chromium Secure Preferences HMAC-SHA256 integrity check via PowerShell; also sideloads via SentinelOne `SentinelMemoryScanner.exe`; Elastic September 2026 |
 | [Star Blizzard RedFlick CPL Proxy Execution](star_blizzard_redflick_cpl_proxy_execution.md) | T1218.002, T1053.005 | VHD-delivered LNK creates scheduled task invoking control.exe with malicious .cpl argument; Russia FSB Star Blizzard (COLDRIVER) RedFlick technique targeting policy researchers; Microsoft September 2026 |
 | [PEERSTITCH FortiGate ptrace Daemon Injection](peerstitch_fortigate_ptrace_daemon_injection.md) | T1014, T1055.008, T1190 | Memory-resident ARM64 implant injected into FortiGate miglogd/iked daemons via ptrace after CVE-2024-47575 or CVE-2025-61624 exploitation; no disk artifact; C2 via hijacked daemon sockets; CL-STA-0954; Unit 42 October 2026 |
+| [Windows Shell MotW Zone.Identifier Bypass](windows_shell_motw_zone_identifier_bypass.md) | T1553.005 | PowerShell Unblock-File and Zone.Identifier ADS deletion stripping Mark-of-the-Web to bypass SmartScreen and Office Protected View; CVE-2026-96951 (CISA KEV, actively exploited) is third MotW bypass zero-day of 2026 |
 
 ---
 
