@@ -1,0 +1,29 @@
+title: Sudo Command Executed From A World-Writable Directory
+id: 1055373e-ea14-4125-b129-4730df0e314d
+status: experimental
+description: |
+  Detects a sudo command (auditd USER_CMD) whose working directory is a
+  world-writable location such as /tmp, /var/tmp or /dev/shm. Attackers commonly
+  stage payloads there and run them with elevated privileges; legitimate
+  administration rarely starts from these directories.
+references:
+  - https://attack.mitre.org/techniques/T1548/003/
+author: detection-engineering
+date: 2026/10/21
+tags:
+  - attack.privilege_escalation
+  - attack.t1548.003
+logsource:
+  product: linux
+  service: auditd
+detection:
+  selection:
+    type: 'USER_CMD'
+    cwd|startswith:
+      - '/tmp'
+      - '/var/tmp'
+      - '/dev/shm'
+  condition: selection
+falsepositives:
+  - Administrators deliberately working in /tmp (e.g. building packages)
+level: high
