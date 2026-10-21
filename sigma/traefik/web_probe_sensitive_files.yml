@@ -1,0 +1,41 @@
+title: Web Probe For Exposed Secrets Or Config Files
+id: 5ff52bf9-9146-4a44-9afb-44f0e0be2ad9
+status: experimental
+description: |
+  Detects HTTP requests for files that should never be served by a web front end and
+  are commonly harvested by automated scanners - environment files, VCS metadata,
+  cloud credentials and framework config files. Any hit means a client is probing
+  for secrets; a 200 response means something sensitive may actually be exposed.
+references:
+  - https://attack.mitre.org/techniques/T1595/003/
+  - https://attack.mitre.org/techniques/T1552/001/
+author: detection-engineering
+date: 2026/10/21
+tags:
+  - attack.reconnaissance
+  - attack.t1595.003
+  - attack.credential_access
+  - attack.t1552.001
+logsource:
+  product: traefik
+  category: webserver
+detection:
+  selection:
+    url.path|contains:
+      - '/.env'
+      - '/.git/'
+      - '/.git/config'
+      - '/.svn/'
+      - '/.aws/credentials'
+      - '/.ssh/'
+      - '/.docker/config.json'
+      - '/wp-config.php'
+      - '/config.php.bak'
+      - '/.DS_Store'
+      - '/server-status'
+      - '/actuator/env'
+  condition: selection
+falsepositives:
+  - Authorised vulnerability scanning
+  - Applications that legitimately serve a path containing one of these strings
+level: high
