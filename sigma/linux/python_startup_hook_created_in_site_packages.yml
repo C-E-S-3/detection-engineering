@@ -1,0 +1,44 @@
+title: Python Startup Hook File Created In Site-Packages
+id: 1868f4e5-97bc-4299-9944-e926ad11b52a
+status: experimental
+description: |
+  Detects creation of a Python path configuration file (.pth) or a sitecustomize.py /
+  usercustomize.py module inside a site-packages or dist-packages directory. Python
+  executes import lines in .pth files and these customize modules on every interpreter
+  start, before any user code runs, which makes them a stealthy persistence and
+  execution hook. The LiteLLM 1.107.0 supply-chain compromise (PRIVCOLLECT) dropped
+  cook.pth and sitecustomize.py this way to steal credentials and load remote code.
+references:
+  - https://www.microsoft.com/en-us/security/blog/2026/10/23/inside-the-litellm-1-107-0-supply-chain-compromise-credential-theft-through-python-startup-hooks/
+  - https://attack.mitre.org/techniques/T1546/018/
+author: threat-intel-sigma-agent
+date: '2026/10/24'
+tags:
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.t1546.018
+  - attack.initial_access
+  - attack.t1195.001
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection_dir:
+    TargetFilename|contains:
+      - '/site-packages/'
+      - '/dist-packages/'
+  selection_file:
+    TargetFilename|endswith:
+      - '.pth'
+      - '/sitecustomize.py'
+      - '/usercustomize.py'
+  filter_pip_build_isolation:
+    # setuptools' own hook, written into pip's throw-away PEP 517 build environment
+    TargetFilename|contains: '/pip-build-env-'
+    TargetFilename|endswith: '/distutils-precedence.pth'
+  condition: selection_dir and selection_file and not filter_pip_build_isolation
+falsepositives:
+  - Legitimate package installs that ship .pth files (e.g. setuptools
+    distutils-precedence.pth, editable installs, namespace packages, coverage tooling)
+  - Distribution-provided sitecustomize.py from OS package upgrades
+level: medium
