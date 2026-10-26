@@ -1,0 +1,58 @@
+title: Reverse SOCKS Or Tunnelling Tool Executed On Linux
+id: 32116296-404c-4f51-9ff4-a33a0c0aec64
+status: experimental
+description: |
+  Detects execution of common reverse-tunnelling / reverse-SOCKS tools (RevSocks,
+  Chisel, Ligolo-ng agent, frp client, gost, rsocx, iox), either by binary name or
+  by their characteristic "dial out and expose SOCKS" command-line arguments. This
+  catches renamed copies too. Ransomware affiliates use these tools to pivot from a
+  compromised server into the internal network. INC / The Gentlemen affiliates
+  running the AI-assisted Phantom framework used RevSocks this way.
+references:
+  - https://socradar.io/blog/inc-gentlemen-ransomware-ai-infrastructure/
+  - https://attack.mitre.org/techniques/T1090/001/
+author: threat-intel-sigma-agent
+date: '2026/10/26'
+tags:
+  - attack.command_and_control
+  - attack.t1090.001
+  - attack.t1090.002
+  - attack.t1572
+  - attack.lateral_movement
+  - attack.t1021
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_image:
+    Image|endswith:
+      - '/revsocks'
+      - '/chisel'
+      - '/ligolo-agent'
+      - '/frpc'
+      - '/gost'
+      - '/rsocx'
+      - '/iox'
+  selection_chisel_cli:
+    CommandLine|contains: ' client '
+    CommandLine|contains|all:
+      - 'R:'
+      - 'socks'
+  selection_revsocks_cli:
+    CommandLine|contains|all:
+      - '-connect '
+      - '-pass '
+  selection_ligolo_cli:
+    CommandLine|contains|all:
+      - '-connect '
+      - '-ignore-cert'
+  selection_gost_cli:
+    CommandLine|contains:
+      - '-L socks5://'
+      - '-L=socks5://'
+      - '-F relay+'
+  condition: 1 of selection_*
+falsepositives:
+  - Sanctioned use of frp / chisel / gost for exposing internal services
+  - Red-team or purple-team exercises
+level: high
