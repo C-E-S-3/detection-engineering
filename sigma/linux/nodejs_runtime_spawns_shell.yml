@@ -1,0 +1,67 @@
+title: Node.js Runtime Spawning Download, Reverse Shell Or Recon Commands
+id: 50892ac2-68be-4889-aba5-c0fe428fd3a4
+status: experimental
+description: |
+  Detects a Node.js runtime process (node, nodejs, bun, deno) directly starting a
+  download tool, network relay or identity-discovery binary, or a shell whose command
+  line downloads-and-executes, opens a reverse shell or decodes a payload. Node.js
+  applications commonly shell out for housekeeping (df, cat /proc/...), so a plain
+  "node spawns sh" rule is too noisy; this rule keys on what an attacker does right
+  after RCE in a Node.js worker, such as Node2Shell (CVE-2026-111497, malformed
+  Content-Encoding: br body corrupting the Brotli decoder) or deserialisation chains:
+  whoami/id/uname, curl|bash style installs of remote-access tools, /dev/tcp shells.
+references:
+  - https://www.helpnetsecurity.com/2026/10/27/node2shell-broccoli2shell-vulnerability-cve-2026-111497/
+  - https://attack.mitre.org/techniques/T1190/
+author: threat-intel-sigma-agent
+date: '2026/10/29'
+tags:
+  - attack.initial_access
+  - attack.t1190
+  - attack.execution
+  - attack.t1059.004
+  - attack.command_and_control
+  - attack.t1105
+  - attack.discovery
+  - attack.t1033
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_parent:
+    ParentImage|endswith:
+      - '/node'
+      - '/nodejs'
+      - '/bun'
+      - '/deno'
+  selection_child_image:
+    # plain curl/wget is left out on purpose: Node.js CLI tooling calls them for
+    # ordinary API requests; download-and-execute is caught via the pipe patterns below
+    Image|endswith:
+      - '/nc'
+      - '/ncat'
+      - '/netcat'
+      - '/socat'
+      - '/whoami'
+      - '/id'
+      - '/gs-netcat'
+  selection_child_cmdline:
+    CommandLine|contains:
+      - '/dev/tcp/'
+      - '/dev/udp/'
+      - '| sh'
+      - '|sh'
+      - '| bash'
+      - '|bash'
+      - 'base64 -d'
+      - 'base64 --decode'
+      - 'mkfifo '
+      - 'nc -e'
+      - 'whoami'
+      - 'uname -a'
+      - 'gsocket'
+  condition: selection_parent and 1 of selection_child_*
+falsepositives:
+  - Developer CLI tools written in Node.js that run whoami/id or pipe scripts into a shell
+  - Install scripts run through npm lifecycle hooks that pipe a download into sh
+level: high

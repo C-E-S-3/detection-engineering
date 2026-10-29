@@ -1,0 +1,42 @@
+title: PHP Stream Wrapper In HTTP Request URL
+id: b4eceb25-83a7-430a-9e9b-cffaafb06053
+status: experimental
+description: |
+  Detects HTTP requests whose path or query string carries a PHP stream wrapper
+  (php://input, php://filter, phar://, expect://, zip://, data://). Legitimate clients
+  never send these; they are used to turn file-read/file-write and include parameters
+  into code execution or source disclosure. The YOOtheme Pro CVE-2026-102785 exploit
+  appends FromFile=php://input and Save=<path>.php to an image URL to write a webshell
+  from the POST body (the server still answers HTTP 500), and the same trick is used
+  against many LFI/RFI and file-handler bugs.
+references:
+  - https://raw.githubusercontent.com/PaloAltoNetworks/Unit42-timely-threat-intel/main/2026-10-26-exploitation-of-CVE-2026-102785.txt
+  - https://attack.mitre.org/techniques/T1190/
+author: threat-intel-sigma-agent
+date: '2026/10/29'
+tags:
+  - attack.initial_access
+  - attack.t1190
+  - attack.persistence
+  - attack.t1505.003
+logsource:
+  product: traefik
+  category: webserver
+detection:
+  selection:
+    url.path|contains:
+      - 'php://input'
+      - 'php://filter'
+      - 'php%3A%2F%2F'
+      - 'php%3a%2f%2f'
+      - 'phar://'
+      - 'expect://'
+      - 'zip://'
+      - 'data://text'
+  filter_not_found:
+    # blind scanner probes against hosts without a PHP backend
+    http.response.status_code: 404
+  condition: selection and not filter_not_found
+falsepositives:
+  - Authorised vulnerability scanning
+level: high
