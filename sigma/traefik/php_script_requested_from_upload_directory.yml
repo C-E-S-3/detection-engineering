@@ -1,0 +1,44 @@
+title: PHP Script Requested From A Web Upload Directory
+id: b152a790-580a-4dc4-9746-6b6ab7dc9d50
+status: experimental
+description: |
+  Detects HTTP requests for a .php file inside a CMS upload directory (WordPress
+  wp-content/uploads, Joomla images/media, Drupal sites/default/files). Upload
+  directories hold user media and should never contain executable scripts, so a
+  request for one is either a scanner looking for a known webshell or an operator
+  using one. In CVE-2026-102785 (YOOtheme Pro) attackers wrote yt<hex>.php into
+  wp-content/uploads and drove it via ?c=<command>, then installed the ALFA Team kit
+  under wp-content/uploads/ALFA_DATA/. A 200 response means a script there actually ran.
+references:
+  - https://raw.githubusercontent.com/PaloAltoNetworks/Unit42-timely-threat-intel/main/2026-10-26-exploitation-of-CVE-2026-102785.txt
+  - https://attack.mitre.org/techniques/T1505/003/
+author: threat-intel-sigma-agent
+date: '2026/10/29'
+tags:
+  - attack.persistence
+  - attack.t1505.003
+  - attack.execution
+  - attack.t1059
+  - attack.initial_access
+  - attack.t1190
+logsource:
+  product: traefik
+  category: webserver
+detection:
+  selection_dir:
+    url.path|contains:
+      - '/wp-content/uploads/'
+      - '/sites/default/files/'
+      - '/images/stories/'
+      - '/media/uploads/'
+  selection_php:
+    url.path|contains:
+      - '.php'
+      - '.phtml'
+      - '.phar'
+      - '/ALFA_DATA/'
+  condition: selection_dir and selection_php
+falsepositives:
+  - Webshell scanners probing for known webshell paths (mostly 404 responses)
+  - Plugins that misuse the uploads directory for PHP endpoints
+level: high
