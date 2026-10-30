@@ -1,0 +1,54 @@
+title: Web Server Or PHP Process Writes A PHP Script File
+id: ad6566f8-617a-4ab5-ba4d-1c8525be6f2e
+status: experimental
+description: |
+  Detects a web server or PHP runtime process (Apache, nginx, PHP-FPM, php-cgi, mod_php,
+  LiteSpeed, FrankenPHP) creating a file with an executable PHP extension. Application
+  code is deployed by package managers, git or an admin, not written by the serving
+  process itself, so a PHP file created by the web stack is the typical footprint of a
+  webshell drop after remote code execution or an arbitrary file upload, as in the
+  CVE-2026-46300 Linux kernel chain where PHP webshells were implanted in web roots.
+references:
+  - https://www.cisa.gov/news-events/alerts/2026/10/28/cisa-adds-two-known-exploited-vulnerabilities-catalog
+  - https://attack.mitre.org/techniques/T1505/003/
+author: threat-intel-sigma-agent
+date: '2026/10/30'
+tags:
+  - attack.persistence
+  - attack.t1505.003
+  - attack.initial_access
+  - attack.t1190
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection_image:
+    - Image|endswith:
+        - '/apache2'
+        - '/httpd'
+        - '/nginx'
+        - '/lighttpd'
+        - '/litespeed'
+        - '/lsphp'
+        - '/frankenphp'
+        - '/php'
+        - '/php-cgi'
+    - Image|contains:
+        - '/php-fpm'
+        - '/php5'
+        - '/php7'
+        - '/php8'
+  selection_file:
+    TargetFilename|endswith:
+      - '.php'
+      - '.phtml'
+      - '.phar'
+      - '.php5'
+      - '.php7'
+      - '.pht'
+  condition: selection_image and selection_file
+falsepositives:
+  - CMS self-updates or plugin/theme installs run through the web UI (WordPress, Drupal,
+    Joomla), and PHP applications that write compiled template or config caches as .php
+  - Composer or other PHP CLI tooling run by an administrator
+level: high
