@@ -1,0 +1,69 @@
+title: SSH Authorized Keys File Written By Shell, Script Runtime Or IDE Process
+id: d928e150-cc00-4dcb-97fa-6ac769f37825
+status: experimental
+description: |
+  Detects an SSH authorized_keys / authorized_keys2 file being created or rewritten
+  by a process that does not normally manage SSH keys: a Unix shell (echo/cat
+  redirection), a Node.js / Electron / IDE runtime (VS Code, Cursor, code-server
+  extension hosts), another scripting runtime, a download or relay tool, or a binary
+  running from a temporary directory. Implanting an attacker key in authorized_keys
+  gives persistent access that survives removal of the original malware. The
+  trojanized "Claude Code" Cursor extension (v2.1.313) appended an attacker key from
+  the IDE extension host this way. Configuration-management tooling (Python-based,
+  e.g. Ansible) and OpenSSH itself are deliberately not in the selection to keep the
+  rule quiet during routine key rollouts.
+references:
+  - https://www.bleepingcomputer.com/news/security/trojanized-claude-code-extension-in-cursor-marketplace-installs-ssh-backdoor/
+  - https://attack.mitre.org/techniques/T1098/004/
+author: threat-intel-sigma-agent
+date: '2026/10/31'
+tags:
+  - attack.persistence
+  - attack.t1098.004
+  - attack.initial_access
+  - attack.t1195.001
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection_target:
+    TargetFilename|endswith:
+      - '/authorized_keys'
+      - '/authorized_keys2'
+  selection_writer_name:
+    Image|endswith:
+      - '/sh'
+      - '/bash'
+      - '/dash'
+      - '/zsh'
+      - '/ksh'
+      - '/busybox'
+      - '/tee'
+      - '/node'
+      - '/nodejs'
+      - '/bun'
+      - '/deno'
+      - '/electron'
+      - '/cursor'
+      - '/code'
+      - '/code-server'
+      - '/codium'
+      - '/perl'
+      - '/ruby'
+      - '/php'
+      - '/curl'
+      - '/wget'
+      - '/nc'
+      - '/ncat'
+      - '/socat'
+  selection_writer_path:
+    Image|startswith:
+      - '/tmp/'
+      - '/var/tmp/'
+      - '/dev/shm/'
+  condition: selection_target and 1 of selection_writer_*
+falsepositives:
+  - An administrator appending a key by hand (echo/cat >> authorized_keys, sudo tee -a)
+  - ssh-copy-id, whose remote side appends the key through a shell redirection
+  - Provisioning scripts written in shell rather than a config-management tool
+level: high
