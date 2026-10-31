@@ -1,0 +1,42 @@
+title: SSH Public Key Appended To Authorized Keys Via Command Line
+id: 58b5d68a-8a59-49ad-b0c1-f6d53920812e
+status: experimental
+description: |
+  Detects a process whose command line writes to an SSH authorized_keys file through
+  shell append redirection or tee, or embeds raw public-key material next to an
+  authorized_keys path (e.g. sh -c "echo ssh-ed25519 AAAA... >> ~/.ssh/authorized_keys").
+  This is the usual way malware, droppers and post-exploitation scripts implant a
+  persistent attacker key, and is visible regardless of which runtime spawned the
+  shell. The trojanized "Claude Code" Cursor extension (v2.1.313) appended an attacker
+  key labelled svc-telemetry to authorized_keys; this rule detects the technique, not
+  the specific key comment. Read-only uses (grep, cat, wc on authorized_keys) do not
+  match.
+references:
+  - https://www.bleepingcomputer.com/news/security/trojanized-claude-code-extension-in-cursor-marketplace-installs-ssh-backdoor/
+  - https://attack.mitre.org/techniques/T1098/004/
+author: threat-intel-sigma-agent
+date: '2026/10/31'
+tags:
+  - attack.persistence
+  - attack.t1098.004
+  - attack.execution
+  - attack.t1059.004
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_target:
+    CommandLine|contains: 'authorized_keys'
+  selection_write:
+    CommandLine|contains:
+      - '>>'
+      - 'tee '
+      - 'ssh-ed25519 '
+      - 'ssh-rsa '
+      - 'ecdsa-sha2-'
+      - 'sk-ssh-ed25519'
+  condition: selection_target and selection_write
+falsepositives:
+  - ssh-copy-id (its remote side appends the key with "cat >> .ssh/authorized_keys")
+  - Administrators or shell-based provisioning scripts adding a key by hand
+level: high

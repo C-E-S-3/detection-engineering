@@ -1,0 +1,45 @@
+title: SSH Client Started With Reverse Port Forwarding
+id: 978d5140-0147-4294-9e51-de6f91b6a31a
+status: experimental
+description: |
+  Detects the OpenSSH client being started with remote (reverse) port forwarding
+  (-R, combined flags such as -fNR, or -o RemoteForward). A reverse tunnel lets an
+  outside party reach a service on the compromised host (typically its own sshd)
+  through an outbound connection, bypassing inbound firewall rules, and keeps working
+  after the initial dropper is removed. The trojanized "Claude Code" Cursor extension
+  (v2.1.313) combined an ssh -R tunnel with an implanted authorized_keys entry for
+  persistent access; the same technique is common in Linux intrusions generally.
+references:
+  - https://www.bleepingcomputer.com/news/security/trojanized-claude-code-extension-in-cursor-marketplace-installs-ssh-backdoor/
+  - https://attack.mitre.org/techniques/T1572/
+author: threat-intel-sigma-agent
+date: '2026/10/31'
+tags:
+  - attack.command_and_control
+  - attack.t1572
+  - attack.persistence
+  - attack.t1098.004
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_image:
+    Image|endswith: '/ssh'
+  selection_reverse:
+    CommandLine|contains:
+      - ' -R'
+      - 'NR '
+      - 'fR '
+      - 'TR '
+      - 'gR '
+      - 'qR '
+      - 'CR '
+      - 'nR '
+      - 'RemoteForward'
+  condition: selection_image and selection_reverse
+falsepositives:
+  - Administrators deliberately exposing a local service through a jump host
+  - Sanctioned remote-support or autossh-based tunnels
+  - A remote command containing a recursive flag passed on the ssh command line
+    (e.g. "ssh host chown -R ...")
+level: high
