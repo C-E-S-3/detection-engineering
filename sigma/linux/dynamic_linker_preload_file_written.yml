@@ -1,0 +1,36 @@
+title: System-Wide Dynamic Linker Preload File Created Or Modified
+id: 64cf11eb-4493-4b92-946c-72de5ad5b470
+status: experimental
+description: |
+  Detects creation or rewrite of /etc/ld.so.preload. Every shared object listed there
+  is loaded by the dynamic linker into every dynamically linked process on the host,
+  which lets an attacker run code inside long-running daemons (hooking functions such
+  as SSL_read to steal decrypted traffic or key material) and survive reboots without
+  a separate process. The file does not exist on a default Linux install and is almost
+  never managed by legitimate software. UAT-11473's KeyDrift framework injected
+  look-alike shared objects (libcommon.so, libdssl.so) into the SD-WAN vdaemon process
+  to hook SSL_read and steal IPsec keys; this rule covers the generic Linux form of that
+  shared-library injection, as also used by many Linux rootkits and cryptominers.
+references:
+  - https://blog.talosintelligence.com/uat-11473-keydrift/
+  - https://attack.mitre.org/techniques/T1574/006/
+author: threat-intel-sigma-agent
+date: '2026/11/01'
+tags:
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.defense_evasion
+  - attack.t1574.006
+  - attack.t1055
+  - attack.t1036.005
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection:
+    TargetFilename: '/etc/ld.so.preload'
+  condition: selection
+falsepositives:
+  - Administrators deliberately preloading a memory allocator or debugging library
+    system-wide (rare; normally done per service via LD_PRELOAD instead)
+level: high
