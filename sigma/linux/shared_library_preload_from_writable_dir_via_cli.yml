@@ -1,0 +1,49 @@
+title: Shared Library Preload From Command Line Or Writes To ld.so.preload
+id: 42bcbcff-8ecf-4835-8393-d7d965402396
+status: experimental
+description: |
+  Detects a command line that sets LD_PRELOAD to a shared object in a temporary or
+  hidden location, or that writes to /etc/ld.so.preload (echo/tee/cp/mv). Loading an
+  attacker-controlled shared object into another program lets it hook library
+  functions (e.g. SSL_read) inside a running service without spawning a visible
+  process. UAT-11473's KeyDrift framework injected look-alike shared objects into the
+  SD-WAN vdaemon process to hook SSL_read and steal IPsec key material; this rule covers
+  the generic Linux command-line footprint of that shared-library injection.
+references:
+  - https://blog.talosintelligence.com/uat-11473-keydrift/
+  - https://attack.mitre.org/techniques/T1574/006/
+author: threat-intel-sigma-agent
+date: '2026/11/01'
+tags:
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.defense_evasion
+  - attack.t1574.006
+  - attack.t1055
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_preload_env:
+    CommandLine|contains:
+      - 'LD_PRELOAD=/tmp/'
+      - 'LD_PRELOAD=/var/tmp/'
+      - 'LD_PRELOAD=/dev/shm/'
+      - 'LD_PRELOAD=./'
+      - 'LD_PRELOAD=/run/user/'
+      - 'LD_PRELOAD=/home/'
+      - 'LD_PRELOAD=/root/'
+  selection_preload_file:
+    CommandLine|contains: '/etc/ld.so.preload'
+  selection_preload_file_write:
+    CommandLine|contains:
+      - '>'
+      - 'tee '
+      - 'cp '
+      - 'mv '
+      - 'install '
+  condition: selection_preload_env or (selection_preload_file and selection_preload_file_write)
+falsepositives:
+  - Developers testing a locally built library with LD_PRELOAD from their home directory
+  - Administrators deliberately configuring a system-wide preload
+level: high
