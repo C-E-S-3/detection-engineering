@@ -1,0 +1,67 @@
+title: DNS Query To Request-Catcher Or Out-Of-Band Testing Service
+id: d246ff56-6885-46c7-a341-a8be34874e33
+status: experimental
+description: |
+  Detects DNS resolution of public request-catcher / webhook-inspection and out-of-band
+  application security testing (OAST) services. These free services give an attacker an
+  instant, anonymous HTTP/DNS endpoint with no infrastructure of their own. They are used as
+  covert C2 and exfiltration relays (the ARTEX agentic offensive framework rotated hundreds
+  of webhook.site URLs for agent polling and exfiltration) and as callback targets that
+  confirm blind injection or deserialization exploits (Log4Shell-style OAST callbacks).
+  Servers and infrastructure hosts have no business reaching them.
+references:
+  - https://cloud.google.com/blog/topics/threat-intelligence/artex-and-friends-enter-agentic-offensive-frameworks
+  - https://attack.mitre.org/techniques/T1102/002/
+  - https://attack.mitre.org/techniques/T1567/
+author: threat-intel-sigma-agent
+date: '2026/11/02'
+tags:
+  - attack.command_and_control
+  - attack.t1102.002
+  - attack.exfiltration
+  - attack.t1567
+logsource:
+  category: dns
+detection:
+  selection_exact:
+    query:
+      - 'webhook.site'
+      - 'requestbin.net'
+      - 'requestcatcher.com'
+      - 'hookbin.com'
+      - 'beeceptor.com'
+      - 'interact.sh'
+      - 'oastify.com'
+      - 'burpcollaborator.net'
+      - 'dnslog.cn'
+      - 'ceye.io'
+      - 'oast.fun'
+      - 'oast.pro'
+      - 'oast.live'
+      - 'oast.site'
+      - 'oast.online'
+      - 'oast.me'
+  selection_sub:
+    query|endswith:
+      - '.webhook.site'
+      - '.requestbin.net'
+      - '.m.pipedream.net'
+      - '.requestcatcher.com'
+      - '.hookbin.com'
+      - '.free.beeceptor.com'
+      - '.interact.sh'
+      - '.oastify.com'
+      - '.burpcollaborator.net'
+      - '.dnslog.cn'
+      - '.ceye.io'
+      - '.oast.fun'
+      - '.oast.pro'
+      - '.oast.live'
+      - '.oast.site'
+      - '.oast.online'
+      - '.oast.me'
+  condition: selection_exact or selection_sub
+falsepositives:
+  - Developers testing webhooks or integrations from a workstation
+  - Authorised penetration tests or vulnerability scanners that use OAST callbacks
+level: medium

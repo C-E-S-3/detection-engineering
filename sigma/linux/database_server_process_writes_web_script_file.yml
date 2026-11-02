@@ -1,0 +1,55 @@
+title: Database Server Process Writes A Web Script File
+id: 77a811d2-bf86-4c78-a560-26a4b86d0c9c
+status: experimental
+description: |
+  Detects a database server daemon (MySQL, MariaDB, PostgreSQL) creating a file with a
+  server-side web script extension (JSP, PHP, ASP/ASPX, CFM, WAR). A database engine has no
+  legitimate reason to produce web application code. This is the footprint of webshell
+  deployment through the database: pointing MySQL's general_log_file (or slow_query_log_file)
+  at a web root and logging a query that contains the webshell payload, SELECT ... INTO
+  OUTFILE/DUMPFILE, or PostgreSQL COPY ... TO. The log-file variant was observed in
+  intrusions driven by the ARTEX agentic offensive framework to bypass INTO OUTFILE
+  restrictions.
+references:
+  - https://cloud.google.com/blog/topics/threat-intelligence/artex-and-friends-enter-agentic-offensive-frameworks
+  - https://attack.mitre.org/techniques/T1505/003/
+author: threat-intel-sigma-agent
+date: '2026/11/02'
+tags:
+  - attack.persistence
+  - attack.t1505.003
+  - attack.initial_access
+  - attack.t1190
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection_image:
+    Image|endswith:
+      - '/mysqld'
+      - '/mariadbd'
+      - '/mysqld_safe'
+      - '/postgres'
+      - '/postmaster'
+  selection_file:
+    TargetFilename|endswith:
+      - '.jsp'
+      - '.jspx'
+      - '.jsf'
+      - '.war'
+      - '.php'
+      - '.phtml'
+      - '.phar'
+      - '.php5'
+      - '.php7'
+      - '.pht'
+      - '.asp'
+      - '.aspx'
+      - '.ashx'
+      - '.asmx'
+      - '.cfm'
+      - '.cgi'
+  condition: selection_image and selection_file
+falsepositives:
+  - Unlikely. A DBA deliberately exporting query results to a file with a script extension
+level: high
