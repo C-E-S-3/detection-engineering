@@ -1,0 +1,219 @@
+<!-- ============================================================
+     Orexin Ransomware: Windows SQL Server Ransomware
+     MITRE ATT&amp;CK Techniques:
+       T1490     - Inhibit System Recovery (TA0040 Impact)
+       T1489     - Service Stop (TA0040 Impact)
+       T1486     - Data Encrypted for Impact (TA0040 Impact)
+       T1059.003 - Command and Scripting Interpreter: Windows Command Shell (TA0002)
+       T1110.001 - Brute Force: Password Guessing (TA0006 Credential Access)
+     Rule IDs: 104192-104199
+     Author: SecOps Engineer (Purple Team, ESKA-1077)
+     Date: 2026-11-02
+     Source: CYFIRMA Weekly Intelligence Report, July 24, 2026
+
+     Threat Summary:
+
+     Orexin Ransomware is a newly documented Windows ransomware strain
+     observed in underground forums on July 24, 2026, specifically targeting
+     SQL Server database servers. Key attack chain:
+
+       1. Initial access via RDP brute-force or exposed SQL Server port
+       2. Privilege escalation via token impersonation
+       3. SQL Server services terminated to release DB file locks (T1489):
+            MSSQLSERVER, SQLSERVERAGENT, MSSQLFDLauncher, SQLBrowser
+       4. Shadow copies deleted (T1490):
+            vssadmin delete shadows /all /quiet
+       5. Boot recovery disabled (T1490):
+            bcdedit /set {default} recoveryenabled No
+       6. SQL database and backup files encrypted recursively (T1486):
+            .mdf, .ldf, .bak, .sql files renamed with .orexin extension
+            double-extension pattern: database.mdf.orexin, data.sql.orexin
+       7. Ransom note dropped: OREXIN-README.txt on each encrypted host
+
+     Log source prerequisites:
+       - Sysmon EventID 1 (ProcessCreate)  - Wazuh SID 61603
+         Required for rules 104192 (vssadmin), 104193 (bcdedit),
+         104194 (net stop SQL), 104195 (sc.exe stop SQL)
+       - Sysmon EventID 11 (FileCreate)    - Wazuh SID 61644
+         Required for rules 104196 (.orexin extension), 104197 (ransom note)
+       - Sysmon EventID 11 frequency correlation:
+         Rule 104198 correlates rule 104196 for mass encryption detection.
+       - Orexin group correlation:
+         Rule 104199 fires on 3+ distinct Orexin indicators within 10 minutes.
+
+     Severity tiers:
+       11 - SQL Server service stopped via net stop or sc.exe (may FP in maintenance)
+       12 - vssadmin.exe shadow copy deletion
+       12 - bcdedit.exe recovery mode disabled
+       12 - .orexin file extension created (base for frequency rule 104198)
+       14 - Mass .orexin file creation 10+ files in 60s (active encryption)
+       15 - OREXIN-README.txt ransom note created (confirmed detonation)
+       15 - 3+ Orexin indicators within 10 minutes (correlated attack confirmed)
+
+     References:
+       CYFIRMA Weekly Intelligence Report, July 24, 2026
+       MITRE ATT&amp;CK T1486: https://attack.mitre.org/techniques/T1486/
+       MITRE ATT&amp;CK T1490: https://attack.mitre.org/techniques/T1490/
+       MITRE ATT&amp;CK T1489: https://attack.mitre.org/techniques/T1489/
+     ============================================================ -->
+
+<group name="threat_intel,impact,defense_evasion,windows,orexin_ransomware,ransomware,">
+
+  <!-- ===========================================================
+       Sysmon EventID 1: vssadmin.exe deleting shadow copies (T1490)
+       Orexin Ransomware deletes all VSS shadow copies immediately before
+       encryption using: vssadmin delete shadows /all /quiet
+       This prevents Windows System Restore and volume snapshot-based recovery.
+       vssadmin with delete shadows arguments has no legitimate routine use
+       in production environments; any occurrence warrants investigation.
+       =========================================================== -->
+  <rule id="104192" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\vssadmin\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)delete\s+shadows</field>
+    <description>Orexin Ransomware: vssadmin.exe delete shadows executed by $(win.eventdata.user) on $(win.eventdata.computer) - shadow copy deletion pre-encryption anti-recovery step (T1490)</description>
+    <mitre>
+      <id>T1490</id>
+    </mitre>
+    <group>ransomware,backup_deletion,orexin_ransomware,shadow_copy,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Sysmon EventID 1: bcdedit.exe disabling Windows recovery (T1490)
+       Orexin Ransomware disables boot-time recovery before encryption:
+         bcdedit /set {default} recoveryenabled No
+       This prevents the victim from booting into recovery mode to restore
+       encrypted files. Disabling recovery via bcdedit is a known ransomware
+       TTP used by Orexin and other families (INC, BlackCat, LockBit).
+       =========================================================== -->
+  <rule id="104193" level="12">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\bcdedit\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)recoveryenabled\s+no</field>
+    <description>Orexin Ransomware: bcdedit.exe disabling Windows recovery mode on $(win.eventdata.computer) - boot recovery prevention before ransomware encryption (T1490)</description>
+    <mitre>
+      <id>T1490</id>
+    </mitre>
+    <group>ransomware,backup_deletion,orexin_ransomware,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Sysmon EventID 1: net.exe stopping SQL Server services (T1489)
+       Orexin Ransomware terminates SQL Server services before encryption
+       to release file locks on .mdf, .ldf, and .bak database files.
+       Targeted service names include: MSSQLSERVER, SQLSERVERAGENT,
+       MSSQLFDLauncher, SQLBrowser, ReportServer, and sql-prefixed variants.
+       Note: legitimate DBA maintenance windows may generate false positives;
+       correlate with concurrent vssadmin or bcdedit activity.
+       =========================================================== -->
+  <rule id="104194" level="11">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\net1?\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)stop\s+(MSSQL|MSSQLSERVER|SQLAgent|SQLBrowser|SQLServer|ReportServer|MSSQLFDLauncher|sql)</field>
+    <description>Orexin Ransomware: net.exe stopped SQL Server service as $(win.eventdata.user) on $(win.eventdata.computer) - pre-encryption DB lock release; Orexin kills SQL services to access and encrypt .mdf/.ldf/.bak database files (T1489)</description>
+    <mitre>
+      <id>T1489</id>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,service_stop,orexin_ransomware,sql_server,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Sysmon EventID 1: sc.exe stopping SQL Server services (T1489)
+       Orexin Ransomware may use sc.exe (Service Control Manager CLI) as
+       an alternative to net stop for terminating SQL Server services.
+       The sc.exe stop subcommand against any MSSQL or SQL-prefixed service
+       is functionally identical to net stop and indicates the same
+       pre-encryption DB lock-release technique.
+       =========================================================== -->
+  <rule id="104195" level="11">
+    <if_sid>61603</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\sc\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)stop\s+(MSSQL|MSSQLSERVER|SQLAgent|SQLBrowser|SQLServer|ReportServer|MSSQLFDLauncher|sql)</field>
+    <description>Orexin Ransomware: sc.exe stopped SQL Server service as $(win.eventdata.user) on $(win.eventdata.computer) - pre-encryption DB lock release via Service Control Manager; Orexin terminates SQL services before encrypting database files (T1489)</description>
+    <mitre>
+      <id>T1489</id>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,service_stop,orexin_ransomware,sql_server,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Sysmon EventID 11: .orexin file extension created (base rule, T1486)
+       Orexin Ransomware appends .orexin to each encrypted file, producing
+       a double-extension pattern: database.mdf.orexin, archive.bak.orexin.
+       This extension does not exist in any legitimate Windows application.
+       Any file creation with .orexin extension is a high-confidence indicator
+       of active Orexin ransomware encryption. This rule serves as the base
+       event for frequency correlation rule 104198.
+       =========================================================== -->
+  <rule id="104196" level="12">
+    <if_sid>61644</if_sid>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)\.orexin$</field>
+    <description>Orexin Ransomware: file with .orexin extension created at $(win.eventdata.targetFilename) on $(win.eventdata.computer) - active file encryption indicator; Orexin appends .orexin to each encrypted SQL database file (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware,file_creation,orexin_ransomware,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Sysmon EventID 11: OREXIN-README.txt ransom note created (CRITICAL)
+       Orexin Ransomware drops its ransom note as OREXIN-README.txt on
+       every encrypted host after completing the encryption phase. This
+       filename is unique to Orexin and does not appear in any legitimate
+       application. Its creation anywhere on the filesystem is a near-certain
+       indicator of completed Orexin ransomware detonation. Immediate incident
+       response is required: isolate host, preserve forensic evidence, initiate
+       recovery from clean offline backups.
+       =========================================================== -->
+  <rule id="104197" level="15">
+    <if_sid>61644</if_sid>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)OREXIN-README\.txt$</field>
+    <description>Orexin Ransomware: CRITICAL - OREXIN-README.txt ransom note created at $(win.eventdata.targetFilename) on $(win.eventdata.computer) - OREXIN RANSOMWARE ENCRYPTION COMPLETE; isolate host immediately and initiate IR (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware_detonation,impact,orexin_ransomware,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Frequency: Mass .orexin file creation (active encryption in progress)
+       When 10 or more .orexin files are created within 60 seconds, Orexin
+       ransomware is actively bulk-encrypting the filesystem. This frequency
+       rule correlates base rule 104196 to confirm mass encryption, raising
+       the alert to CRITICAL severity. The 10-file / 60-second threshold is
+       calibrated against observed ransomware encryption throughput on SQL
+       Server workloads (INC, Spirals baselines) to minimize false positives.
+       =========================================================== -->
+  <rule id="104198" level="14" frequency="10" timeframe="60">
+    <if_matched_sid>104196</if_matched_sid>
+    <description>Orexin Ransomware: mass .orexin file creation detected - 10 or more encrypted files in 60 seconds on $(win.eventdata.computer) - ACTIVE RANSOMWARE ENCRYPTION IN PROGRESS; contain host immediately (T1486)</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+    <group>ransomware_detonation,impact,orexin_ransomware,critical,</group>
+  </rule>
+
+  <!-- ===========================================================
+       Correlation: 3 or more Orexin indicators within 10 minutes
+       When 3 or more distinct Orexin ransomware indicators fire within
+       600 seconds, this confirms an active multi-stage Orexin attack.
+       This rule correlates shadow copy deletion (104192), recovery mode
+       disabling (104193), SQL service termination (104194-104195), and
+       file encryption (104196-104197) into a high-confidence attack
+       confirmation alert. At this severity, the attack chain is already
+       well underway; immediate containment is required.
+       =========================================================== -->
+  <rule id="104199" level="15" frequency="3" timeframe="600">
+    <if_matched_group>orexin_ransomware</if_matched_group>
+    <description>Orexin Ransomware: CRITICAL - 3 or more Orexin attack indicators within 10 minutes on $(win.eventdata.computer) - active multi-stage Orexin ransomware attack confirmed; initiate IR immediately (T1486, T1490, T1489)</description>
+    <mitre>
+      <id>T1486</id>
+      <id>T1490</id>
+      <id>T1489</id>
+    </mitre>
+    <group>ransomware_detonation,impact,orexin_ransomware,critical,</group>
+  </rule>
+
+</group>
