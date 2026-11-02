@@ -1,0 +1,286 @@
+<!-- ============================================================
+     SAP Commerce Cloud CVE-2026-44761 Detection Rules
+     MITRE ATT&amp;CK Techniques:
+       T1190  - Exploit Public-Facing Application (TA0001 Initial Access)
+       T1078  - Valid Accounts: use of hardcoded sample OAuth2 credentials (TA0001)
+       T1530  - Data from Cloud Storage: OCC API data exfiltration (TA0009)
+     Rule IDs: 104175-104183
+     Author: SecOps Engineer (Purple Team, ESKA-1075)
+     Date: 2026-11-02
+     CVE: CVE-2026-44761
+
+     Vulnerability Summary:
+
+     CVE-2026-44761 is a Use of Hard-coded Credentials (CWE-798) vulnerability
+     in SAP Commerce Cloud (formerly SAP Hybris). SAP ships sample OAuth2
+     client credentials (used in development scripts on the SAP Help Portal)
+     that remain enabled in production deployments unless explicitly removed.
+     CVSS 9.1 (Critical). Affected products: HY_COM 2205, COM_CLOUD 2211,
+     COM_CLOUD 2211-JDK21.
+
+     An unauthenticated attacker with network access to the SAP Commerce
+     authorization server can:
+       1. POST to /authorizationserver/oauth/token with a known sample
+          client ID and client secret (no prior knowledge of environment
+          required - credentials are publicly documented).
+       2. Receive a valid OAuth2 access token granting API access.
+       3. Use the token to call SAP Commerce OCC (Omni Commerce Connect)
+          REST APIs with high confidentiality and integrity impact:
+          read customer order data, product catalog, pricing; modify
+          orders, cart contents, or product listings.
+
+     Known hardcoded sample client IDs (publicly documented in SAP Help Portal):
+       - mobile_android   (client_credentials and password grant types)
+       - trusted_client   (client_credentials grant type)
+       - client-side      (implicit and password grant types)
+
+     Attack Flow:
+       1. Attacker probes /authorizationserver/oauth/token endpoint.
+       2. POST with grant_type=client_credentials, client_id=mobile_android
+          (or trusted_client), client_secret=[known sample secret].
+       3. Commerce Cloud returns HTTP 200 with access_token JSON payload.
+       4. Attacker includes token in Authorization: Bearer [token] header
+          on subsequent calls to /occ/v2/ REST API endpoints.
+       5. Data exfiltration or catalog manipulation via OCC API.
+
+     Detection Approach:
+
+       104175 (Level 5)  - Base anchor: any POST to the SAP Commerce OAuth2
+                           token endpoint. Used for correlation only.
+       104176 (Level 14) - Known sample client ID in OAuth2 request URL
+                           query parameters (core CVE-2026-44761 signal).
+       104177 (Level 12) - OAuth2 token endpoint returns HTTP 200 (successful
+                           token issuance - possible exploitation).
+       104178 (Level 15) - OAuth2 token successfully granted to known sample
+                           client ID (200 response on 104176 match).
+       104179 (Level 12) - Burst of OAuth2 token requests from same source
+                           (automated exploit tool or scanner).
+       104180 (Level 10) - SAP Commerce OCC API path accessed (post-exploit
+                           data access indicator).
+       104181 (Level 13) - Bulk OCC API enumeration from same source
+                           (data exfiltration pattern).
+       104182 (Level 9)  - Off-hours OAuth2 request to SAP Commerce
+                           (behavioral anomaly, correlate with other signals).
+       104183 (Level 13) - SAP Commerce application log OAuth2 token issued
+                           to known sample client ID (hybris/Tomcat log source).
+
+     Log Source Prerequisites:
+
+     Rules 104175-104182 target Traefik JSON access logs forwarded to Wazuh
+     (decoded_as=json). Required Traefik JSON fields:
+       RequestMethod, RequestPath, ClientHost, DownstreamStatus
+     If SAP Commerce Cloud is behind Traefik with JSON access logging enabled,
+     these rules will fire on matching requests.
+
+     Rule 104183 targets SAP Commerce hybris application logs (Java process
+     log, typically from hybris server or Tomcat) forwarded via Wazuh
+     localfile monitoring. SAP Commerce logs OAuth2 token grants with the
+     client_id in the application log.
+
+     If SAP Commerce Cloud is not deployed in the environment, these rules
+     are precautionary and will not produce alerts. Deploy now so coverage
+     is in place if an SAP Commerce instance is onboarded or discovered.
+
+     References:
+       - CVE-2026-44761: CWE-798 Use of Hard-coded Credentials
+       - SAP Security Patch Day July 2026
+       - CVSS 9.1 (Critical) - unauthenticated, no privileges required
+       - SAP Help Portal OAuth2 sample credentials (public documentation)
+     ============================================================ -->
+
+<group name="sap,commerce,initial_access,cve_2026_44761,">
+
+  <!-- ===========================================================
+       T1190  - SAP Commerce OAuth2 token endpoint base anchor
+       Rule ID: 104175
+       Matches any HTTP POST to the SAP Commerce authorization server
+       OAuth2 token endpoint via Traefik JSON access logs.
+       Level 5 - informational anchor used by frequency and chain rules.
+       =========================================================== -->
+
+  <rule id="104175" level="5">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)/authorizationserver/oauth/token</field>
+    <description>SAP Commerce Cloud: POST to OAuth2 token endpoint on $(RequestHost) from $(ClientHost) - CVE-2026-44761 exploitation anchor (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sap_oauth2_token,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1078 / T1190  - Known sample client ID in OAuth2 request
+       Rule ID: 104176
+       Detects CVE-2026-44761 exploitation when the attacker passes
+       a known hardcoded sample client_id (mobile_android,
+       trusted_client, or client-side) as a URL query parameter
+       in the POST to the OAuth2 token endpoint.
+       Publicly documented sample credentials - no legitimate
+       production use case for these client IDs.
+       Level 14 - high confidence exploitation indicator.
+       =========================================================== -->
+
+  <rule id="104176" level="14">
+    <decoded_as>json</decoded_as>
+    <field name="RequestMethod">POST</field>
+    <field name="RequestPath" type="pcre2">(?i)/authorizationserver/oauth/token.*client_id=(mobile_android|trusted_client|client-side)</field>
+    <description>SAP Commerce Cloud CVE-2026-44761: OAuth2 token request with known sample client ID on $(RequestHost) from $(ClientHost) - hardcoded credential abuse, investigate immediately (T1190, T1078)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1078</id>
+    </mitre>
+    <group>sap_oauth2_sample_client,cve_2026_44761,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190  - OAuth2 token endpoint successful response
+       Rule ID: 104177
+       Successful HTTP 200 response from the SAP Commerce OAuth2
+       token endpoint indicates a token was issued. Any 200 response
+       from this endpoint warrants investigation; combined with other
+       indicators it signals active exploitation.
+       Level 12 - investigate to determine if sample credentials used.
+       =========================================================== -->
+
+  <rule id="104177" level="12">
+    <if_sid>104175</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^200$</field>
+    <description>SAP Commerce Cloud: OAuth2 token successfully issued from $(RequestHost) to $(ClientHost) - verify client credentials are not CVE-2026-44761 sample IDs (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1078</id>
+    </mitre>
+    <group>sap_oauth2_token_granted,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1078 / T1190  - Sample credential OAuth2 grant succeeded
+       Rule ID: 104178
+       OAuth2 token successfully issued (HTTP 200) when the request
+       URL contains a known sample client ID. This is the highest-
+       confidence CVE-2026-44761 exploitation indicator: the Commerce
+       server issued a token to a publicly-known hardcoded credential.
+       Level 15 - near-certain active exploitation, immediate response.
+       =========================================================== -->
+
+  <rule id="104178" level="15">
+    <if_sid>104176</if_sid>
+    <field name="DownstreamStatus" type="pcre2">^200$</field>
+    <description>SAP Commerce Cloud CVE-2026-44761 CONFIRMED: OAuth2 token granted to sample client ID on $(RequestHost) from $(ClientHost) - active hardcoded credential exploitation, immediate incident response required (T1190, T1078)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1078</id>
+    </mitre>
+    <group>sap_oauth2_sample_exploit_confirmed,cve_2026_44761,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190  - Burst of OAuth2 token requests (automated scanner)
+       Rule ID: 104179
+       Five or more POST requests to the SAP Commerce OAuth2 token
+       endpoint from the same source IP within 60 seconds. This
+       pattern indicates an automated exploit tool or credential
+       scanner probing for CVE-2026-44761 sample credentials.
+       Level 12 - automated CVE scanning activity.
+       =========================================================== -->
+
+  <rule id="104179" level="12" frequency="5" timeframe="60">
+    <if_matched_sid>104175</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>SAP Commerce Cloud: burst of 5+ OAuth2 token requests from $(ClientHost) in 60s - automated CVE-2026-44761 scanner or exploit tool probing sample credentials (T1190)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>sap_oauth2_burst,cve_2026_44761,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1530 / T1078  - SAP Commerce OCC API access
+       Rule ID: 104180
+       HTTP access to the SAP Commerce OCC (Omni Commerce Connect)
+       REST API namespace (/occ/v2/). Post-exploitation, an attacker
+       with a valid token from CVE-2026-44761 will call OCC endpoints
+       to exfiltrate customer order data, product catalog, and pricing.
+       Level 10 - potential post-exploitation data access; correlate
+       with OAuth2 token endpoint activity.
+       =========================================================== -->
+
+  <rule id="104180" level="10">
+    <decoded_as>json</decoded_as>
+    <field name="RequestPath" type="pcre2">(?i)^/occ/v2/</field>
+    <description>SAP Commerce Cloud: OCC REST API access to $(RequestHost)$(RequestPath) from $(ClientHost) - correlate with CVE-2026-44761 OAuth2 token activity for post-exploitation data access (T1530, T1078)</description>
+    <mitre>
+      <id>T1530</id>
+      <id>T1078</id>
+    </mitre>
+    <group>sap_occ_api_access,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1530  - OCC API bulk enumeration from same source
+       Rule ID: 104181
+       Ten or more requests to the SAP Commerce OCC API namespace
+       from the same source within 120 seconds. This pattern indicates
+       automated data enumeration or exfiltration of customer orders,
+       product catalog, or user accounts via a stolen OAuth2 token.
+       Level 13 - bulk API data exfiltration pattern.
+       =========================================================== -->
+
+  <rule id="104181" level="13" frequency="10" timeframe="120">
+    <if_matched_sid>104180</if_matched_sid>
+    <same_field>ClientHost</same_field>
+    <description>SAP Commerce Cloud OCC API bulk enumeration: 10+ requests to /occ/v2/ from $(ClientHost) in 120s - automated data exfiltration via stolen OAuth2 token, likely post-CVE-2026-44761 exploitation (T1530)</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1530</id>
+      <id>T1078</id>
+    </mitre>
+    <group>sap_occ_bulk_enum,cve_2026_44761,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1190 / T1078  - Off-hours OAuth2 request to SAP Commerce
+       Rule ID: 104182
+       OAuth2 token request to the SAP Commerce authorization
+       endpoint outside business hours. CVE-2026-44761 exploitation
+       may occur after hours to avoid detection. Behavioral anomaly
+       requiring analyst triage and correlation with other indicators.
+       Level 9 - off-hours anomaly; investigate in context.
+       =========================================================== -->
+
+  <rule id="104182" level="9">
+    <if_sid>104175</if_sid>
+    <time>20:00 - 07:00</time>
+    <description>SAP Commerce Cloud: OAuth2 token request outside business hours to $(RequestHost) from $(ClientHost) - off-hours anomaly; correlate with CVE-2026-44761 sample credential indicators (T1190, T1078)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1078</id>
+    </mitre>
+    <group>sap_oauth2_off_hours,</group>
+  </rule>
+
+  <!-- ===========================================================
+       T1078  - SAP Commerce application log: sample client OAuth2
+       Rule ID: 104183
+       Targets SAP Commerce hybris application logs (Java process log,
+       Tomcat stdout, or hybris console log) forwarded to Wazuh.
+       SAP Commerce logs OAuth2 token grants including the client_id.
+       Matches log entries indicating a token was granted to one of
+       the three publicly-known CVE-2026-44761 sample client IDs.
+       Level 13 - application-layer confirmation of credential abuse.
+       =========================================================== -->
+
+  <rule id="104183" level="13">
+    <program_name>^(hybris|tomcat|catalina|commerceserver|ycommerce)$</program_name>
+    <regex type="pcre2">(?i)(oauth.*token|token.*grant|access.?token.*(issu|grant|creat))[^\n]{0,200}(mobile_android|trusted_client|client-side)</regex>
+    <description>SAP Commerce Cloud CVE-2026-44761: application log shows OAuth2 token granted to known sample client ID on $(hostname) - hardcoded credential abuse confirmed at application layer (T1078, T1190)</description>
+    <mitre>
+      <id>T1078</id>
+      <id>T1190</id>
+    </mitre>
+    <group>sap_oauth2_sample_client,cve_2026_44761,sap_app_log,</group>
+  </rule>
+
+</group>
