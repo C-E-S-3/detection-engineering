@@ -52,12 +52,14 @@
     <group>valid_accounts,misp_ioc,initial_access,threat_intel,</group>
   </rule>
 
-  <!-- Successful auth outside business hours: 00:00-06:00 local time -->
+  <!-- Successful auth outside business hours: 00:00-07:00 local time -->
+  <!-- Wazuh <time> uses Wazuh manager local time (ensure manager runs UTC) -->
+  <!-- Window covers midnight-to-morning; adjust if manager runs non-UTC timezone -->
   <rule id="100842" level="8">
     <if_sid>5715</if_sid>
     <match>Accepted</match>
-    <time>00:00 - 06:00</time>
-    <description>Successful authentication on $(hostname) for $(dstuser) from $(srcip) outside business hours (00:00-06:00) -- off-hours access anomaly (T1078)</description>
+    <time>00:00 - 07:00</time>
+    <description>Successful authentication on $(hostname) for $(dstuser) from $(srcip) outside business hours (00:00-07:00 manager local time) -- off-hours access anomaly (T1078)</description>
     <mitre>
       <id>T1078</id>
     </mitre>
