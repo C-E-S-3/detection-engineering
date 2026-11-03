@@ -1,0 +1,37 @@
+title: Firewall Allowed Connection To Port 3885-3887 (IoT Botnet MQTT C2)
+id: f10b85cc-936f-43b1-80e2-1276805e1bf1
+status: experimental
+description: |
+  Detects firewall-permitted connections to destination ports 3885-3887 (pf filter log;
+  a routed flow is usually logged on both the ingress and egress interface). The XCPE
+  firmware backdoor pre-installed on white-label Android set-top boxes speaks MQTT to its
+  C2 brokers on these non-standard ports, then pulls residential-proxy and ad-fraud
+  modules that hijack the device and the network's bandwidth. No common service uses this
+  range, so an allowed outbound flow is a strong sign of a backdoored IoT or media device
+  on the network, independent of the C2 addresses currently in use.
+references:
+  - https://cloud.google.com/blog/topics/threat-intelligence/shutting-the-door-on-the-xcpe-botnet
+  - https://attack.mitre.org/techniques/T1095/
+  - https://attack.mitre.org/techniques/T1571/
+author: threat-intel-sigma-agent
+date: '2026/11/03'
+tags:
+  - attack.command_and_control
+  - attack.t1095
+  - attack.t1571
+  - attack.impact
+  - attack.t1496
+logsource:
+  product: opnsense
+  category: firewall
+detection:
+  selection:
+    destination.port:
+      - 3885
+      - 3886
+      - 3887
+    event.action: 'pass'
+  condition: selection
+falsepositives:
+  - Rare custom applications listening on these ports
+level: high

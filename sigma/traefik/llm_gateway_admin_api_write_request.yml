@@ -1,0 +1,49 @@
+title: Write Request To LLM Gateway Admin API Through Reverse Proxy
+id: 44fc6ef6-249a-4fb9-b0bc-ff6575fb9744
+status: experimental
+description: |
+  Detects state-changing HTTP requests to the management API of a LiteLLM-style LLM
+  gateway (adding models, rewriting config, minting virtual keys or users). LLMJacking
+  actors take over exposed LLM gateways - for example through CVE-2026-40217 in LiteLLM,
+  which lets an unauthenticated caller reach admin-only endpoints - and then register
+  their own model routes or keys so stolen model capacity can be resold through
+  "LLM Mixer" relay services. These endpoints are used rarely and only by administrators,
+  so any request arriving through the reverse proxy deserves a look; a 2xx status means
+  the change was accepted.
+references:
+  - https://cloud.google.com/blog/topics/threat-intelligence/llmjacking-monetizing-compromised-cloud-models
+  - https://attack.mitre.org/techniques/T1190/
+  - https://attack.mitre.org/techniques/T1496/
+author: threat-intel-sigma-agent
+date: '2026/11/03'
+tags:
+  - attack.initial_access
+  - attack.t1190
+  - attack.impact
+  - attack.t1496
+  - attack.persistence
+  - attack.t1098
+logsource:
+  product: traefik
+  category: webserver
+detection:
+  selection_method:
+    http.request.method:
+      - 'POST'
+      - 'PUT'
+      - 'PATCH'
+  selection_path:
+    url.path|contains:
+      - '/model/new'
+      - '/model/update'
+      - '/config/update'
+      - '/key/generate'
+      - '/key/regenerate'
+      - '/user/new'
+      - '/team/new'
+      - '/credentials/new'
+  condition: selection_method and selection_path
+falsepositives:
+  - Administrators managing a legitimately proxied LiteLLM or similar LLM gateway
+  - Unrelated applications that expose a management route with one of these path fragments
+level: high
