@@ -30,11 +30,11 @@
        =========================================================== -->
 
   <!-- auditd: ptrace(PTRACE_ATTACH) to a process not owned by the tracer -->
-  <!-- a0=0x10 = PTRACE_ATTACH -->
+  <!-- a0=10 hex (PTRACE_ATTACH=16); auditd logs hex WITHOUT 0x prefix, Wazuh stores as-is -->
   <rule id="100830" level="13">
     <decoded_as>auditd</decoded_as>
     <field name="audit.syscall">ptrace</field>
-    <field name="audit.a0">0x10</field>
+    <field name="audit.a0">10</field>
     <field name="audit.key">process_injection</field>
     <description>ptrace(PTRACE_ATTACH) called on $(hostname) by uid=$(audit.auid) exe=$(audit.exe) -- process injection attempt (T1055)</description>
     <mitre>
@@ -60,7 +60,7 @@
   <rule id="100832" level="12">
     <decoded_as>auditd</decoded_as>
     <field name="audit.syscall">ptrace</field>
-    <field name="audit.a0" type="pcre2">^(0x4|0x5|0x6)$</field>
+    <field name="audit.a0" type="pcre2">^(4|5|6)$</field>
     <field name="audit.key">process_injection</field>
     <field name="audit.exe" negate="yes" type="pcre2">^(/usr/bin/strace|/usr/bin/ltrace|/usr/bin/gdb|/usr/bin/lldb|/usr/bin/rr)$</field>
     <description>ptrace PEEKDATA/POKEDATA by non-debugger on $(hostname): $(audit.exe) -- process memory manipulation (T1055)</description>
