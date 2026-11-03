@@ -673,3 +673,23 @@ f82fd317860454606003aa9dc7efde284d851424730e229f19c50d60206311b8,SHA256,https://
 7fcbdaaecd4419e2930927844f3b772668204737a4e7602a2290c991c93c5c4b,SHA256,https://www.helpnetsecurity.com/2026/10/27/node2shell-broccoli2shell-vulnerability-cve-2026-111497/,2026-10-29,CVE-2026-111497 Node2Shell — Brotli-compressed malicious request body (23069983 bytes); single-source ELLIO telemetry; CISA KEV October 28 2026
 fcbb327e38e61c4fec795e0d0591f52cd1014b813d20a5912104953c3a17c364,SHA256,https://www.bleepingcomputer.com/news/security/trojanized-claude-code-extension-in-cursor-marketplace-installs-ssh-backdoor/,2026-10-31,Trojanized Claude Code VSIX v2.1.313 (darwin-arm64); adds svc-telemetry SSH key to authorized_keys; reverse SSH tunnel; TCP/8099 beacon; Cursor marketplace supply chain; BleepingComputer October 2026
 3de1722901165769893bef57c72594e9a54459faa23f3091b136b79966edd081,SHA256,https://www.bleepingcomputer.com/news/security/trojanized-claude-code-extension-in-cursor-marketplace-installs-ssh-backdoor/,2026-10-31,Trojanized Claude Code VSIX v2.1.313 (win32-x64); adds svc-telemetry SSH key to authorized_keys; reverse SSH tunnel; TCP/8099 beacon; Cursor marketplace supply chain; BleepingComputer October 2026
+3768f470934a111f1c3e3d098eb1392a3cb6f3e298ef5fd2a6309e6a98ee1e18,sha256,xcpe-botnet,2026-11-03,x.cpe XCPE primary firmware backdoor (Videostrong preinstalled)
+350d6db477e8567cf9347c1144b3a0b25550e7ce63bb800b056b8a7a8ef56af4,sha256,xcpe-botnet,2026-11-03,com.oemservice XCPE dropper module
+1f2ab93c35f0c37d9b88f82268183a2f77491aa6b142a48381524b18e217b960,sha256,xcpe-botnet,2026-11-03,com.abc.nexus XCPE loader/execution engine
+fda3c8fdf7849814e270bbbc00adfa1e15ba8977f5b2508df5febf5dbd3075b2,sha256,xcpe-botnet,2026-11-03,com.vs.grass XCPE utility module
+b3690b3b013ac60752a6d05c3f53ea1f3e844d4603c5b90d258a30c596d0691b,sha256,xcpe-botnet,2026-11-03,libseccomp_guard.so XCPE anti-analysis hook
+ebcca22b96f7a30ae155efa2f25af29a369c6e9cfc99cb3bb0b72f35bc5528ed,sha256,xcpe-botnet,2026-11-03,com.android.sso.auth.handler XCPE dropper
+42be8f18d6006ca092de191331d38e70a0d8383db701a759466dec59a0986135,sha256,xcpe-botnet,2026-11-03,libexploit.so XCPE privilege escalation
+7830ce3c3222dd9b25a77a16116dcf832a24b4b9a0bc998501e12415a828fb42,sha256,xcpe-botnet,2026-11-03,libnative_keys.so XCPE key storage
+d4011b684ba389bf0b2dd8ded74fe8a4729b1cad4e6c18cfd928cb99a625a6e4,sha256,xcpe-botnet,2026-11-03,Bird affiliate APK (XCPE ad fraud module)
+cd8ef4ba20823b926b45a04946f24e45a7bcd4bf2bfc439cac8061a43f146903,sha256,xcpe-botnet,2026-11-03,Linkfog affiliate APK (XCPE residential proxy module)
+331d3a1cf85656c3657e97bab6f15b6e4ce30bf319069b22e8356dccac230321,sha256,xcpe-botnet,2026-11-03,Linkfog affiliate ELF (XCPE residential proxy module)
+d3b94a74121e885bc698c8f56b9433247139be29b40ae1d0655dd558ecf5f9fa,sha256,xcpe-botnet,2026-11-03,Jaguar affiliate APK (XCPE residential proxy module)
+e2bfca7225af84f116de7ed10e4ad425d0ebfd6e19903d226b9768282865700f,sha256,xcpe-botnet,2026-11-03,Jaguar affiliate ELF (XCPE residential proxy module)
+d48cffc6d7e7c06f2d3db34ce6d4a53d5c25636179b7087a1e762f5d6bfa07f5,sha256,xcpe-botnet,2026-11-03,AppSalt affiliate APK (XCPE module)
+69116e8f681ea312e7e9e3a8a436f66b3e98566c621412599ecaaa25348daadb,sha256,xcpe-botnet,2026-11-03,Spirit affiliate APK (XCPE ad fraud module)
+f2ed4a40fbb21d0560e82bdd2e85e825970d32052348241b487dd93191ebef2a,sha256,xcpe-botnet,2026-11-03,Moyu/GaGaNode/Netnut affiliate APK (XCPE module)
+a63757715b35ddd99916b63a1354de1ec05ac5855a480fe9a547b002e2091dcb,sha256,xcpe-botnet,2026-11-03,Traffmonetizer affiliate ELF (XCPE residential proxy module)
+9e18c113eb8d2ba813199c7f90e26d80af3124d871fc31eea7253319a8406e8e,sha256,xcpe-botnet,2026-11-03,EarnFM libfleetshare.so affiliate (XCPE bandwidth module)
+742b7ad8b95d4e0784c914f2b84706124f5a86a404e0fd479a0a97a784c2bb9e,sha256,xcpe-botnet,2026-11-03,Fission affiliate APK (XCPE ad fraud module)
+a6c7ef9b6d5277dada145361164ff79e1e6c6be1cd28f6739113c72ee30ea4cc,sha256,xcpe-botnet,2026-11-03,HiddenView affiliate APK (XCPE ad fraud module)
