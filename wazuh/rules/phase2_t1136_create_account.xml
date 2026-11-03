@@ -94,13 +94,14 @@
     <group>create_account,fim,group,persistence,linux,</group>
   </rule>
 
-  <!-- usermod adding user to sudo/wheel/adm group -->
+  <!-- usermod/gpasswd execution — any privilege group modification -->
+  <!-- audit.cmd is not reliably decoded by all Wazuh versions; match exe only -->
+  <!-- FIM rule 100855 (/etc/group change) provides corroborating signal -->
   <rule id="100856" level="12">
     <decoded_as>auditd</decoded_as>
     <field name="audit.syscall">execve</field>
     <field name="audit.exe" type="pcre2">^(/usr/sbin/usermod|/usr/sbin/gpasswd)$</field>
-    <field name="audit.cmd" type="pcre2">(-a\s+-G|-G\s+.*(sudo|wheel|adm|root|staff)|-aG\s*(sudo|wheel|adm|root|staff))</field>
-    <description>User added to privileged group on $(hostname) by uid=$(audit.auid): $(audit.cmd) -- privilege group membership change (T1136)</description>
+    <description>Group/account modification tool executed on $(hostname) by uid=$(audit.auid) via $(audit.exe) -- possible privileged group membership change (T1136)</description>
     <mitre>
       <id>T1136</id>
     </mitre>
