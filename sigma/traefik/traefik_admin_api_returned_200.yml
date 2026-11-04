@@ -1,0 +1,35 @@
+title: Traefik Admin API Returned HTTP 200
+id: 569bc163-fa29-4399-abec-dc9363d7a2e9
+status: experimental
+description: |
+  Detects a Traefik admin or dashboard API request that the proxy answered
+  with HTTP 200. That is a successful read of router, service or entrypoint
+  configuration, not just a probe. The same paths with any other status are
+  covered by the access rule.
+references:
+  - https://doc.traefik.io/traefik/operations/api/
+  - https://attack.mitre.org/techniques/T1190/
+author: detection-engineering
+date: '2026/11/04'
+tags:
+  - attack.initial_access
+  - attack.t1190
+logsource:
+  product: traefik
+  category: webserver
+detection:
+  selection_path:
+    url.path|startswith:
+      - '/api/rawdata'
+      - '/api/http/'
+      - '/api/tcp/'
+      - '/api/udp/'
+      - '/api/entrypoints'
+      - '/api/overview'
+      - '/api/version'
+  selection_status:
+    http.response.status_code: 200
+  condition: selection_path and selection_status
+falsepositives:
+  - An operator or health check intentionally reading an enabled Traefik API
+level: critical

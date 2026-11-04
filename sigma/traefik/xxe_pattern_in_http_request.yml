@@ -1,0 +1,43 @@
+title: XML External Entity Pattern In HTTP Request
+id: 70e9c61a-8440-427e-9997-6d6b72a069cb
+status: experimental
+description: |
+  Detects XML external-entity markers in the request path or query string.
+  DOCTYPE and ENTITY declarations are not part of normal web traffic; when
+  they show up in a URL they are almost always an XXE probe. The same
+  payload in a POST body is not visible in this access log.
+references:
+  - https://attack.mitre.org/techniques/T1190/
+  - https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing
+author: detection-engineering
+date: '2026/11/04'
+tags:
+  - attack.initial_access
+  - attack.t1190
+logsource:
+  product: traefik
+  category: webserver
+detection:
+  selection:
+    url.path|contains:
+      - '<!DOCTYPE'
+      - '<!doctype'
+      - '<!ENTITY'
+      - '<!entity'
+      - '%3C!DOCTYPE'
+      - '%3C!ENTITY'
+      - '%3c!doctype'
+      - '%3c!entity'
+      - '%3C%21DOCTYPE'
+      - '%3C%21ENTITY'
+      - '%3c%21doctype'
+      - '%3c%21entity'
+      - 'SYSTEM "file'
+      - 'SYSTEM "http'
+      - 'system "file'
+      - 'system "http'
+  condition: selection
+falsepositives:
+  - Authorised vulnerability scanning
+  - An application that places XML snippets in query parameters
+level: high

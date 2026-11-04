@@ -1,0 +1,56 @@
+title: Server-Side Template Injection Pattern In HTTP Request
+id: fa65d78d-2807-4170-b31a-3599a36262c6
+status: experimental
+description: |
+  Detects template delimiters and engine names in the request path or
+  query string. Clients do not send {{ }}, {% %}, ${ }, #{ } or <%= %>
+  as part of a normal URL; those sequences are how SSTI payloads escape
+  a template into code execution. Traefik keeps the raw query string in
+  RequestPath, so percent-encoded delimiters (%7B%7B for {{) are listed
+  separately from the literal form.
+references:
+  - https://attack.mitre.org/techniques/T1190/
+  - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/18-Testing_for_Server-side_Template_Injection
+author: detection-engineering
+date: '2026/11/04'
+tags:
+  - attack.initial_access
+  - attack.t1190
+logsource:
+  product: traefik
+  category: webserver
+detection:
+  selection:
+    url.path|contains:
+      - '{{'
+      - '{%'
+      - '${'
+      - '#{'
+      - '<%='
+      - '%7B%7B'
+      - '%7b%7b'
+      - '%7B%25'
+      - '%7b%25'
+      - '%24%7B'
+      - '%24%7b'
+      - '%23%7B'
+      - '%23%7b'
+      - '%3C%25%3D'
+      - '%3c%25%3d'
+      - '%3C%25'
+      - '%3c%25'
+      - 'freemarker'
+      - 'Freemarker'
+      - 'velocity'
+      - 'Velocity'
+      - 'jinja'
+      - 'Jinja'
+      - 'twig'
+      - 'Twig'
+      - 'smarty'
+      - 'Smarty'
+  condition: selection
+falsepositives:
+  - Authorised vulnerability scanning
+  - A site that puts template source in a URL
+level: high

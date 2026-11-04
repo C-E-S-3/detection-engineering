@@ -1,0 +1,49 @@
+title: Path Traversal Pattern In HTTP Request
+id: 60521738-bf8f-44fb-b11d-b30a889e1951
+status: experimental
+description: |
+  Detects directory-traversal sequences in the request path or query string,
+  including the common percent-encodings and the overlong UTF-8 forms
+  %c0%af and %c1%9c. Both hex cases are listed because the keyword field
+  match is case-sensitive.
+references:
+  - https://attack.mitre.org/techniques/T1190/
+  - https://owasp.org/www-community/attacks/Path_Traversal
+author: detection-engineering
+date: '2026/11/04'
+tags:
+  - attack.initial_access
+  - attack.t1190
+logsource:
+  product: traefik
+  category: webserver
+detection:
+  selection:
+    url.path|contains:
+      - '../'
+      - '..\\'
+      - '..%2f'
+      - '..%2F'
+      - '..%5c'
+      - '..%5C'
+      - '%2e%2e%2f'
+      - '%2E%2E%2F'
+      - '%2e%2e/'
+      - '%2E%2E/'
+      - '%2e%2e%5c'
+      - '%2E%2E%5C'
+      - '.%2e/'
+      - '.%2E/'
+      - '%2e./'
+      - '%2E./'
+      - '%252e%252e'
+      - '%252E%252E'
+      - '%c0%af'
+      - '%C0%AF'
+      - '%c1%9c'
+      - '%C1%9C'
+  condition: selection
+falsepositives:
+  - Authorised vulnerability scanning
+  - A route that legitimately contains the character sequence "../"
+level: high
