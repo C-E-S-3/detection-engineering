@@ -2,17 +2,20 @@ id: adv00002-0000-4000-8000-000000000002
 name: Phase 2 Purple Team Adversary
 description: >
   Purple Team Phase 2 adversary profile covering T1190 (Exploit Public-Facing
-  Application), T1055 (Process Injection), T1078 (Valid Accounts), and T1136
-  (Create Account). Ability ordering reflects a realistic attack chain:
-  initial reconnaissance via web exploitation, lateral movement via valid
-  credentials, defense evasion via process injection, and persistence via
-  account creation. All abilities are detection-validation probes only.
+  Application), T1055 (Process Injection), T1078 (Valid Accounts), T1136
+  (Create Account), and T1003 (OS Credential Dumping — shadow open only).
+  Ability ordering reflects a realistic attack chain: initial reconnaissance
+  via web exploitation, lateral movement via valid credentials, defense
+  evasion via process injection, persistence via account creation, then a
+  credential-file open that does not read or print hashes. All abilities
+  are detection-validation probes only.
 
   Expected Wazuh detections:
     T1190: rules 100820-100829 (Traefik JSON access log source)
     T1055: rules 100830-100839 (auditd source)
     T1078: rules 100840-100849 (sshd/PAM auth log source)
     T1136: rules 100850-100859 (auditd + Wazuh FIM sources)
+    T1003: rule 100775 (phase-1 auditd shadow open; not in 100820-100859)
 
   Prerequisites:
     - Caldera agent running on exercise host with network access to #{app.web_target}
@@ -45,3 +48,5 @@ atomic_ordering:
   - a1136002-0000-4000-8002-000000000002  # /etc/passwd echo append
   - a1136003-0000-4000-8003-000000000003  # usermod -aG sudo
   - a1136004-0000-4000-8004-000000000004  # sudoers.d write
+  # Phase 5: T1003 - Credential file open, no hash output (rule 100775)
+  - a1003001-0000-4000-8001-000000000001  # /etc/shadow open attempt

@@ -4,8 +4,8 @@
 # the Caldera API KEY header). Import the adversary and abilities first via the
 # Caldera plugin/REST API before creating the operation.
 #
-# MITRE ATT&CK coverage: T1190, T1055, T1078, T1136
-# Expected Wazuh detection rules: 100820-100859
+# MITRE ATT&CK coverage: T1190, T1055, T1078, T1136, T1003
+# Expected Wazuh detection rules: 100820-100859, plus phase-1 rule 100775 (T1003)
 
 name: Phase 2 Purple Team Exercise
 adversary_id: adv00002-0000-4000-8000-000000000002
@@ -104,6 +104,7 @@ state: running
 #   t1136-002-passwd-echo       100852, 100857 (if non-root)
 #   t1136-003-usermod-sudo      100856, 100855
 #   t1136-004-sudoers-write     100854
+#   t1003-001-shadow-open       100775 (phase 1; open only, no hash output)
 #
 # Document any rules that did NOT fire as detection gaps.
 # Open a detection-engineering issue for each gap found.

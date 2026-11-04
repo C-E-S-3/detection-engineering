@@ -1,0 +1,31 @@
+- id: a1003001-0000-4000-8001-000000000001
+  name: T1003 shadow file open attempt
+  description: >
+    Opens /etc/shadow and closes the descriptor without reading or printing
+    file bytes. Sandcat runs unprivileged, so the open is expected to fail
+    with EACCES. The syscall is what auditd records. Intended to trigger
+    phase-1 rule 100775 (non-root open/read of /etc/shadow, T1003.001).
+    Does not modify the file, so phase-2 FIM rule 100853 should not fire.
+    Never prints password hashes.
+    Requires auditd:
+      -a always,exit -F arch=b64 -S openat -F path=/etc/shadow -k shadow_access
+  tactic: credential_access
+  technique:
+    attack_id: T1003
+    name: OS Credential Dumping
+  platforms:
+    linux:
+      sh:
+        command: |
+          python3 -c "
+          import os
+          path = '/etc/shadow'
+          try:
+              fd = os.open(path, os.O_RDONLY)
+              os.close(fd)
+              print('shadow_open=ok bytes_read=0')
+          except OSError as exc:
+              print('shadow_open=fail errno=%s' % (exc.errno,))
+          " 2>&1 || true
+        cleanup: |
+          true
