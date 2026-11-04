@@ -693,3 +693,5 @@ a63757715b35ddd99916b63a1354de1ec05ac5855a480fe9a547b002e2091dcb,sha256,xcpe-bot
 9e18c113eb8d2ba813199c7f90e26d80af3124d871fc31eea7253319a8406e8e,sha256,xcpe-botnet,2026-11-03,EarnFM libfleetshare.so affiliate (XCPE bandwidth module)
 742b7ad8b95d4e0784c914f2b84706124f5a86a404e0fd479a0a97a784c2bb9e,sha256,xcpe-botnet,2026-11-03,Fission affiliate APK (XCPE ad fraud module)
 a6c7ef9b6d5277dada145361164ff79e1e6c6be1cd28f6739113c72ee30ea4cc,sha256,xcpe-botnet,2026-11-03,HiddenView affiliate APK (XCPE ad fraud module)
+57ef4242666d78c50df145b34023df564f0fad38812d6a580e66433d427e2279,sha256,volta-infostealer,2026-11-04,VOLTA infostealer main binary (Cisco Talos 2026-10-31); distributed with randomized filename per victim (9BY0tjwOc3ut.exe / yLP9m5J3i2Aw.exe)
+a1375e0f82ae86df528876c049b5a23c,md5,c3rb3r-synology,2026-11-04,C3RB3R (Cerber-family) ransomware encryptor targeting Synology NAS via CVE-2024-10441; single-source low-confidence pending corroboration
