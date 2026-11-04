@@ -1,0 +1,66 @@
+title: DNS Query To Proxyware Or Bandwidth-Sharing Service
+id: a9ab06c3-de26-41e5-965d-687afe25b013
+status: experimental
+description: |
+  Detects DNS resolution of commercial "proxyware" / bandwidth-sharing networks
+  (Honeygain, Traffmonetizer, EarnFM, PacketStream, IPRoyal Pawns, Repocket, Peer2Profit,
+  ProxyRack, Bitping, Grass, GaGaNode / IPCola, Mysterium). Their agents turn a host into a
+  residential proxy exit node that sells the victim's bandwidth and IP reputation. The XCPE
+  set-top-box botnet monetised 1.3M+ backdoored devices by installing exactly these affiliate
+  modules (EarnFM, Traffmonetizer, GaGaNode/IPCola and others), and cryptojacking crews drop
+  the same agents on compromised Linux servers. Detecting the service category rather than
+  campaign C2 domains catches any device - IoT box, container or server - that has been
+  enrolled, whatever botnet or intruder put it there.
+references:
+  - https://cloud.google.com/blog/topics/threat-intelligence/shutting-the-door-on-the-xcpe-botnet
+  - https://attack.mitre.org/techniques/T1496/
+  - https://attack.mitre.org/techniques/T1090/003/
+author: threat-intel-sigma-agent
+date: '2026/11/04'
+tags:
+  - attack.impact
+  - attack.t1496
+  - attack.command_and_control
+  - attack.t1090.003
+logsource:
+  category: dns
+detection:
+  selection_exact:
+    query:
+      - 'honeygain.com'
+      - 'traffmonetizer.com'
+      - 'earn.fm'
+      - 'packetstream.io'
+      - 'pawns.app'
+      - 'repocket.co'
+      - 'repocket.com'
+      - 'peer2profit.com'
+      - 'proxyrack.com'
+      - 'bitping.com'
+      - 'getgrass.io'
+      - 'grass.io'
+      - 'gaganode.com'
+      - 'ipcola.com'
+      - 'mysterium.network'
+  selection_sub:
+    query|endswith:
+      - '.honeygain.com'
+      - '.traffmonetizer.com'
+      - '.earn.fm'
+      - '.packetstream.io'
+      - '.pawns.app'
+      - '.repocket.co'
+      - '.repocket.com'
+      - '.peer2profit.com'
+      - '.proxyrack.com'
+      - '.bitping.com'
+      - '.getgrass.io'
+      - '.grass.io'
+      - '.gaganode.com'
+      - '.ipcola.com'
+      - '.mysterium.network'
+  condition: selection_exact or selection_sub
+falsepositives:
+  - A user browsing one of these services' websites from a workstation
+  - A household member deliberately running a bandwidth-sharing app
+level: medium
