@@ -6,12 +6,16 @@ description: |
   which for this log source also includes the query string. Keyword fields
   are matched case-sensitively, so both cases of each token are listed.
   A bare apostrophe, semicolon or double-dash is not included: those fire
-  on ordinary URLs. A 404 is still an attempt and is not filtered out.
+  on ordinary URLs. An apostrophe followed by OR (and the same tokens joined
+  by a plus) is listed so a decoded query such as `' OR 1=1--` still matches
+  when the access log does not keep the raw percent-encoding.
+  A 404 is still an attempt and is not filtered out.
 references:
   - https://attack.mitre.org/techniques/T1190/
   - https://owasp.org/www-community/attacks/SQL_Injection
 author: detection-engineering
 date: '2026/11/04'
+modified: '2026/11/04'
 tags:
   - attack.initial_access
   - attack.t1190
@@ -22,6 +26,11 @@ detection:
   selection:
     url.path|contains:
       - '%27'
+      - "' OR"
+      - "' or"
+      - "'+OR"
+      - "'+or"
+      - '1=1--'
       - '%2D%2D'
       - '%2d%2d'
       - 'UNION'
