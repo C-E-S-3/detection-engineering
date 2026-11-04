@@ -3,10 +3,9 @@
   description: >
     Opens /etc/shadow and closes the descriptor without reading or printing
     file bytes. Sandcat runs unprivileged, so the open is expected to fail
-    with EACCES. The syscall is what auditd records. Intended to trigger
-    phase-1 rule 100775 (non-root open/read of /etc/shadow, T1003.001).
-    Does not modify the file, so phase-2 FIM rule 100853 should not fire.
-    Never prints password hashes.
+    with EACCES. The syscall is what auditd records. Intended to match a
+    linux Sigma rule tagged attack.t1003 on siem-linux-auditd (Security
+    Analytics). Does not modify the file. Never prints password hashes.
     Requires auditd:
       -a always,exit -F arch=b64 -S openat -F path=/etc/shadow -k shadow_access
   tactic: credential_access
