@@ -1,0 +1,47 @@
+title: SQL Injection Pattern In HTTP Request
+id: b08c86b3-53f7-4284-b179-68a09a6e22bd
+status: experimental
+description: |
+  Detects SQL metacharacters and statement keywords in the request path,
+  which for this log source also includes the query string. Keyword fields
+  are matched case-sensitively, so both cases of each token are listed.
+  A bare apostrophe, semicolon or double-dash is not included: those fire
+  on ordinary URLs. A 404 is still an attempt and is not filtered out.
+references:
+  - https://attack.mitre.org/techniques/T1190/
+  - https://owasp.org/www-community/attacks/SQL_Injection
+author: detection-engineering
+date: '2026/11/04'
+tags:
+  - attack.initial_access
+  - attack.t1190
+logsource:
+  product: traefik
+  category: webserver
+detection:
+  selection:
+    url.path|contains:
+      - '%27'
+      - '%2D%2D'
+      - '%2d%2d'
+      - 'UNION'
+      - 'union'
+      - 'SELECT'
+      - 'select'
+      - 'INSERT'
+      - 'insert'
+      - 'DROP'
+      - 'drop'
+      - 'WAITFOR'
+      - 'waitfor'
+      - 'SLEEP('
+      - 'sleep('
+      - 'information_schema'
+      - 'INFORMATION_SCHEMA'
+      - 'xp_cmdshell'
+      - 'XP_CMDSHELL'
+  condition: selection
+falsepositives:
+  - Applications whose real routes contain one of these tokens
+  - Authorised vulnerability scanning
+level: high
