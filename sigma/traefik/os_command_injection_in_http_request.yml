@@ -5,8 +5,11 @@ description: |
   Detects command-substitution and shell-metacharacter payloads in the
   request path or query string: $(), backticks, encoded pipes and
   semicolons next to a shell command, and reads of /etc/passwd or
-  /etc/shadow. A bare pipe, semicolon or the words curl/wget/bash alone
-  are not included; they show up in ordinary URLs.
+  /etc/shadow. Traefik v3 stores the raw query inside RequestPath (mapped
+  to url.path), so a payload such as `%3B+id` is not the same string as
+  `;id`. Encoded separators are listed with `+` and `%20` between the
+  separator and the command. A bare pipe, semicolon or the words
+  curl/wget/bash alone are not included; they show up in ordinary URLs.
 references:
   - https://attack.mitre.org/techniques/T1190/
   - https://owasp.org/www-community/attacks/Command_Injection
@@ -33,10 +36,26 @@ detection:
       - '|cat '
       - ';id'
       - '|id'
+      - ';+id'
+      - '|+id'
+      - '; id'
+      - '| id'
       - ';wget'
       - '|wget'
       - ';curl'
       - '|curl'
+      - '%3Bid'
+      - '%3bid'
+      - '%3B+id'
+      - '%3b+id'
+      - '%3B%20id'
+      - '%3b%20id'
+      - '%7Cid'
+      - '%7cid'
+      - '%7C+id'
+      - '%7c+id'
+      - '%7C%20id'
+      - '%7c%20id'
       - '%3Bcat'
       - '%3bcat'
       - '%7Ccat'

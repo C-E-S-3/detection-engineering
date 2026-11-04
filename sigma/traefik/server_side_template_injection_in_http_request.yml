@@ -5,7 +5,9 @@ description: |
   Detects template delimiters and engine names in the request path or
   query string. Clients do not send {{ }}, {% %}, ${ }, #{ } or <%= %>
   as part of a normal URL; those sequences are how SSTI payloads escape
-  a template into code execution.
+  a template into code execution. Traefik keeps the raw query string in
+  RequestPath, so percent-encoded delimiters (%7B%7B for {{) are listed
+  separately from the literal form.
 references:
   - https://attack.mitre.org/techniques/T1190/
   - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/18-Testing_for_Server-side_Template_Injection
@@ -25,6 +27,16 @@ detection:
       - '${'
       - '#{'
       - '<%='
+      - '%7B%7B'
+      - '%7b%7b'
+      - '%7B%25'
+      - '%7b%25'
+      - '%24%7B'
+      - '%24%7b'
+      - '%23%7B'
+      - '%23%7b'
+      - '%3C%25%3D'
+      - '%3c%25%3d'
       - '%3C%25'
       - '%3c%25'
       - 'freemarker'
