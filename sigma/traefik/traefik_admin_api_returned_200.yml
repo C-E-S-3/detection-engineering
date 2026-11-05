@@ -3,14 +3,15 @@ id: 569bc163-fa29-4399-abec-dc9363d7a2e9
 status: experimental
 description: |
   Detects a Traefik admin or dashboard API request that the proxy answered
-  with HTTP 200. That is a successful read of router, service or entrypoint
-  configuration, not just a probe. The same paths with any other status are
-  covered by the access rule.
+  with HTTP 200. That is a successful read of the dashboard or of router,
+  service or entrypoint configuration, not just a probe. The same paths with
+  any other status are covered by the access rule.
 references:
   - https://doc.traefik.io/traefik/operations/api/
   - https://attack.mitre.org/techniques/T1190/
 author: detection-engineering
 date: '2026/11/04'
+modified: '2026/11/05'
 tags:
   - attack.initial_access
   - attack.t1190
@@ -20,6 +21,7 @@ logsource:
 detection:
   selection_path:
     url.path|startswith:
+      - '/dashboard'
       - '/api/rawdata'
       - '/api/http/'
       - '/api/tcp/'
