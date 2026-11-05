@@ -1,0 +1,53 @@
+title: Linux Shared Object Staged In A World-Writable Directory
+id: 86a0f75b-5a6a-4fdb-aa69-35c3bbc515d7
+status: experimental
+description: |
+  Detects a shared object created under /tmp, /var/tmp, /dev/shm, or
+  /run/user. Those directories are the usual place to stage an LD_PRELOAD
+  or dlopen payload (T1055 / T1574.006) before a second step loads it.
+  Matches a file event whose name ends in .so, or a command line that both
+  names one of those directories and a .so. Setting LD_PRELOAD itself is a
+  separate rule.
+references:
+  - https://attack.mitre.org/techniques/T1055/
+  - https://attack.mitre.org/techniques/T1574/006/
+author: SecOps Engineer
+date: '2026/11/05'
+tags:
+  - attack.defense_evasion
+  - attack.t1055
+  - attack.persistence
+  - attack.t1574.006
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection_sysmon_dir:
+    TargetFilename|contains:
+      - '/tmp/'
+      - '/var/tmp/'
+      - '/dev/shm/'
+      - '/run/user/'
+  selection_sysmon_so:
+    TargetFilename|endswith: '.so'
+  selection_auditd_dir:
+    user.filesystem.name|contains:
+      - '/tmp/'
+      - '/var/tmp/'
+      - '/dev/shm/'
+      - '/run/user/'
+  selection_auditd_so:
+    user.filesystem.name|endswith: '.so'
+  selection_cmd_dir:
+    process.command_line|contains:
+      - '/tmp/'
+      - '/var/tmp/'
+      - '/dev/shm/'
+      - '/run/user/'
+  selection_cmd_so:
+    process.command_line|contains: '.so'
+  condition: (selection_sysmon_dir and selection_sysmon_so) or (selection_auditd_dir and selection_auditd_so) or (selection_cmd_dir and selection_cmd_so)
+falsepositives:
+  - A build that writes a shared library into /tmp
+  - A package or test harness that copies a .so through a world-writable directory
+level: high

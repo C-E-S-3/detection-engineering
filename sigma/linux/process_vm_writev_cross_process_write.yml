@@ -1,0 +1,39 @@
+title: Linux process_vm_writev Cross-Process Memory Write
+id: 52e74050-a6a3-42cb-bc34-e30d8d936a62
+status: experimental
+description: |
+  Detects process_vm_writev, a direct write into another process's address
+  space that does not need ptrace. Legitimate callers are rare outside
+  debuggers, so this is treated as process injection (T1055) even when the
+  call fails with EPERM. The syscall branch requires the process_injection
+  audit key. The command-line branch covers interpreter one-liners.
+references:
+  - https://attack.mitre.org/techniques/T1055/
+  - https://man7.org/linux/man-pages/man2/process_vm_writev.2.html
+author: SecOps Engineer
+date: '2026/11/05'
+tags:
+  - attack.defense_evasion
+  - attack.privilege_escalation
+  - attack.t1055
+logsource:
+  product: linux
+  service: auditd
+detection:
+  selection_syscall:
+    syscall: process_vm_writev
+    key: process_injection
+  selection_cmdline:
+    process.command_line|contains:
+      - 'process_vm_writev'
+  filter_debugger:
+    process.exe|endswith:
+      - '/gdb'
+      - '/lldb'
+      - '/rr'
+      - '/strace'
+  condition: (selection_syscall or selection_cmdline) and not filter_debugger
+falsepositives:
+  - A debugger or tracer whose path is not one of the excluded suffixes
+  - Compiling or searching code that mentions process_vm_writev
+level: critical

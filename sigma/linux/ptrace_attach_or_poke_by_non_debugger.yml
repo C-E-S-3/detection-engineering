@@ -1,0 +1,47 @@
+title: Linux Ptrace Attach Or Poke By A Non-Debugger
+id: 04bb087d-de0d-4b6b-b4c4-7f55076e131d
+status: experimental
+description: |
+  Detects ptrace used to attach to or write another process's memory, which is
+  the usual Linux process-injection primitive (T1055.008). The audit rule behind
+  key process_injection already limits this to PTRACE_ATTACH (a0 0x10) and the
+  POKE requests (a0 0x4, 0x5, 0x6); PEEK requests are a different key and are
+  not this rule. The command-line branch covers the same behavior when the
+  syscall itself is not in the event (interpreter one-liner, or a process-create
+  log). Debuggers are excluded.
+references:
+  - https://attack.mitre.org/techniques/T1055/008/
+author: SecOps Engineer
+date: '2026/11/05'
+tags:
+  - attack.defense_evasion
+  - attack.privilege_escalation
+  - attack.t1055
+  - attack.t1055.008
+logsource:
+  product: linux
+  service: auditd
+detection:
+  selection_syscall:
+    syscall: ptrace
+    key: process_injection
+  selection_cmdline:
+    process.command_line|contains:
+      - 'PTRACE_ATTACH'
+      - 'PTRACE_POKETEXT'
+      - 'PTRACE_POKEDATA'
+      - 'PTRACE_POKEUSR'
+      - 'ptrace(PTRACE_'
+  filter_debugger:
+    process.exe|endswith:
+      - '/strace'
+      - '/ltrace'
+      - '/gdb'
+      - '/lldb'
+      - '/rr'
+  condition: (selection_syscall or selection_cmdline) and not filter_debugger
+falsepositives:
+  - A developer attaching strace, gdb, ltrace, lldb, or rr when the binary path
+    is not one of the excluded suffixes
+  - Building or grepping source that contains the literal PTRACE_ATTACH token
+level: high
