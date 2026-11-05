@@ -1,0 +1,42 @@
+title: Linux Process Memory Opened Via /proc/pid/mem
+id: c672d0f3-0e66-4d36-8b24-b63fa47f77ea
+status: experimental
+description: |
+  Detects access to /proc/<pid>/mem, a direct handle to another process's
+  address space (T1055.009). A failed open still matters: permission denied
+  is the common result for an unprivileged injector, and the path is the
+  signal. Matches a filesystem name recorded for the syscall, or a command
+  line that names that path (including an interpreter one-liner). /proc/meminfo
+  is excluded.
+references:
+  - https://attack.mitre.org/techniques/T1055/009/
+author: SecOps Engineer
+date: '2026/11/05'
+tags:
+  - attack.defense_evasion
+  - attack.privilege_escalation
+  - attack.t1055
+  - attack.t1055.009
+logsource:
+  product: linux
+  service: auditd
+detection:
+  selection_path:
+    user.filesystem.name|contains: '/proc/'
+    user.filesystem.name|endswith: '/mem'
+  selection_cmd_proc:
+    process.command_line|contains: '/proc/'
+  selection_cmd_mem:
+    process.command_line|contains: '/mem'
+  filter_meminfo:
+    process.command_line|contains: 'meminfo'
+  filter_debugger:
+    process.exe|endswith:
+      - '/gdb'
+      - '/lldb'
+      - '/rr'
+  condition: (selection_path or (selection_cmd_proc and selection_cmd_mem and not filter_meminfo)) and not filter_debugger
+falsepositives:
+  - An administrator or crash tool reading /proc/<pid>/mem for a core dump
+  - A script that mentions both /proc/ and /mem without opening process memory
+level: high

@@ -1,0 +1,45 @@
+title: Linux memfd_create Anonymous In-Memory File
+id: 18443154-53e2-44a9-832b-700e3b6d61e9
+status: experimental
+description: |
+  Detects memfd_create, which creates an anonymous file that never hits disk.
+  Loaders use it to map a shared object or shellcode into a process without a
+  path that file monitoring can see (T1055). The syscall branch requires the
+  process_injection audit key. The command-line branch covers interpreter
+  one-liners that name the syscall when the syscall event itself is absent.
+  systemd and common browsers call memfd_create in normal operation and are
+  excluded.
+references:
+  - https://attack.mitre.org/techniques/T1055/
+  - https://man7.org/linux/man-pages/man2/memfd_create.2.html
+author: SecOps Engineer
+date: '2026/11/05'
+tags:
+  - attack.defense_evasion
+  - attack.t1055
+logsource:
+  product: linux
+  service: auditd
+detection:
+  selection_syscall:
+    syscall: memfd_create
+    key: process_injection
+  selection_cmdline:
+    process.command_line|contains:
+      - 'memfd_create'
+  filter_benign:
+    process.exe|endswith:
+      - '/systemd'
+      - '/systemd-journald'
+      - '/chrome'
+      - '/chromium'
+      - '/chromium-browser'
+      - '/firefox'
+      - '/firefox-esr'
+      - '/thunderbird'
+  condition: (selection_syscall or selection_cmdline) and not filter_benign
+falsepositives:
+  - Package managers, container runtimes, or desktop services not in the
+    exclusion list that legitimately create anonymous files
+  - Compiling or searching code that mentions memfd_create
+level: high

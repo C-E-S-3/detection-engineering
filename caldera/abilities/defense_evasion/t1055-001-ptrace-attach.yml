@@ -3,8 +3,8 @@
   description: >
     Calls ptrace(PTRACE_ATTACH, ppid) against the parent process of the current shell.
     The call will normally fail with EPERM unless the implant is root, but the syscall
-    itself is what auditd captures. Intended to trigger Wazuh rules 100830 (ptrace
-    PTRACE_ATTACH) and 100831 (PTRACE_ATTACH by non-debugger). Requires auditd to
+    itself is what auditd captures. Intended to trigger the Sigma rule "Linux Ptrace
+    Attach Or Poke By A Non-Debugger". Requires auditd to
     be configured with:
       -a always,exit -F arch=b64 -S ptrace -F a0=0x10 -k process_injection
   tactic: defense_evasion

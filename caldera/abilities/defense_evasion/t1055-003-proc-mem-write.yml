@@ -2,8 +2,8 @@
   name: T1055 /proc/PID/mem Write Attempt
   description: >
     Attempts to open /proc/<ppid>/mem for writing from Python. The open() syscall
-    against /proc/PID/mem is captured by auditd and intended to trigger Wazuh rule
-    100834 (/proc/PID/mem write access). The open will fail with EACCES or EPERM (expected);
+    against /proc/PID/mem is captured by auditd and intended to trigger the Sigma rule
+    "Linux Process Memory Opened Via /proc/pid/mem" (a failed open still counts). The open will fail with EACCES or EPERM (expected);
     the auditd log entry of the attempt is what matters for detection validation.
     No memory is actually modified. Requires auditd: -a always,exit -F arch=b64 -S
     openat,open -F path=/proc -k proc_access

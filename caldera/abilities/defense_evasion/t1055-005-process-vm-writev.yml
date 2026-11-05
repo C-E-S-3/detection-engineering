@@ -4,8 +4,8 @@
     Calls process_vm_writev(2) targeting the parent process. This syscall allows direct
     cross-process memory writes without ptrace and is a common process injection technique.
     The call will fail with EPERM unless ptrace_scope allows it, but the syscall itself
-    is logged by auditd. Intended to trigger Wazuh rule 100838 (process_vm_writev
-    called). No memory is successfully modified in the expected permission-denied
+    is logged by auditd. Intended to trigger the Sigma rule "Linux process_vm_writev
+    Cross-Process Memory Write". No memory is successfully modified in the expected permission-denied
     case.
   tactic: defense_evasion
   technique:

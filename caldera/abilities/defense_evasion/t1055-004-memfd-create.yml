@@ -3,8 +3,8 @@
   description: >
     Calls the memfd_create(2) syscall via Python ctypes to create an anonymous in-memory
     file descriptor. This is the first step of fileless shared-object injection (load
-    a .so into an anonymous fd without touching disk). Intended to trigger Wazuh rule
-    100837 (memfd_create called). The fd is immediately closed; no shellcode or library
+    a .so into an anonymous fd without touching disk). Intended to trigger the Sigma rule
+    "Linux memfd_create Anonymous In-Memory File". The fd is immediately closed; no shellcode or library
     is actually loaded. Requires auditd syscall monitoring for memfd_create (or a
     fallback execve rule).
   tactic: defense_evasion
