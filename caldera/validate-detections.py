@@ -546,8 +546,11 @@ def search_streams(
 
 def live_rules_and_findings(client: OpenSearch, local_rules: list[dict], since_minutes: int):
     gte_ms = int((time.time() - since_minutes * 60) * 1000)
+    # The Security Analytics findings _search endpoint is GET-only (POST -> 405).
+    # sigma_backtest is not granted the findings indices, so this returns 403 and
+    # we fall back to scoring Sigma queries against the siem-* streams below.
     status, payload = client.call(
-        "POST",
+        "GET",
         "/_plugins/_security_analytics/findings/_search",
         {
             "size": 500,
@@ -565,7 +568,8 @@ def live_rules_and_findings(client: OpenSearch, local_rules: list[dict], since_m
     if status == 200:
         return rules, findings_from_payload(payload), "security-analytics-findings"
     if status != 403:
-        reason = (payload.get("error") or {}).get("reason") or payload
+        err = payload.get("error") if isinstance(payload, dict) else payload
+        reason = (err.get("reason") if isinstance(err, dict) else err) or payload
         sys.exit("findings search HTTP %s: %s" % (status, reason))
     if rule_status != 200:
         sys.exit(
