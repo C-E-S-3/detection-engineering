@@ -1,0 +1,60 @@
+title: LLM Provider API Connection From Process In Writable Directory
+id: 89a8ade7-5d8b-4cb9-9c43-3d820b35a676
+status: experimental
+description: |
+  Detects an outbound network connection to a hosted LLM inference API (OpenRouter,
+  Anthropic, OpenAI, Google Gemini, Moonshot/Kimi, Mistral, Groq, DeepSeek, Together)
+  made by a binary running from a world-writable or temporary location (/tmp, /var/tmp,
+  /dev/shm, /run/user, hidden dot-directories). Malware is starting to call commercial
+  LLM APIs at runtime. The VOLTA infostealer sends a summary of each victim to Claude,
+  Gemini or Kimi through OpenRouter and uses the reply to rank the victim's financial
+  value. Other samples use LLMs to generate commands or scripts on the fly. Legitimate
+  LLM clients are installed packages or services. A freshly dropped binary in a temp
+  directory that talks to an LLM API is the footprint of such a payload, whatever its
+  hash or filename.
+references:
+  - https://blog.talosintelligence.com/volta-infostealer-llm-victim-ranking/
+  - https://attack.mitre.org/techniques/T1071/001/
+  - https://attack.mitre.org/techniques/T1567/
+author: threat-intel-sigma-agent
+date: '2026/11/05'
+tags:
+  - attack.command_and_control
+  - attack.t1071.001
+  - attack.exfiltration
+  - attack.t1567
+  - attack.collection
+  - attack.t1005
+logsource:
+  product: linux
+  category: network_connection
+detection:
+  selection_dest:
+    - DestinationHostname:
+        - 'openrouter.ai'
+        - 'api.anthropic.com'
+        - 'api.openai.com'
+        - 'generativelanguage.googleapis.com'
+        - 'api.moonshot.ai'
+        - 'api.moonshot.cn'
+        - 'api.mistral.ai'
+        - 'api.groq.com'
+        - 'api.deepseek.com'
+        - 'api.together.xyz'
+    - DestinationHostname|endswith: '.openrouter.ai'
+  selection_image:
+    Image|contains:
+      - '/tmp/'
+      - '/var/tmp/'
+      - '/dev/shm/'
+      - '/run/user/'
+      - '/run/shm/'
+      - '/var/run/user/'
+      - '/.cache/'
+      - '/.local/share/.'
+      - '/.config/.'
+  condition: selection_dest and selection_image
+falsepositives:
+  - Developers running freshly built LLM client binaries out of /tmp or a build cache
+  - Self-extracting tools such as PyInstaller or AppImage bundles that unpack to /tmp at runtime
+level: high
