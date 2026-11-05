@@ -1,0 +1,81 @@
+title: Security, Audit Or Backup Service Stopped Or Disabled Via Command Line
+id: 712f84a9-9064-458c-aeda-01f538ba11a1
+status: experimental
+description: |
+  Detects systemctl/service commands that stop, disable or mask host security, audit,
+  logging or backup services: auditd, Sysmon for Linux, Wazuh/OSSEC, osquery, Falco,
+  ClamAV, rsyslog/syslog-ng/journald, fail2ban, AppArmor and common backup agents.
+  Ransomware operators turn these off just before they encrypt, so the encryption is
+  not seen and backups cannot be restored. C3RB3R on Linux-based NAS devices shuts down
+  the bundled antivirus and backup services this way, and Linux ESXi/NAS lockers do the
+  same. Restarts are excluded, so routine configuration management does not alert.
+references:
+  - https://www.bleepingcomputer.com/news/security/cerber-ransomware-returns-as-c3rb3r-targeting-synology-nas/
+  - https://attack.mitre.org/techniques/T1562/001/
+  - https://attack.mitre.org/techniques/T1489/
+author: threat-intel-sigma-agent
+date: '2026/11/05'
+tags:
+  - attack.defense_evasion
+  - attack.t1562.001
+  - attack.t1562.012
+  - attack.impact
+  - attack.t1489
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_tool:
+    Image|endswith:
+      - '/systemctl'
+      - '/service'
+      - '/update-rc.d'
+      - '/chkconfig'
+  selection_action:
+    CommandLine|contains:
+      - ' stop'
+      - ' disable'
+      - ' mask'
+      - ' kill'
+  selection_service:
+    CommandLine|contains:
+      - 'auditd'
+      - 'sysmon'
+      - 'wazuh'
+      - 'ossec'
+      - 'osqueryd'
+      - 'falco'
+      - 'clamav'
+      - 'clamd'
+      - 'rsyslog'
+      - 'syslog-ng'
+      - 'systemd-journald'
+      - 'fail2ban'
+      - 'apparmor'
+      - 'restic'
+      - 'borg'
+      - 'proxmox-backup'
+      - 'veeam'
+  filter_restart:
+    CommandLine|contains:
+      - ' restart'
+      - ' try-restart'
+      - ' reload'
+  filter_reload_signal:
+    CommandLine|contains:
+      - '-s HUP'
+      - '-s SIGHUP'
+      - '--signal=HUP'
+      - '--signal=SIGHUP'
+      - '--signal HUP'
+      - '-s USR1'
+      - '--signal=USR1'
+  filter_snapd:
+    CommandLine|contains: 'snapd.apparmor'
+  condition: selection_tool and selection_action and selection_service and not filter_restart and not filter_reload_signal and not filter_snapd
+falsepositives:
+  - Log rotation sending reload signals (HUP/USR1 signals are excluded)
+  - Administrators deliberately stopping or replacing a security or logging agent during maintenance
+  - Package upgrade scripts (dpkg/rpm maintainer scripts) that stop a service before replacing it
+  - Configuration management runs (Ansible, Puppet, Salt) that stop an agent while reinstalling or reconfiguring it
+level: medium
