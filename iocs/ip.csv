@@ -435,3 +435,6 @@ indicator,source,date_added,context
 219.134.163.211,xcpe-botnet,2026-11-03,XCPE botnet MQTT C2 broker (TCP 3885-3887)
 23.94.49.57,xcpe-botnet,2026-11-03,XCPE botnet file hosting and auxiliary C2
 38.145.197.135,xcpe-botnet,2026-11-03,XCPE botnet file hosting and auxiliary C2
+89.127.233.127,https://www.bleepingcomputer.com/news/security/nikke-pc-game-launcher-hacked-to-spread-remote-access-data-stealing-malware/,2026-11-04,K2F RAT primary C2 server (NIKKE supply chain attack Nov 2026)
+89.126.250.172,https://www.bleepingcomputer.com/news/security/nikke-pc-game-launcher-hacked-to-spread-remote-access-data-stealing-malware/,2026-11-04,K2F RAT secondary/staging server (NIKKE supply chain attack Nov 2026)
+136.0.141.71,https://thehackernews.com/2026/11/hackers-hide-linux-backdoor-in-control.html,2026-11-05,CWPdoor download server — hosts /static/cwpsrv_update.sh and /static/cwpsrv_1.15.10 (trojanized CWP server binary Nov 2026)
