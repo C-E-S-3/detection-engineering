@@ -1,0 +1,56 @@
+title: Chat Webhook Or Bot API Connection From Process In Writable Directory
+id: b81e0b82-f7ca-4eeb-a125-1e16eb0602b9
+status: experimental
+description: |
+  Detects an outbound network connection to a chat platform's webhook or bot API
+  (Slack, Discord, Telegram) from a binary running in a world-writable or temporary
+  location (/tmp, /var/tmp, /dev/shm, /run/user, hidden dot-directories). Infostealers
+  and RATs often send stolen data through these webhooks. The attacker gets a free,
+  TLS-protected exfiltration channel that blends in with normal traffic. The K2F RAT,
+  delivered through a compromised game-launcher CDN, sent SSH keys, cloud CLI
+  credentials and wallet data through attacker-controlled Slack webhooks. Legitimate
+  alerting integrations run from installed packages or services, so a freshly dropped
+  binary in a temp directory that talks to a webhook endpoint is suspicious whatever
+  its hash or name.
+references:
+  - https://www.bleepingcomputer.com/news/security/nikke-pc-game-launcher-hacked-to-spread-remote-access-data-stealing-malware/
+  - https://attack.mitre.org/techniques/T1567/002/
+  - https://attack.mitre.org/techniques/T1102/
+author: threat-intel-sigma-agent
+date: '2026/11/06'
+tags:
+  - attack.exfiltration
+  - attack.t1567.002
+  - attack.command_and_control
+  - attack.t1102
+  - attack.collection
+  - attack.t1005
+logsource:
+  product: linux
+  category: network_connection
+detection:
+  selection_dest:
+    DestinationHostname:
+      - 'hooks.slack.com'
+      - 'slack.com'
+      - 'discord.com'
+      - 'discordapp.com'
+      - 'canary.discord.com'
+      - 'ptb.discord.com'
+      - 'api.telegram.org'
+  selection_image:
+    Image|contains:
+      - '/tmp/'
+      - '/var/tmp/'
+      - '/dev/shm/'
+      - '/run/user/'
+      - '/run/shm/'
+      - '/var/run/user/'
+      - '/.cache/'
+      - '/.local/share/.'
+      - '/.config/.'
+  condition: selection_dest and selection_image
+falsepositives:
+  - Ad-hoc notification scripts or freshly built bots run out of /tmp during development
+  - Self-extracting tools (PyInstaller, AppImage) that unpack to /tmp and post to a chat webhook
+level: high
