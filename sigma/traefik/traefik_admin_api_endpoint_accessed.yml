@@ -3,17 +3,19 @@ id: 0e5908c1-c0e6-4439-9a65-1769fe68fddb
 status: experimental
 description: |
   Detects HTTP requests for Traefik's dashboard and raw configuration API
-  (/api/rawdata, /api/http, /api/tcp, /api/udp, /api/entrypoints, /api/overview,
-  /api/version). Those routes expose routers, services and TLS material. A
-  request is an access attempt whether or not the API is enabled; a follow-on
-  rule raises the successful (HTTP 200) read. Repeated probing is intentionally
-  not a separate rule: Security Analytics drops Sigma aggregation counts, so a
-  frequency rule would match every request.
+  (/dashboard, /api/rawdata, /api/http, /api/tcp, /api/udp, /api/entrypoints,
+  /api/overview, /api/version). Those routes expose routers, services and TLS
+  material. A request is an access attempt whether or not the API is enabled;
+  a follow-on rule raises the successful (HTTP 200) read. The dashboard UI is
+  matched by the /dashboard prefix, which covers /dashboard and /dashboard/.
+  Repeated probing is intentionally not a separate rule: Security Analytics
+  drops Sigma aggregation counts, so a frequency rule would match every request.
 references:
   - https://doc.traefik.io/traefik/operations/api/
   - https://attack.mitre.org/techniques/T1190/
 author: detection-engineering
 date: '2026/11/04'
+modified: '2026/11/05'
 tags:
   - attack.initial_access
   - attack.t1190
@@ -23,6 +25,7 @@ logsource:
 detection:
   selection:
     url.path|startswith:
+      - '/dashboard'
       - '/api/rawdata'
       - '/api/http/'
       - '/api/tcp/'

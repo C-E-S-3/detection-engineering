@@ -1,0 +1,33 @@
+title: Unusual HTTP Method On Public Web Request
+id: 0917d74b-c764-4dd6-98cf-4b2406d69a7d
+status: experimental
+description: |
+  Detects PUT, DELETE, or PATCH in a Traefik access log. Public sites
+  normally answer GET, HEAD, POST, and OPTIONS. A state-changing method
+  on that front end is a probe for a writable route, WebDAV, or an
+  admin API left on the public proxy (T1190). Traefik records the method
+  in uppercase, so only those forms are listed. This rule does not count
+  repeats: Security Analytics drops Sigma aggregation, and a frequency
+  condition would match every request.
+references:
+  - https://attack.mitre.org/techniques/T1190/
+  - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/06-Test_HTTP_Methods
+author: detection-engineering
+date: '2026/11/05'
+tags:
+  - attack.initial_access
+  - attack.t1190
+logsource:
+  product: traefik
+  category: webserver
+detection:
+  selection:
+    http.request.method:
+      - PUT
+      - DELETE
+      - PATCH
+  condition: selection
+falsepositives:
+  - REST or WebDAV clients that legitimately use these methods through the same proxy
+  - Application APIs that accept PUT, DELETE, or PATCH on purpose
+level: medium
