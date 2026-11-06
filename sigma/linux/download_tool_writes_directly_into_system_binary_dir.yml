@@ -1,0 +1,72 @@
+title: Curl Or Wget Downloads Directly Into A System Binary Directory
+id: 42a1ad1e-c626-4f4e-88d4-1870646896a8
+status: experimental
+description: |
+  Detects curl or wget writing a download straight into a system executable directory
+  (/usr/bin, /usr/sbin, /usr/local/bin, /usr/local/sbin, /bin, /sbin) or over the
+  Control Web Panel server binary tree (/usr/local/cwpsrv/). Replacing an installed
+  server binary in place with a trojanized copy is a quiet persistence method
+  (T1554). The CWPdoor campaign used a fake updater script to download a backdoored
+  cwpsrv binary from a bare IP and overwrite the legitimate one. Packaged software
+  is installed by the package manager, not by curl writing into a binary directory,
+  so this pattern deserves a look regardless of the file name or source.
+references:
+  - https://thehackernews.com/2026/11/hackers-hide-linux-backdoor-in-control.html
+  - https://attack.mitre.org/techniques/T1554/
+  - https://attack.mitre.org/techniques/T1105/
+author: threat-intel-sigma-agent
+date: '2026/11/06'
+tags:
+  - attack.persistence
+  - attack.t1554
+  - attack.command_and_control
+  - attack.t1105
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_tool:
+    Image|endswith:
+      - '/curl'
+      - '/wget'
+  selection_target:
+    CommandLine|contains:
+      - ' -o /usr/bin/'
+      - ' -o /usr/sbin/'
+      - ' -o /usr/local/bin/'
+      - ' -o /usr/local/sbin/'
+      - ' -o /bin/'
+      - ' -o /sbin/'
+      - ' -o /usr/local/cwpsrv/'
+      - ' --output /usr/bin/'
+      - ' --output /usr/sbin/'
+      - ' --output /usr/local/bin/'
+      - ' --output /usr/local/sbin/'
+      - ' --output /usr/local/cwpsrv/'
+      - ' -O /usr/bin/'
+      - ' -O /usr/sbin/'
+      - ' -O /usr/local/bin/'
+      - ' -O /usr/local/sbin/'
+      - ' -O /bin/'
+      - ' -O /sbin/'
+      - ' -O /usr/local/cwpsrv/'
+      - '--output-document=/usr/bin/'
+      - '--output-document=/usr/sbin/'
+      - '--output-document=/usr/local/bin/'
+      - '--output-document=/usr/local/sbin/'
+      - '--output-document=/usr/local/cwpsrv/'
+      - ' -P /usr/bin'
+      - ' -P /usr/sbin'
+      - ' -P /usr/local/bin'
+      - ' -P /usr/local/sbin'
+      - ' -P /usr/local/cwpsrv'
+      - '--directory-prefix=/usr/bin'
+      - '--directory-prefix=/usr/sbin'
+      - '--directory-prefix=/usr/local/bin'
+      - '--directory-prefix=/usr/local/sbin'
+      - '--directory-prefix=/usr/local/cwpsrv'
+  condition: selection_tool and selection_target
+falsepositives:
+  - Administrators installing single-binary tools (kubectl, docker-compose, yq) straight into /usr/local/bin
+  - Configuration management or bootstrap scripts that fetch release binaries with curl
+level: medium
