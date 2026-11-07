@@ -1,0 +1,31 @@
+title: Wazuh FIM Account Database Or Sudoers Changed
+id: 2b8b3f67-fb9b-4ff7-8977-bce69631efd7
+status: experimental
+description: |
+  Detects a Wazuh syscheck event for /etc/passwd, /etc/shadow, /etc/group,
+  /etc/sudoers or /etc/sudoers.d. These alerts are the Wazuh sensor copy of
+  account and privilege-file changes. They are indexed on siem-wazuh-alerts,
+  not on the auditd stream. The field is the alerts.json path syscheck.path.
+references:
+  - https://attack.mitre.org/techniques/T1136/001/
+author: SecOps Engineer
+date: '2026/11/07'
+tags:
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.t1136
+  - attack.t1136.001
+logsource:
+  product: linux
+  service: wazuh
+detection:
+  selection:
+    syscheck.path|startswith:
+      - /etc/passwd
+      - /etc/shadow
+      - /etc/group
+      - /etc/sudoers
+  condition: selection
+falsepositives:
+  - Package upgrades and configuration management that legitimately change these files
+level: high

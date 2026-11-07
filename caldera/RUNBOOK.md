@@ -43,7 +43,7 @@ Agent group: `purple-team-phase2`.
 - Do not change the T1003 ability to `cat` or otherwise print `/etc/shadow`.
 - `pt_testuser` is a probe account. The ability cleanup runs `userdel -r`. If an operation is cancelled mid-chain, remove the account by hand on the exercise host.
 - T1055 and T1003 are expected to fail at the syscall. A success means the agent context is more privileged than the `sandcat` user and should be treated as a finding, not as a better test.
-- T1078 is scored only on `siem-linux-auditd`. The private rule `breakglass_host_ssh_login` (`attack.t1078`) matches `USER_LOGIN` on `hostinger-01` and is not the exercise. Wazuh-shipped auditd still omits `acct` and `addr` on `USER_LOGIN`, so an exercise SSH login can stay `NOT DETECTED` even when the session is real. Do not "fix" that by writing a Wazuh rule. File the gap as a Sigma rule.
+- T1078 is scored only on `siem-linux-auditd`. The private rule `breakglass_host_ssh_login` (`attack.t1078`) matches `USER_LOGIN` on `hostinger-01` and is not the exercise. `acct`, `addr`, `terminal` and the inner `exe` are parsed from `msg='...'` by the OpenSearch Vector auditd transform. Until that transform is deployed, user-split rules stay dark and a login can be real without a finding. Do not score T1078 with Wazuh XML.
 - If a probe would hit a host that is not an exercise target, stop.
 
 ## One-time setup

@@ -1,0 +1,36 @@
+title: Direct Root SSH Login
+id: 6fe80ad2-bd31-4725-8c80-638d03cb4c15
+status: experimental
+description: |
+  Detects a successful auditd USER_LOGIN for acct=root from a non-loopback
+  addr. Console and localhost root sessions are not this rule. addr and acct
+  come from the quoted USER_LOGIN msg, which the Vector auditd transform has
+  to parse first.
+references:
+  - https://attack.mitre.org/techniques/T1078/
+author: SecOps Engineer
+date: '2026/11/07'
+tags:
+  - attack.initial_access
+  - attack.privilege_escalation
+  - attack.t1078
+logsource:
+  product: linux
+  service: auditd
+detection:
+  selection:
+    type: USER_LOGIN
+    auditd.res: success
+    acct: root
+  selection_ssh:
+    terminal|contains: ssh
+  selection_sshd:
+    process.exe|endswith: /sshd
+  filter_loopback:
+    addr:
+      - '127.0.0.1'
+      - '::1'
+  condition: selection and (selection_ssh or selection_sshd) and not filter_loopback
+falsepositives:
+  - Break-glass or recovery sessions that legitimately SSH in as root
+level: high

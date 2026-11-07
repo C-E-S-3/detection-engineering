@@ -1,0 +1,29 @@
+title: Local Account Creation Tool Executed
+id: d3c308a9-3108-493b-9123-4a45bf0d8342
+status: experimental
+description: |
+  Detects useradd or adduser. Creates a local account (T1136.001). Cleanup
+  commands that only call userdel do not match.
+references:
+  - https://attack.mitre.org/techniques/T1136/001/
+author: SecOps Engineer
+date: '2026/11/07'
+tags:
+  - attack.persistence
+  - attack.t1136
+  - attack.t1136.001
+logsource:
+  product: linux
+  service: auditd
+detection:
+  selection:
+    type: EXECVE
+    process.exe|endswith:
+      - /useradd
+      - /usr/sbin/useradd
+      - /adduser
+      - /usr/sbin/adduser
+  condition: selection
+falsepositives:
+  - An administrator or configuration-management run creating an account
+level: high

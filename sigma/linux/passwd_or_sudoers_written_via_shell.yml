@@ -1,0 +1,40 @@
+title: Passwd Or Sudoers Written Via Shell
+id: 17a73e6e-97e9-4384-9d57-b05b3bdbc4a1
+status: experimental
+description: |
+  Detects a shell or tee command line that writes /etc/passwd, /etc/shadow,
+  /etc/group, or a sudoers file. Covers echo-append and sudoers.d drops that
+  never call useradd. A Wazuh syscheck modification of the same paths is a
+  separate rule on the wazuh log type.
+references:
+  - https://attack.mitre.org/techniques/T1136/001/
+author: SecOps Engineer
+date: '2026/11/07'
+tags:
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.t1136
+  - attack.t1136.001
+logsource:
+  product: linux
+  service: auditd
+detection:
+  selection_shell:
+    process.exe|endswith:
+      - /sh
+      - /bash
+      - /dash
+      - /zsh
+      - /busybox
+      - /tee
+  selection_target:
+    process.command_line|contains:
+      - /etc/passwd
+      - /etc/shadow
+      - /etc/group
+      - /etc/sudoers
+  condition: selection_shell and selection_target
+falsepositives:
+  - An administrator editing sudoers or inspecting passwd with a command line that mentions the path
+  - Package scripts that rewrite /etc/passwd
+level: high
