@@ -8,7 +8,8 @@ log type — the directory name is the rule category:
 sigma/
 ├── linux/      # auditd (Security Analytics `linux` log type)
 ├── windows/    # Windows event logs
-└── traefik/    # Traefik JSON access log (custom log type)
+├── traefik/    # Traefik JSON access log (custom log type)
+└── wazuh/      # Wazuh alerts.json (custom log type, siem-wazuh-alerts)
 ```
 
 ## Conventions
@@ -33,6 +34,7 @@ Field names:
 - **windows:** standard Sigma Windows field names (`EventID`, `Image`, `CommandLine`, …).
 - **traefik:** ECS names — `url.path`, `url.domain`, `http.request.method`,
   `http.response.status_code`, `source.ip`, `user_agent.original`.
+- **wazuh:** raw alerts.json names. FIM path is `syscheck.path`.
 
 Keep rules generic: no environment-specific hostnames, addresses or account names
 (those belong in a private rule set).

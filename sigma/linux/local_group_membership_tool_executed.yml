@@ -1,0 +1,32 @@
+title: Local Group Membership Tool Executed
+id: 19fe8b56-1445-425a-98ca-bcb5b59d64b3
+status: experimental
+description: |
+  Detects usermod or gpasswd. Both are how a new or existing account is added
+  to sudo, wheel, or another privileged group (T1136.001). The rule matches
+  the tool, not a specific group name, because auditd execve argv is not a
+  reliable group field on every host.
+references:
+  - https://attack.mitre.org/techniques/T1136/001/
+author: SecOps Engineer
+date: '2026/11/07'
+tags:
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.t1136
+  - attack.t1136.001
+logsource:
+  product: linux
+  service: auditd
+detection:
+  selection:
+    type: EXECVE
+    process.exe|endswith:
+      - /usermod
+      - /usr/sbin/usermod
+      - /gpasswd
+      - /usr/sbin/gpasswd
+  condition: selection
+falsepositives:
+  - An administrator changing group membership, including removing a user from a group
+level: high

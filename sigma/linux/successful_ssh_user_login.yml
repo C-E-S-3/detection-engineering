@@ -1,0 +1,36 @@
+title: Successful SSH Login Recorded By Auditd
+id: 2e99940d-0f81-4067-8c2e-ae8ef85fef14
+status: experimental
+description: |
+  Detects an auditd USER_LOGIN with res=success where the session is SSH
+  (terminal contains ssh, or the executable is sshd). This is the Sigma
+  replacement for the Phase 2 valid-accounts login rule. It does not try to
+  decide whether the account is new or off-hours. Service-account and direct
+  root SSH logins are separate higher-severity rules. acct, addr, terminal and
+  the inner exe are only present after the OpenSearch Vector auditd transform
+  parses the quoted audit msg.
+references:
+  - https://attack.mitre.org/techniques/T1078/
+author: SecOps Engineer
+date: '2026/11/07'
+tags:
+  - attack.initial_access
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.t1078
+logsource:
+  product: linux
+  service: auditd
+detection:
+  selection:
+    type: USER_LOGIN
+    auditd.res: success
+  selection_terminal:
+    terminal|contains: ssh
+  selection_exe:
+    process.exe|endswith: /sshd
+  condition: selection and (selection_terminal or selection_exe)
+falsepositives:
+  - Administrators, Ansible, and Semaphore logging in over SSH
+  - Break-glass maintenance on an internet-exposed host (that host has its own rule)
+level: medium
