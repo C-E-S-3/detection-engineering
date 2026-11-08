@@ -1,0 +1,53 @@
+title: Firewall Allowed Connection To Industrial Control Protocol Port
+id: 3df4a77c-7656-4f84-a0ed-1959b16a9373
+status: experimental
+description: |
+  Detects firewall-permitted connections to well-known industrial control system (ICS/OT)
+  protocol ports: S7comm (102), Modbus/TCP (502), Tridium Niagara Fox (1911),
+  IEC 60870-5-104 (2404), OPC UA (4840), EtherNet/IP (44818) and BACnet/IP (47808).
+  Campaigns such as the 2026 attacks on internet-exposed refrigeration and building
+  management controllers rely on these services being reachable across a network boundary.
+  A passed flow means either an industrial service is exposed through the firewall
+  (inbound) or an internal host is speaking or scanning for industrial protocols on the
+  internet (outbound), both unexpected on networks without OT equipment. Blocked
+  connections (background internet scanning) and purely internal (private-to-private)
+  flows such as internal vulnerability scans are deliberately excluded.
+references:
+  - https://www.bleepingcomputer.com/news/security/hackers-disrupt-refrigeration-systems-at-european-supermarkets/
+  - https://attack.mitre.org/techniques/T1133/
+author: threat-intel-sigma-agent
+date: '2026/11/08'
+tags:
+  - attack.initial-access
+  - attack.t1133
+  - attack.reconnaissance
+  - attack.t1595.001
+logsource:
+  product: opnsense
+  category: firewall
+detection:
+  selection:
+    destination.port:
+      - 102
+      - 502
+      - 1911
+      - 2404
+      - 4840
+      - 44818
+      - 47808
+    event.action: 'pass'
+  internal_src:
+    source.ip|cidr:
+      - '10.0.0.0/8'
+      - '172.16.0.0/12'
+      - '192.168.0.0/16'
+  internal_dst:
+    destination.ip|cidr:
+      - '10.0.0.0/8'
+      - '172.16.0.0/12'
+      - '192.168.0.0/16'
+  condition: selection and not (internal_src and internal_dst)
+falsepositives:
+  - Legitimate OT, building management or BACnet equipment communicating across firewall interfaces
+  - Unrelated applications that happen to use one of these ports
+level: high
