@@ -1,0 +1,70 @@
+title: System Log, Login Record Or Shell History Cleared Via Command Line
+id: a6506655-6819-4983-8fa5-31ca255678fd
+status: experimental
+description: |
+  Detects command-line tools used to wipe host evidence: truncate, shred, rm or unlink
+  aimed at authentication/system logs, the audit log, the systemd journal, login records
+  (wtmp/btmp/lastlog) or shell history files, and shell history files symlinked to
+  /dev/null. Size- or age-capped `journalctl --vacuum-*` is left out on purpose: it is
+  routine disk housekeeping and drowns the signal. Intruders who get root on an
+  internet-facing system do this right after exploitation, before forensics can start.
+  The Red Heron Zyxel GS1900
+  intrusions cleared logs on compromised devices, and UTA0576 tampered with Ivanti's
+  integrity-checker output. The rule looks for the technique on Linux servers in general,
+  not for either campaign. logrotate rotates and compresses logs inside its own process, so
+  routine rotation does not alert.
+references:
+  - https://www.zyxel.com/global/en/support/security-advisories/zyxel-security-advisory-for-out-of-bounds-write-vulnerability-in-gs1900-series-switches-11-03-2026
+  - https://www.rapid7.com/blog/post/etr-additional-ivanti-connect-secure-zero-days-exploited-in-the-wild-cve-2026-111357-cve-2026-118527/
+  - https://attack.mitre.org/techniques/T1070/002/
+  - https://attack.mitre.org/techniques/T1070/003/
+author: threat-intel-sigma-agent
+date: '2026/11/09'
+tags:
+  - attack.defense-evasion
+  - attack.t1070
+  - attack.t1070.002
+  - attack.t1070.003
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_wipe_tool:
+    Image|endswith:
+      - '/truncate'
+      - '/shred'
+      - '/rm'
+      - '/unlink'
+      - '/wipe'
+      - '/srm'
+  selection_wipe_target:
+    CommandLine|contains:
+      - '/var/log/auth.log'
+      - '/var/log/secure'
+      - '/var/log/syslog'
+      - '/var/log/messages'
+      - '/var/log/kern.log'
+      - '/var/log/wtmp'
+      - '/var/log/btmp'
+      - '/var/log/lastlog'
+      - '/var/run/utmp'
+      - '/run/utmp'
+      - '/var/log/audit/'
+      - '/var/log/journal'
+      - '/var/ossec/logs'
+      - '/var/log/sysmon'
+      - '.bash_history'
+      - '.zsh_history'
+      - '.ash_history'
+      - '.histfile'
+  selection_history_devnull:
+    Image|endswith: '/ln'
+    CommandLine|contains|all:
+      - '/dev/null'
+      - 'history'
+  condition: (selection_wipe_tool and selection_wipe_target) or selection_history_devnull
+falsepositives:
+  - Administrators freeing disk space by deleting old logs
+  - Image hardening or golden-template cleanup scripts that clear history and login records before sealing a VM template
+  - Configuration management tasks that purge logs while rebuilding a host
+level: high
