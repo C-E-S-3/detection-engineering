@@ -9,7 +9,8 @@ sigma/
 ├── linux/      # auditd (Security Analytics `linux` log type)
 ├── windows/    # Windows event logs
 ├── traefik/    # Traefik JSON access log (custom log type)
-└── wazuh/      # Wazuh alerts.json (custom log type, siem-wazuh-alerts)
+├── wazuh/      # Wazuh alerts.json (custom log type, siem-wazuh-alerts)
+└── pam/        # PAM / bastion audit: JumpServer + Teleport (custom log type, siem-pam)
 ```
 
 ## Conventions
@@ -35,6 +36,12 @@ Field names:
 - **traefik:** ECS names — `url.path`, `url.domain`, `http.request.method`,
   `http.response.status_code`, `source.ip`, `user_agent.original`.
 - **wazuh:** raw alerts.json names. FIM path is `syscheck.path`.
+- **pam:** ECS names shared by every product: `event.module` (`jumpserver`,
+  `teleport`), `event.dataset`, `event.action`, `event.outcome`, `event.category`,
+  `user.name`, `user.target.name`, `source.ip`, `destination.*`,
+  `process.command_line` (session commands); product fields under
+  `jumpserver.<category>.*` (e.g. `jumpserver.session_command.risk_level`,
+  `jumpserver.operation.resource_type`, `jumpserver.login.reason`) and `teleport.*`.
 
 Keep rules generic: no environment-specific hostnames, addresses or account names
 (those belong in a private rule set).

@@ -1,0 +1,42 @@
+title: Teleport User, Role Or Auth Connector Changed
+id: 8a3ea3c0-ddeb-45cb-8b2b-aaec417b54be
+status: experimental
+description: |
+    Detects Teleport audit events that change who can authenticate or what they may do:
+    local users, roles, SSO auth connectors (OIDC, SAML, GitHub), removed MFA devices and
+    deleted locks. These are the persistence and privilege-escalation moves available to
+    anyone holding an editor-level Teleport session.
+author: homelab detection engineering
+date: '2026/11/11'
+references:
+    - https://goteleport.com/docs/reference/monitoring/audit/
+tags:
+    - attack.persistence
+    - attack.privilege-escalation
+    - attack.t1098
+    - attack.t1136
+logsource:
+    category: pam
+    product: teleport
+detection:
+    selection:
+        event.module: teleport
+        event.action:
+            - 'user.create'
+            - 'user.update'
+            - 'user.delete'
+            - 'role.created'
+            - 'role.updated'
+            - 'role.deleted'
+            - 'oidc.created'
+            - 'oidc.deleted'
+            - 'saml.created'
+            - 'saml.deleted'
+            - 'github.created'
+            - 'github.deleted'
+            - 'mfa.delete'
+            - 'lock.deleted'
+    condition: selection
+falsepositives:
+    - Planned Teleport administration
+level: medium

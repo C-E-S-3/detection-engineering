@@ -1,0 +1,25 @@
+title: Bastion Login Failure
+id: ee7c288b-b12b-4c57-b663-2cf75c23ec11
+status: experimental
+description: |
+    Records every failed JumpServer or Teleport login (bad password, OTP failure, unknown
+    user, SSO error). Low severity and meant for hunting and correlation: a burst for one
+    user or one source address is a password-guessing attempt.
+author: homelab detection engineering
+date: '2026/11/11'
+tags:
+    - attack.credential-access
+    - attack.t1110
+logsource:
+    category: pam
+detection:
+    selection:
+        event.module:
+            - jumpserver
+            - teleport
+        event.category: authentication
+        event.outcome: failure
+    condition: selection
+falsepositives:
+    - Mistyped passwords and expired OTP codes
+level: low

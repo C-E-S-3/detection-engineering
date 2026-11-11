@@ -1,0 +1,39 @@
+title: Shell History Tampering In A Bastion Session
+id: 5f282ba9-4a05-4a1e-a838-a1d9718e062f
+status: experimental
+description: |
+    Detects commands that clear or disable shell history, typed through a PAM bastion
+    (JumpServer session command log or a Teleport exec event). The bastion keeps its own
+    record of the session, so turning off history on the target is pointless for honest
+    use and a classic step to hide activity on the host itself.
+author: homelab detection engineering
+date: '2026/11/11'
+references:
+    - https://attack.mitre.org/techniques/T1070/003/
+tags:
+    - attack.defense-evasion
+    - attack.t1070.003
+logsource:
+    category: pam
+detection:
+    selection_module:
+        event.module:
+            - jumpserver
+            - teleport
+    selection_history:
+        process.command_line|contains:
+            - 'history -c'
+            - 'history -w /dev/null'
+            - 'unset HISTFILE'
+            - 'HISTFILE=/dev/null'
+            - 'HISTSIZE=0'
+            - 'HISTFILESIZE=0'
+            - 'set +o history'
+    selection_null_history:
+        process.command_line|contains|all:
+            - '_history'
+            - '/dev/null'
+    condition: selection_module and (selection_history or selection_null_history)
+falsepositives:
+    - Template or image sealing done interactively through the bastion
+level: high
