@@ -1,0 +1,26 @@
+title: JumpServer System Setting Changed
+id: 4e797c16-e35c-4fa7-b5f2-39495b2a5fb6
+status: experimental
+description: |
+    Detects an update to JumpServer system settings (authentication, MFA, password
+    policy, LDAP/OIDC, security settings). Weakening these, for example turning off
+    mandatory MFA, is a defense-evasion step. Low severity: settings also change during
+    normal administration; review together with the user and source address.
+author: homelab detection engineering
+date: '2026/11/11'
+tags:
+    - attack.defense-evasion
+    - attack.t1556
+logsource:
+    category: pam
+    product: jumpserver
+detection:
+    selection:
+        event.module: jumpserver
+        event.dataset: jumpserver.operation
+        event.action: update
+        jumpserver.operation.resource_type|contains: 'System setting'
+    condition: selection
+falsepositives:
+    - Routine administration of JumpServer settings
+level: low

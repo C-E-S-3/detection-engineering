@@ -1,0 +1,34 @@
+title: Successful Bastion Login From A Public IP Address
+id: 2f17f700-2711-408d-b3be-2083a17515e2
+status: experimental
+description: |
+    Detects a successful JumpServer or Teleport login whose client address is outside the
+    RFC 1918, loopback and CGNAT ranges. Bastions are normally reached from the internal
+    network; a login from the internet means an external access path (reverse proxy,
+    tunnel, exposed port) was used and should match a known operator.
+author: homelab detection engineering
+date: '2026/11/11'
+tags:
+    - attack.initial-access
+    - attack.t1078
+    - attack.t1133
+logsource:
+    category: pam
+detection:
+    selection:
+        event.module:
+            - jumpserver
+            - teleport
+        event.category: authentication
+        event.outcome: success
+    filter_internal:
+        source.ip|cidr:
+            - '10.0.0.0/8'
+            - '172.16.0.0/12'
+            - '192.168.0.0/16'
+            - '127.0.0.0/8'
+            - '100.64.0.0/10'
+    condition: selection and not filter_internal
+falsepositives:
+    - Operators logging in remotely through a sanctioned external access path
+level: medium

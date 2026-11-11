@@ -1,0 +1,41 @@
+title: JumpServer Access Control Changed
+id: 43805dbf-d77e-44ff-811a-f467813cf18e
+status: experimental
+description: |
+    Detects a create, update or delete of a JumpServer object that decides who can reach
+    what: asset permissions, organization role bindings, roles, ACLs and command
+    filters/groups. Attackers with an admin session widen their own access this way, or
+    remove the filter that would block them.
+author: homelab detection engineering
+date: '2026/11/11'
+tags:
+    - attack.persistence
+    - attack.privilege-escalation
+    - attack.defense-evasion
+    - attack.t1098
+logsource:
+    category: pam
+    product: jumpserver
+detection:
+    selection:
+        event.module: jumpserver
+        event.dataset: jumpserver.operation
+        event.action:
+            - create
+            - update
+            - delete
+    selection_resource:
+        jumpserver.operation.resource_type|contains:
+            - 'Asset permission'
+            - 'Organization role binding'
+            - 'role'
+            - 'ACL'
+            - 'Command filter'
+            - 'Command group'
+    filter_system_role_grant:
+        event.action: create
+        jumpserver.operation.resource_type|contains: 'System role binding'
+    condition: selection and selection_resource and not filter_system_role_grant
+falsepositives:
+    - Routine permission maintenance by administrators
+level: medium

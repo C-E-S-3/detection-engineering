@@ -1,0 +1,27 @@
+title: JumpServer System Role Granted
+id: 80e9cf42-702b-4b80-9ef1-21302901294e
+status: experimental
+description: |
+    Detects a new JumpServer system role binding, i.e. a user was given a system-wide role
+    such as System Admin or System Auditor. System roles control the whole PAM, including
+    every vaulted credential and session replay, so granting one is a privilege escalation
+    that should always be expected.
+author: homelab detection engineering
+date: '2026/11/11'
+tags:
+    - attack.persistence
+    - attack.privilege-escalation
+    - attack.t1098
+logsource:
+    category: pam
+    product: jumpserver
+detection:
+    selection:
+        event.module: jumpserver
+        event.dataset: jumpserver.operation
+        event.action: create
+        jumpserver.operation.resource_type|contains: 'System role binding'
+    condition: selection
+falsepositives:
+    - Planned onboarding of a new administrator
+level: high

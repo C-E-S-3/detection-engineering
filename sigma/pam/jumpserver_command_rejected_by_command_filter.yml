@@ -1,0 +1,28 @@
+title: JumpServer Command Blocked By Command Filter
+id: 80d520c6-b8ac-48f4-8ebf-fc53b49dcefa
+status: experimental
+description: |
+    Detects a command typed in a JumpServer-brokered session that a command filter ACL
+    rejected (risk level Reject, or Review & Reject after an approval request). Command
+    filters guard against destructive or policy-violating commands on managed assets, so a
+    block means someone tried exactly what the policy forbids - an operator mistake, or an
+    attacker using a hijacked bastion account probing what is allowed.
+author: homelab detection engineering
+date: '2026/11/11'
+tags:
+    - attack.execution
+    - attack.t1059.004
+logsource:
+    category: pam
+    product: jumpserver
+detection:
+    selection:
+        event.module: jumpserver
+        event.dataset: jumpserver.session_command
+        jumpserver.session_command.risk_level:
+            - 5
+            - 6
+    condition: selection
+falsepositives:
+    - An administrator testing a newly created command filter
+level: high

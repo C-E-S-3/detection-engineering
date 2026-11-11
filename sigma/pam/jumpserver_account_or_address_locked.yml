@@ -1,0 +1,25 @@
+title: JumpServer Account Or Source Address Locked
+id: d43e2ae7-7b9b-4161-a1aa-fc4ae2518f2c
+status: experimental
+description: |
+    Detects a JumpServer login refused because the account, the source address or MFA was
+    locked after too many failures. Lockout is JumpServer's own brute-force threshold, so
+    this is the point where repeated failed logins stopped being typos.
+author: homelab detection engineering
+date: '2026/11/11'
+tags:
+    - attack.credential-access
+    - attack.t1110
+logsource:
+    category: pam
+    product: jumpserver
+detection:
+    selection:
+        event.module: jumpserver
+        event.dataset: jumpserver.login
+        event.outcome: failure
+        jumpserver.login.reason|contains: 'has been locked'
+    condition: selection
+falsepositives:
+    - A user repeatedly mistyping a password or an out-of-sync OTP device
+level: medium
