@@ -1,0 +1,46 @@
+title: Firewall Allowed SMB Or NetBIOS Session To A Public Address
+id: 67e425e9-7501-4c25-a23f-ab2c22293d3c
+status: experimental
+description: |
+  Detects firewall-permitted connections to TCP 445 / 139 whose destination is not a
+  private, loopback, link-local or CGNAT address (pf filter log). SMB has no
+  legitimate reason to leave a typical network, and an outbound SMB session is the
+  network-side trace of forced NTLM authentication: a crafted Outlook message
+  (CVE-2026-124194), .url / .library-ms / .lnk lures or document UNC paths make the
+  client authenticate to an attacker server and leak the NTLMv2 hash for cracking or
+  relay. Detects the technique independent of the client application or lure.
+references:
+  - https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+  - https://attack.mitre.org/techniques/T1187/
+author: threat-intel-sigma-agent
+date: '2026/11/11'
+tags:
+  - attack.credential_access
+  - attack.t1187
+  - attack.t1557.001
+  - attack.exfiltration
+  - attack.t1048
+logsource:
+  product: opnsense
+  category: firewall
+detection:
+  selection:
+    destination.port:
+      - 445
+      - 139
+    event.action: 'pass'
+  filter_non_public:
+    destination.ip|cidr:
+      - '10.0.0.0/8'
+      - '172.16.0.0/12'
+      - '192.168.0.0/16'
+      - '100.64.0.0/10'
+      - '127.0.0.0/8'
+      - '169.254.0.0/16'
+      - '224.0.0.0/4'
+      - '255.255.255.255/32'
+  condition: selection and not filter_non_public
+falsepositives:
+  - Sanctioned SMB to cloud file shares (e.g. Azure Files over 445)
+  - Inbound SMB from the internet to a deliberately exposed share (also worth a look)
+level: high

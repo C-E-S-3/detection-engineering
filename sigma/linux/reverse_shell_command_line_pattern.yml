@@ -1,0 +1,108 @@
+title: Linux Reverse Shell Command Line Pattern
+id: d37fa675-fb76-4c46-9472-04358f823d99
+status: experimental
+description: |
+  Detects a process whose command line matches a classic interactive reverse-shell
+  idiom, regardless of which process started it: bash/sh redirecting to /dev/tcp or
+  /dev/udp, netcat with -e / -c, socat exec/system with a pty, a mkfifo-and-netcat
+  relay, or a one-line Python/Perl/PHP/Ruby socket shell. Post-exploitation of
+  management and AI-serving platforms (GPUStack CVE-2026-102895 abuse of inference
+  backend registration, Xen Orchestra VSA-2026-062 hypervisor takeover) ended with
+  exactly this kind of callback. Parent-specific rules (web server, Node.js) exist;
+  this rule covers every other parent, such as Python model servers, Go daemons,
+  hypervisor agents or cron jobs dropped by an attacker.
+references:
+  - https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+  - https://docs.vates.tech/security-advisories/advisories/2026/vates-sa-2026-062/
+  - https://attack.mitre.org/techniques/T1059/004/
+author: threat-intel-sigma-agent
+date: '2026/11/11'
+tags:
+  - attack.execution
+  - attack.t1059.004
+  - attack.t1059.006
+  - attack.command_and_control
+  - attack.t1071
+  - attack.t1095
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_dev_tcp:
+    # require the shell's own stdin/stdout to be bound to the socket: port probes
+    # ("echo > /dev/tcp/h/p", "</dev/tcp/h/p", "exec 3<>/dev/tcp/h/p; head <&3") do not match
+    CommandLine|contains:
+      - '/dev/tcp/'
+      - '/dev/udp/'
+  selection_dev_tcp_redirect:
+    CommandLine|contains:
+      - '0>&1'
+      - '0<&'
+      - '>& /dev/tcp/'
+      - '>&/dev/tcp/'
+      - '>& /dev/udp/'
+      - '>&/dev/udp/'
+  selection_nc_exec:
+    Image|endswith:
+      - '/nc'
+      - '/ncat'
+      - '/netcat'
+      - '/nc.traditional'
+      - '/nc.openbsd'
+    CommandLine|contains:
+      - ' -e /bin/'
+      - ' -e sh'
+      - ' -e bash'
+      - ' -c /bin/'
+      - ' -c sh'
+      - ' -c bash'
+  selection_busybox_nc_exec:
+    Image|endswith: '/busybox'
+    CommandLine|contains|all:
+      - ' nc '
+      - ' -e '
+  selection_socat:
+    Image|endswith: '/socat'
+    CommandLine|contains:
+      - 'exec:'
+      - 'EXEC:'
+      - 'system:'
+      - 'SYSTEM:'
+  selection_fifo:
+    CommandLine|contains|all:
+      - 'mkfifo '
+      - ' nc '
+  selection_script_socket:
+    # the interpreter itself must be the process, not a shell wrapping a long script
+    Image|contains:
+      - '/python'
+      - '/perl'
+      - '/php'
+      - '/ruby'
+    CommandLine|contains|all:
+      - 'socket'
+      - 'connect'
+    CommandLine|contains:
+      - '/bin/sh'
+      - '/bin/bash'
+      - 'pty.spawn'
+      - 'dup2'
+  filter_loopback:
+    CommandLine|contains:
+      - '/dev/tcp/127.'
+      - '/dev/udp/127.'
+      - '/dev/tcp/localhost/'
+      - '/dev/udp/localhost/'
+      - "('127."
+      - '("127.'
+      - "('localhost'"
+      - '("localhost"'
+      - ' 127.0.0.1 '
+      - ' localhost '
+  condition: >
+    ((selection_dev_tcp and selection_dev_tcp_redirect) or selection_nc_exec or
+    selection_busybox_nc_exec or selection_socat or selection_fifo or selection_script_socket) and not filter_loopback
+falsepositives:
+  - Administrators testing port reachability with bash /dev/tcp (e.g. timeout 1 bash -c 'echo > /dev/tcp/host/port')
+  - Red-team or purple-team exercises
+level: high
