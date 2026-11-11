@@ -1,0 +1,71 @@
+title: Discovery Command Run As Non-Interactive SSH Session Command
+id: 81c58553-2d07-4d36-9db8-3bbf33a895fb
+status: experimental
+description: |
+  Detects id, whoami, uname or hostname run as the remote command of a
+  non-interactive SSH session (ssh host 'id; uname -a'): either the binary is started
+  directly by sshd, or sshd starts the user's shell with -c and that command line
+  contains the discovery command. Exploitation of the OpenSSH "SSHole" musl crypt()
+  authentication bypass (CVE-2026-123158) was immediately followed by exactly this: a
+  non-interactive session running id/uname/hostname. The same pattern is typical of
+  botnets and brute-forcers validating a freshly obtained login before dropping a
+  payload. Interactive logins (login shell, motd scripts) do not match.
+references:
+  - https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+  - https://attack.mitre.org/techniques/T1082/
+author: threat-intel-sigma-agent
+date: '2026/11/11'
+tags:
+  - attack.initial_access
+  - attack.t1078.003
+  - attack.discovery
+  - attack.t1082
+  - attack.t1033
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_parent:
+    ParentImage|endswith: '/sshd'
+  selection_direct:
+    Image|endswith:
+      - '/id'
+      - '/whoami'
+      - '/uname'
+      - '/hostname'
+  selection_shell:
+    Image|endswith:
+      - '/sh'
+      - '/bash'
+      - '/dash'
+      - '/ash'
+      - '/zsh'
+      - '/busybox'
+    CommandLine|contains: ' -c '
+  selection_shell_recon:
+    CommandLine|contains:
+      - ' -c id'
+      - " -c 'id"
+      - ' -c "id'
+      - 'id;'
+      - '; id'
+      - ';id'
+      - '&& id'
+      - 'whoami'
+      - 'uname -a'
+      - 'uname -m'
+      - 'uname;'
+      - ' -c uname'
+      - " -c 'uname"
+      - ' -c "uname'
+      - ' -c hostname'
+      - " -c 'hostname"
+      - ' -c "hostname'
+      - '; hostname'
+  filter_motd:
+    CommandLine|contains: 'update-motd'
+  condition: selection_parent and (selection_direct or (selection_shell and selection_shell_recon)) and not filter_motd
+falsepositives:
+  - Monitoring or inventory scripts that ssh into hosts and run uname/hostname/whoami
+  - Administrators running quick one-off ssh commands
+level: medium
