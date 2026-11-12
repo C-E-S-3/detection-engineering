@@ -14,17 +14,13 @@
   executors:
   - platform: linux
     name: sh
+    # Base64-wrapped. Sandcat's sh executor strips the newlines from a
+    # multi-line command, so an inline multi-line `python3 -c "..."`
+    # collapses onto one line and dies with a SyntaxError (the syscall
+    # never fires). The script is base64 (no newlines) and decoded at run
+    # time; it decodes to the Python this ability documents. (2026-11-12)
     command: |
-      python3 -c "
-      import os
-      path = '/etc/shadow'
-      try:
-          fd = os.open(path, os.O_RDONLY)
-          os.close(fd)
-          print('shadow_open=ok bytes_read=0')
-      except OSError as exc:
-          print('shadow_open=fail errno=%s' % (exc.errno,))
-      " 2>&1 || true
+      echo aW1wb3J0IG9zCnBhdGggPSAnL2V0Yy9zaGFkb3cnCnRyeToKICAgIGZkID0gb3Mub3BlbihwYXRoLCBvcy5PX1JET05MWSkKICAgIG9zLmNsb3NlKGZkKQogICAgcHJpbnQoJ3NoYWRvd19vcGVuPW9rIGJ5dGVzX3JlYWQ9MCcpCmV4Y2VwdCBPU0Vycm9yIGFzIGV4YzoKICAgIHByaW50KCdzaGFkb3dfb3Blbj1mYWlsIGVycm5vPSVzJyAlIChleGMuZXJybm8sKSkK | base64 -d | python3 2>&1 || true
     cleanup:
     - |
       true

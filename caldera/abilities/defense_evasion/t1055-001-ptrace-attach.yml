@@ -14,16 +14,13 @@
   executors:
   - platform: linux
     name: sh
+    # Base64-wrapped. Sandcat's sh executor strips the newlines from a
+    # multi-line command, so an inline multi-line `python3 -c "..."`
+    # collapses onto one line and dies with a SyntaxError (the syscall
+    # never fires). The script is base64 (no newlines) and decoded at run
+    # time; it decodes to the Python this ability documents. (2026-11-12)
     command: |
-      python3 -c "
-      import ctypes, os
-      libc = ctypes.CDLL(None)
-      PTRACE_ATTACH = 16
-      target = os.getppid()
-      ret = libc.ptrace(PTRACE_ATTACH, target, 0, 0)
-      err = ctypes.get_errno()
-      print(f'ptrace(PTRACE_ATTACH, {target}) ret={ret} errno={err}')
-      " 2>&1 || true
+      echo aW1wb3J0IGN0eXBlcywgb3MKbGliYyA9IGN0eXBlcy5DRExMKE5vbmUpClBUUkFDRV9BVFRBQ0ggPSAxNgp0YXJnZXQgPSBvcy5nZXRwcGlkKCkKcmV0ID0gbGliYy5wdHJhY2UoUFRSQUNFX0FUVEFDSCwgdGFyZ2V0LCAwLCAwKQplcnIgPSBjdHlwZXMuZ2V0X2Vycm5vKCkKcHJpbnQoZidwdHJhY2UoUFRSQUNFX0FUVEFDSCwge3RhcmdldH0pIHJldD17cmV0fSBlcnJubz17ZXJyfScpCg== | base64 -d | python3 2>&1 || true
     cleanup:
     - |
       true

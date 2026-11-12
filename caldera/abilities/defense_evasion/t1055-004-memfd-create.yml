@@ -14,19 +14,13 @@
   executors:
   - platform: linux
     name: sh
+    # Base64-wrapped. Sandcat's sh executor strips the newlines from a
+    # multi-line command, so an inline multi-line `python3 -c "..."`
+    # collapses onto one line and dies with a SyntaxError (the syscall
+    # never fires). The script is base64 (no newlines) and decoded at run
+    # time; it decodes to the Python this ability documents. (2026-11-12)
     command: |
-      python3 -c "
-      import ctypes, ctypes.util, os
-      libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
-      MFD_CLOEXEC = 1
-      fd = libc.memfd_create(b'pt_phase2_test', MFD_CLOEXEC)
-      err = ctypes.get_errno()
-      if fd >= 0:
-          print(f'memfd_create returned fd={fd} (success)')
-          os.close(fd)
-      else:
-          print(f'memfd_create failed: errno={err}')
-      " 2>&1 || true
+      echo aW1wb3J0IGN0eXBlcywgY3R5cGVzLnV0aWwsIG9zCmxpYmMgPSBjdHlwZXMuQ0RMTChjdHlwZXMudXRpbC5maW5kX2xpYnJhcnkoJ2MnKSwgdXNlX2Vycm5vPVRydWUpCk1GRF9DTE9FWEVDID0gMQpmZCA9IGxpYmMubWVtZmRfY3JlYXRlKGIncHRfcGhhc2UyX3Rlc3QnLCBNRkRfQ0xPRVhFQykKZXJyID0gY3R5cGVzLmdldF9lcnJubygpCmlmIGZkID49IDA6CiAgICBwcmludChmJ21lbWZkX2NyZWF0ZSByZXR1cm5lZCBmZD17ZmR9IChzdWNjZXNzKScpCiAgICBvcy5jbG9zZShmZCkKZWxzZToKICAgIHByaW50KGYnbWVtZmRfY3JlYXRlIGZhaWxlZDogZXJybm89e2Vycn0nKQo= | base64 -d | python3 2>&1 || true
     cleanup:
     - |
       true
