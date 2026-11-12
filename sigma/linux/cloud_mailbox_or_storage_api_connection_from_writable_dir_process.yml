@@ -1,0 +1,66 @@
+title: Cloud Mailbox Or Storage API Connection From Process In Writable Directory
+id: 9f2d29bd-76c6-4c7e-b72a-6a8d957b566e
+status: experimental
+description: |
+  Detects an outbound network connection to a cloud mailbox, file-storage or paste API
+  (Microsoft Graph, OneDrive/SharePoint, Outlook, Dropbox, Google Drive, Box, MEGA,
+  pCloud, Pastebin) made by a binary running from a world-writable or temporary location
+  (/tmp, /var/tmp, /dev/shm, /run/user, hidden dot-directories). Backdoors increasingly
+  use these services as dead-drop C2. The Antino Rust backdoor (UAT-11587) polls a
+  Microsoft 365 mailbox through the Graph API every few seconds for commands written as
+  email drafts, and uses OneDrive for staging and exfiltration. The traffic is TLS to a
+  trusted SaaS domain, so the reliable signal is who makes the call: legitimate sync
+  clients and SDK-based tools are installed packages or services, while a freshly dropped
+  implant typically runs from a temp or hidden directory.
+references:
+  - https://blog.talosintelligence.com/china-nexus-uat-11587-targets-government-and-policy-organizations-across-asia-with-antino-backdoor/
+  - https://attack.mitre.org/techniques/T1102/002/
+  - https://attack.mitre.org/techniques/T1567/002/
+author: threat-intel-sigma-agent
+date: '2026/11/12'
+tags:
+  - attack.command_and_control
+  - attack.t1102.002
+  - attack.t1102.001
+  - attack.exfiltration
+  - attack.t1567.002
+logsource:
+  product: linux
+  category: network_connection
+detection:
+  selection_dest:
+    - DestinationHostname:
+        - 'graph.microsoft.com'
+        - 'outlook.office.com'
+        - 'outlook.office365.com'
+        - 'onedrive.live.com'
+        - 'api.onedrive.com'
+        - 'my.microsoftpersonalcontent.com'
+        - 'content.dropboxapi.com'
+        - 'api.dropboxapi.com'
+        - 'www.googleapis.com'
+        - 'gmail.googleapis.com'
+        - 'drive.googleapis.com'
+        - 'api.box.com'
+        - 'upload.box.com'
+        - 'g.api.mega.co.nz'
+        - 'api.pcloud.com'
+        - 'eapi.pcloud.com'
+        - 'pastebin.com'
+    - DestinationHostname|endswith: '.sharepoint.com'
+  selection_image:
+    Image|contains:
+      - '/tmp/'
+      - '/var/tmp/'
+      - '/dev/shm/'
+      - '/run/user/'
+      - '/run/shm/'
+      - '/var/run/user/'
+      - '/.cache/'
+      - '/.local/share/.'
+      - '/.config/.'
+  condition: selection_dest and selection_image
+falsepositives:
+  - Developers running freshly built Graph, Drive or Dropbox client binaries out of /tmp or a build cache
+  - Self-extracting tools (PyInstaller, AppImage) that unpack to /tmp and sync files to cloud storage
+level: high
