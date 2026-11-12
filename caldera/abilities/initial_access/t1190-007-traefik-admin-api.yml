@@ -13,14 +13,12 @@
   executors:
   - platform: linux
     name: sh
+    # NB: keep this a single line. Sandcat's `sh` executor fails a multi-line
+    # `for … do … done` block with `Syntax error: end of file unexpected
+    # (expecting "done")` (exit 2), so the probe never runs. One line with
+    # `;` separators executes correctly. (Phase 2 re-run 2026-11-11.)
     command: |
-      for endpoint in /api/rawdata /api/http/routers /api/overview /api/version /api/entrypoints; do
-        curl -sk -o /dev/null -w "traefik_api ${endpoint} status=%{http_code}\n" \
-          "http://#{app.web_target}${endpoint}" \
-          -H "X-Purple-Team-Exercise: phase2-t1190-traefik-api" \
-          --max-time 10 2>&1 || true
-        sleep 1
-      done
+      for e in /api/rawdata /api/http/routers /api/overview /api/version /api/entrypoints; do curl -sk -o /dev/null -w "traefik_api ${e} status=%{http_code}\n" "http://#{app.web_target}${e}" -H "X-Purple-Team-Exercise: phase2-t1190-traefik-api" --max-time 10 2>&1 || true; sleep 1; done
     cleanup:
     - |
       true
