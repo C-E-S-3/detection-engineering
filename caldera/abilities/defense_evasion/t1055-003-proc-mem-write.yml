@@ -14,21 +14,13 @@
   executors:
   - platform: linux
     name: sh
+    # Base64-wrapped. Sandcat's sh executor strips the newlines from a
+    # multi-line command, so an inline multi-line `python3 -c "..."`
+    # collapses onto one line and dies with a SyntaxError (the syscall
+    # never fires). The script is base64 (no newlines) and decoded at run
+    # time; it decodes to the Python this ability documents. (2026-11-12)
     command: |
-      python3 -c "
-      import os
-      target_pid = os.getppid()
-      mem_path = f'/proc/{target_pid}/mem'
-      print(f'Attempting write open of {mem_path}')
-      try:
-          fd = os.open(mem_path, os.O_WRONLY)
-          os.close(fd)
-          print('open succeeded (running as root?)')
-      except PermissionError as e:
-          print(f'Expected PermissionError: {e}')
-      except OSError as e:
-          print(f'OSError: {e}')
-      " 2>&1 || true
+      echo aW1wb3J0IG9zCnRhcmdldF9waWQgPSBvcy5nZXRwcGlkKCkKbWVtX3BhdGggPSBmJy9wcm9jL3t0YXJnZXRfcGlkfS9tZW0nCnByaW50KGYnQXR0ZW1wdGluZyB3cml0ZSBvcGVuIG9mIHttZW1fcGF0aH0nKQp0cnk6CiAgICBmZCA9IG9zLm9wZW4obWVtX3BhdGgsIG9zLk9fV1JPTkxZKQogICAgb3MuY2xvc2UoZmQpCiAgICBwcmludCgnb3BlbiBzdWNjZWVkZWQgKHJ1bm5pbmcgYXMgcm9vdD8pJykKZXhjZXB0IFBlcm1pc3Npb25FcnJvciBhcyBlOgogICAgcHJpbnQoZidFeHBlY3RlZCBQZXJtaXNzaW9uRXJyb3I6IHtlfScpCmV4Y2VwdCBPU0Vycm9yIGFzIGU6CiAgICBwcmludChmJ09TRXJyb3I6IHtlfScpCg== | base64 -d | python3 2>&1 || true
     cleanup:
     - |
       true

@@ -14,22 +14,13 @@
   executors:
   - platform: linux
     name: sh
+    # Base64-wrapped. Sandcat's sh executor strips the newlines from a
+    # multi-line command, so an inline multi-line `python3 -c "..."`
+    # collapses onto one line and dies with a SyntaxError (the syscall
+    # never fires). The script is base64 (no newlines) and decoded at run
+    # time; it decodes to the Python this ability documents. (2026-11-12)
     command: |
-      python3 -c "
-      import ctypes, ctypes.util, os
-      libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
-      target_pid = os.getppid()
-      buf = ctypes.create_string_buffer(b'PT_PHASE2_TEST', 16)
-      class iovec(ctypes.Structure):
-          _fields_ = [('iov_base', ctypes.c_void_p), ('iov_len', ctypes.c_size_t)]
-      local_iov = iovec(ctypes.addressof(buf), 16)
-      remote_iov = iovec(ctypes.c_void_p(0x1000), 16)
-      ret = libc.process_vm_writev(target_pid,
-                                   ctypes.byref(local_iov), 1,
-                                   ctypes.byref(remote_iov), 1, 0)
-      err = ctypes.get_errno()
-      print(f'process_vm_writev(pid={target_pid}) ret={ret} errno={err}')
-      " 2>&1 || true
+      echo aW1wb3J0IGN0eXBlcywgY3R5cGVzLnV0aWwsIG9zCmxpYmMgPSBjdHlwZXMuQ0RMTChjdHlwZXMudXRpbC5maW5kX2xpYnJhcnkoJ2MnKSwgdXNlX2Vycm5vPVRydWUpCnRhcmdldF9waWQgPSBvcy5nZXRwcGlkKCkKYnVmID0gY3R5cGVzLmNyZWF0ZV9zdHJpbmdfYnVmZmVyKGInUFRfUEhBU0UyX1RFU1QnLCAxNikKY2xhc3MgaW92ZWMoY3R5cGVzLlN0cnVjdHVyZSk6CiAgICBfZmllbGRzXyA9IFsoJ2lvdl9iYXNlJywgY3R5cGVzLmNfdm9pZF9wKSwgKCdpb3ZfbGVuJywgY3R5cGVzLmNfc2l6ZV90KV0KbG9jYWxfaW92ID0gaW92ZWMoY3R5cGVzLmFkZHJlc3NvZihidWYpLCAxNikKcmVtb3RlX2lvdiA9IGlvdmVjKGN0eXBlcy5jX3ZvaWRfcCgweDEwMDApLCAxNikKcmV0ID0gbGliYy5wcm9jZXNzX3ZtX3dyaXRldih0YXJnZXRfcGlkLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgIGN0eXBlcy5ieXJlZihsb2NhbF9pb3YpLCAxLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgIGN0eXBlcy5ieXJlZihyZW1vdGVfaW92KSwgMSwgMCkKZXJyID0gY3R5cGVzLmdldF9lcnJubygpCnByaW50KGYncHJvY2Vzc192bV93cml0ZXYocGlkPXt0YXJnZXRfcGlkfSkgcmV0PXtyZXR9IGVycm5vPXtlcnJ9JykK | base64 -d | python3 2>&1 || true
     cleanup:
     - |
       true
