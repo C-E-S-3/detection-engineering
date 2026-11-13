@@ -1,0 +1,54 @@
+title: Linux Cryptocurrency Miner Command Line
+id: 19ab7aaa-62c4-40f9-a91a-15007253f405
+status: experimental
+description: |
+  Detects a process started with command-line arguments characteristic of a
+  cryptocurrency miner: a stratum pool URL (stratum+tcp://, stratum+ssl://,
+  stratum2+tcp://) or XMRig / CPU-miner specific options such as --donate-level,
+  --randomx-*, --cpu-max-threads-hint, --coin or the "-a rx/0" algorithm selector.
+  Mass exploitation of internet-facing management software routinely ends in a
+  downloaded shell script that starts XMRig. The N-able N-central "4EverAble2Shell"
+  chain (Apache Axis CVE-2026-90436) was used within hours of the PoC to deploy an
+  XMRig Monero miner as root. The rule keys on the miner's own arguments, so renamed
+  binaries are still caught as long as the configuration is passed on the command line.
+references:
+  - https://www.bleepingcomputer.com/news/security/new-n-able-4everable2shell-zero-day-exploited-hours-after-poc-released/
+  - https://attack.mitre.org/techniques/T1496/001/
+author: threat-intel-sigma-agent
+date: '2026/11/13'
+tags:
+  - attack.impact
+  - attack.t1496.001
+  - attack.initial_access
+  - attack.t1190
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_stratum:
+    CommandLine|contains:
+      - 'stratum+tcp://'
+      - 'stratum+ssl://'
+      - 'stratum+tls://'
+      - 'stratum1+tcp://'
+      - 'stratum2+tcp://'
+      - 'stratum2+ssl://'
+  selection_xmrig_options:
+    CommandLine|contains:
+      - '--donate-level'
+      - '--randomx-1gb-pages'
+      - '--randomx-mode'
+      - '--randomx-no-numa'
+      - '--cpu-max-threads-hint'
+      - '--cpu-priority'
+      - '--nicehash'
+      - ' -a rx/0 '
+      - ' --algo=rx/0'
+      - ' --algo rx/0'
+      - ' --coin=monero'
+      - ' --coin monero'
+  condition: selection_stratum or selection_xmrig_options
+falsepositives:
+  - Hosts that intentionally run a cryptocurrency miner
+  - Security researchers analysing miner samples
+level: high

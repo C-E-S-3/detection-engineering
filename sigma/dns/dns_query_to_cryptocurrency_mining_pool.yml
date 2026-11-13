@@ -1,0 +1,69 @@
+title: DNS Query To Public Cryptocurrency Mining Pool
+id: baf84ffa-5f0d-4cad-bdd2-6b7c9151ec6a
+status: experimental
+description: |
+  Detects DNS resolution of large public cryptocurrency mining pools, chiefly Monero
+  pools used by XMRig (SupportXMR, MoneroOcean, NanoPool, 2Miners, HashVault, C3Pool,
+  HeroMiners, unMineable, XMRPool.eu, P2Pool, Kryptex, F2Pool, MinerGate, zpool,
+  Zergpool and NiceHash stratum endpoints). Cryptojacking is the default
+  monetisation of opportunistic mass exploitation: the N-able N-central
+  "4EverAble2Shell" chain (Apache Axis CVE-2026-90436) was used within hours of the
+  PoC to drop an XMRig miner. Miners must resolve their pool, so this catches
+  infections where the miner configuration is in a file (and therefore not visible on
+  the command line), on any host using the internal resolvers, including devices
+  without endpoint telemetry. This is a service category, not campaign IOCs.
+references:
+  - https://www.bleepingcomputer.com/news/security/new-n-able-4everable2shell-zero-day-exploited-hours-after-poc-released/
+  - https://attack.mitre.org/techniques/T1496/001/
+author: threat-intel-sigma-agent
+date: '2026/11/13'
+tags:
+  - attack.impact
+  - attack.t1496.001
+  - attack.command_and_control
+  - attack.t1071.001
+logsource:
+  category: dns
+detection:
+  selection_exact:
+    query:
+      - 'supportxmr.com'
+      - 'moneroocean.stream'
+      - 'nanopool.org'
+      - '2miners.com'
+      - 'hashvault.pro'
+      - 'c3pool.com'
+      - 'c3pool.org'
+      - 'herominers.com'
+      - 'unmineable.com'
+      - 'xmrpool.eu'
+      - 'p2pool.io'
+      - 'kryptex.network'
+      - 'f2pool.com'
+      - 'minergate.com'
+      - 'zpool.ca'
+      - 'zergpool.com'
+  selection_sub:
+    query|endswith:
+      - '.supportxmr.com'
+      - '.moneroocean.stream'
+      - '.nanopool.org'
+      - '.2miners.com'
+      - '.hashvault.pro'
+      - '.c3pool.com'
+      - '.c3pool.org'
+      - '.herominers.com'
+      - '.unmineable.com'
+      - '.xmrpool.eu'
+      - '.p2pool.io'
+      - '.kryptex.network'
+      - '.f2pool.com'
+      - '.minergate.com'
+      - '.zpool.ca'
+      - '.zergpool.com'
+      - '.nicehash.com'
+  condition: selection_exact or selection_sub
+falsepositives:
+  - A user browsing a mining pool's website or dashboard
+  - Hosts that intentionally run a cryptocurrency miner
+level: high
