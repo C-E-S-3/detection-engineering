@@ -1,0 +1,60 @@
+title: Virtual Machine Disk Or Config Files Destroyed Via Command Line
+id: 2ea72180-ae6f-4047-8d7e-e1526377eddb
+status: experimental
+description: |
+  Detects command-line tools that delete, shred, truncate or overwrite virtual machine
+  disk images and VM configuration files (VMware .vmdk/.vmx/.vmsn/.vmem/.nvram, QEMU/KVM
+  .qcow2, Hyper-V .vhdx, anything under typical VM image directories), either directly or
+  through find -delete / find -exec. Destructive actors who reach a
+  hypervisor or a host that mounts a datastore wipe these files to cause maximum outage;
+  attackers behind the Check Point Gaia CVE-2026-123039 chain wiped .vmdk and .vmx files on
+  attached ESXi datastores. The rule looks for the technique in general, not for that
+  campaign. Removing whole VMs through the hypervisor's own management tooling does not
+  go through these CLI tools and does not alert.
+references:
+  - https://www.cisa.gov/news-events/alerts/2026/11/13/cisa-adds-two-known-exploited-vulnerabilities-catalog
+  - https://attack.mitre.org/techniques/T1485/
+  - https://attack.mitre.org/techniques/T1561/001/
+author: threat-intel-sigma-agent
+date: '2026/11/14'
+tags:
+  - attack.impact
+  - attack.t1485
+  - attack.t1561.001
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_tool:
+    Image|endswith:
+      - '/rm'
+      - '/unlink'
+      - '/shred'
+      - '/truncate'
+      - '/wipe'
+      - '/srm'
+  selection_find_delete:
+    Image|endswith: '/find'
+    CommandLine|contains:
+      - ' -delete'
+      - 'rm '
+      - 'shred '
+      - 'truncate '
+  selection_target:
+    CommandLine|contains:
+      - '.vmdk'
+      - '.vmx'
+      - '.vmsn'
+      - '.vmem'
+      - '.nvram'
+      - '.qcow2'
+      - '.vhdx'
+      - '/var/lib/libvirt/images/'
+      - '/var/lib/vz/images/'
+      - '/vmfs/volumes/'
+  condition: (selection_tool or selection_find_delete) and selection_target
+falsepositives:
+  - Administrators deleting obsolete VM images or failed imports by hand
+  - Build pipelines (Packer, image builders) cleaning up temporary disk images
+  - Backup jobs pruning old exported VM disks with find -delete
+level: high
