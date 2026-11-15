@@ -122,9 +122,18 @@ def _as_list(value) -> list:
 def _tags(value) -> list[str]:
     out = []
     for item in _as_list(value):
-        if isinstance(item, str):
-            out.append(item.strip().lower())
+        text = item
+        if isinstance(item, dict):
+            # Security Analytics stores tags as {"value": "attack.t1190"}.
+            text = item.get("value") or item.get("name") or item.get("tag")
+        if isinstance(text, str) and text.strip():
+            out.append(text.strip().lower())
     return out
+
+
+def _sigma_id_from_rule_yaml(rule_yaml: str) -> str:
+    match = re.search(r"(?m)^id:\s*([0-9a-fA-F-]{36})\s*$", rule_yaml)
+    return match.group(1) if match else ""
 
 
 def _timestamp(value) -> str | None:
@@ -142,8 +151,15 @@ def _timestamp(value) -> str | None:
 def normalize_rule(source: dict, fallback_id: str | None = None) -> dict | None:
     if not isinstance(source, dict):
         return None
-    nested = source.get("rule") if isinstance(source.get("rule"), dict) else {}
-    rule_id = str(source.get("id") or nested.get("id") or fallback_id or "").strip()
+    raw_rule = source.get("rule")
+    nested = raw_rule if isinstance(raw_rule, dict) else {}
+    # The rules index _id is an OpenSearch document id. The Sigma UUID lives
+    # in the stored rule YAML. Prefer that so compiled queries merge onto the
+    # repo rule instead of being skipped as a second, untagged document.
+    yaml_id = _sigma_id_from_rule_yaml(raw_rule) if isinstance(raw_rule, str) else ""
+    rule_id = str(
+        source.get("id") or nested.get("id") or yaml_id or fallback_id or ""
+    ).strip()
     title = str(source.get("title") or nested.get("title") or rule_id or "untitled")
     tags = _tags(source.get("tags") or nested.get("tags"))
     log_type = str(
