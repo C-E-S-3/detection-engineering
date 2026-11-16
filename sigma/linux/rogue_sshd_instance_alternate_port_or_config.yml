@@ -1,0 +1,74 @@
+title: Rogue SSH Daemon Started With Alternate Port, Config Or From Writable Directory
+id: 79405579-04c3-480f-aa8b-1ac250ebc8ad
+status: experimental
+description: |
+  Detects an OpenSSH server (sshd) being launched with a command-line port, an
+  alternate configuration file or inline config overrides (-p, -f, -o), or an sshd
+  binary running from a temporary / world-writable directory. Actors such as
+  BlueNoroff (FaceStealer campaign) install or activate an OpenSSH server as a
+  backdoor next to an implanted authorized key; on Linux the usual way to do that
+  without touching the system service is to start a second sshd on a high port or
+  with a private config that allows root or key-only logins. The distribution
+  service starts sshd without these options (typically "sshd -D" plus a "-t" config
+  test), so a manual or script-driven instance stands out.
+references:
+  - https://www.bleepingcomputer.com/news/security/fbi-disrupts-bluenoroff-facestealer-operation-targeting-crypto-web3/
+  - https://attack.mitre.org/techniques/T1505/004/
+author: threat-intel-sigma-agent
+date: '2026/11/16'
+tags:
+  - attack.persistence
+  - attack.t1505.004
+  - attack.command_and_control
+  - attack.t1219
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_image:
+    Image|endswith: '/sshd'
+  selection_args:
+    CommandLine|contains:
+      - ' -p '
+      - ' -p1'
+      - ' -p2'
+      - ' -p3'
+      - ' -p4'
+      - ' -p5'
+      - ' -p6'
+      - ' -p7'
+      - ' -p8'
+      - ' -p9'
+      - ' -f '
+      - ' -f/'
+      - ' -o '
+      - ' -oPort'
+      - ' -oListenAddress'
+      - ' -oPermitRootLogin'
+      - ' -oAuthorizedKeysFile'
+  selection_writable:
+    Image|startswith:
+      - '/tmp/'
+      - '/var/tmp/'
+      - '/dev/shm/'
+      - '/run/user/'
+      - '/home/'
+  filter_test:
+    CommandLine|contains:
+      - ' -t'
+      - ' -T'
+      - ' -G'
+  filter_default_config:
+    CommandLine|endswith:
+      - ' -f /etc/ssh/sshd_config'
+      - ' -D -f /etc/ssh/sshd_config'
+    Image:
+      - '/usr/sbin/sshd'
+      - '/usr/bin/sshd'
+      - '/sbin/sshd'
+  condition: selection_image and (selection_args or selection_writable) and not filter_test and not filter_default_config
+falsepositives:
+  - Administrators debugging sshd on a spare port (sshd -d -p 2222)
+  - Containers or chroot/jail setups that run a dedicated sshd with its own config file
+  - Git or SFTP-only services that run a second sshd instance with a separate config
+level: high
