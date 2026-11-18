@@ -1,0 +1,62 @@
+title: Java Runtime Spawning Shell, Download Or Recon Commands
+id: 8d372a90-3631-4142-9482-d812614c93f8
+status: experimental
+description: |
+  Detects a Java virtual machine process (java, jsvc) directly starting a Unix shell,
+  download tool, network relay, scripting interpreter or identity/host discovery binary.
+  Java application servers (Tomcat, Spring Boot, Jakarta EE, Quarkus, Micronaut) rarely
+  need to start such programs, so this parent/child pair is the most reliable
+  post-exploitation signal for remote code execution in a JVM, e.g. Java4Shell
+  (CVE-2026-114938, AVX-512 Base64 decoder heap overflow) where reverse shells, miners and
+  C2 beacons were staged from the JVM, as well as Log4Shell-style and deserialisation RCE.
+references:
+  - https://www.cisa.gov/news-events/alerts/2026/11/17/critical-java-vulnerability-requires-immediate-patching
+  - https://attack.mitre.org/techniques/T1190/
+author: threat-intel-sigma-agent
+date: '2026/11/18'
+tags:
+  - attack.initial_access
+  - attack.t1190
+  - attack.execution
+  - attack.t1059.004
+  - attack.persistence
+  - attack.t1505.003
+  - attack.discovery
+  - attack.t1033
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_parent:
+    ParentImage|endswith:
+      - '/java'
+      - '/jsvc'
+  selection_child:
+    Image|endswith:
+      - '/sh'
+      - '/bash'
+      - '/dash'
+      - '/zsh'
+      - '/ksh'
+      - '/busybox'
+      - '/curl'
+      - '/wget'
+      - '/nc'
+      - '/ncat'
+      - '/netcat'
+      - '/socat'
+      - '/python'
+      - '/python3'
+      - '/perl'
+      - '/ruby'
+      - '/whoami'
+      - '/id'
+      - '/uname'
+      - '/hostname'
+  condition: selection_parent and selection_child
+falsepositives:
+  - CI servers and build agents written in Java (Jenkins, TeamCity, Bamboo) that run build
+    steps through a shell
+  - Java services whose start scripts or plugins shell out (e.g. search engines probing the
+    host, application servers calling hostname at startup)
+level: high
