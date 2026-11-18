@@ -1,0 +1,45 @@
+title: Outbound QUIC (UDP/443) Connection From Non-Browser Process On Linux
+id: 5ddd2481-754c-4924-9bc1-241fb8387e60
+status: experimental
+description: |
+  Detects a Linux process other than a web browser opening an outbound UDP connection to
+  port 443, i.e. QUIC / HTTP/3. Servers seldom run software that speaks HTTP/3, while
+  implants increasingly embed their own QUIC library because UDP/443 escapes TCP-centric
+  TLS inspection and IDS. TGR-STA-0049 (Earth Alux / Ink Dragon / REF7707) moved its
+  PerfectPioneer and KUKURAT RAT C2 to HTTP/3 over QUIC; the same transport is offered by
+  common C2 frameworks and tunnelling tools.
+references:
+  - https://unit42.paloaltonetworks.com/custom-rats-target-southeast-asia-governments/
+  - https://attack.mitre.org/techniques/T1071/001/
+author: threat-intel-sigma-agent
+date: '2026/11/18'
+tags:
+  - attack.command_and_control
+  - attack.t1071.001
+  - attack.t1095
+  - attack.t1573.002
+logsource:
+  product: linux
+  category: network_connection
+detection:
+  selection:
+    Initiated: 'true'
+    Protocol: 'udp'
+    DestinationPort: '443'
+  filter_browser:
+    Image|contains:
+      - '/chrome'
+      - '/chromium'
+      - '/firefox'
+      - '/msedge'
+      - '/brave'
+      - '/opera'
+  condition: selection and not filter_browser
+falsepositives:
+  - Legitimate HTTP/3 clients installed on servers (curl built with HTTP/3, Caddy or other
+    reverse proxies with HTTP/3 upstreams, cloud agents or sync clients using QUIC)
+  - Headless browsers used for testing or scraping
+  - glibc getaddrinfo destination-address sorting (RFC 6724) issues a UDP connect() without
+    sending data to each candidate address of a hostname resolved for port 443; Sysmon logs
+    this as a UDP/443 connection (seen sporadically from daemons such as dockerd)
+level: medium
