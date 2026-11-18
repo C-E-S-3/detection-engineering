@@ -10,6 +10,7 @@ references:
   - https://attack.mitre.org/techniques/T1136/001/
 author: SecOps Engineer
 date: '2026/11/07'
+modified: '2026/11/18'
 tags:
   - attack.persistence
   - attack.privilege_escalation
@@ -33,8 +34,14 @@ detection:
       - /etc/shadow
       - /etc/group
       - /etc/sudoers
-  condition: selection_shell and selection_target
+  # Wazuh agent SCA (CIS duplicate user/group checks, e.g.
+  # `cut -f3 -d":" /etc/passwd | sort | uniq -dc`) runs from /var/ossec as
+  # root on every agent twice a day: read-only, ~90% of this rule's volume (30d).
+  filter_wazuh_sca:
+    process.working_directory: /var/ossec
+  condition: selection_shell and selection_target and not filter_wazuh_sca
 falsepositives:
   - An administrator editing sudoers or inspecting passwd with a command line that mentions the path
   - Package scripts that rewrite /etc/passwd
+  - Container entrypoints that check for a service user (e.g. linuxserver.io `grep abc /etc/passwd`)
 level: high
