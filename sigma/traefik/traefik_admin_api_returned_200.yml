@@ -11,7 +11,7 @@ references:
   - https://attack.mitre.org/techniques/T1190/
 author: detection-engineering
 date: '2026/11/04'
-modified: '2026/11/05'
+modified: '2026/11/19'
 tags:
   - attack.initial_access
   - attack.t1190
@@ -31,7 +31,18 @@ detection:
       - '/api/version'
   selection_status:
     http.response.status_code: 200
-  condition: selection_path and selection_status
+  # An application that serves its own UI or API under one of these prefixes
+  # (/dashboard and /api/version are common). traefik.OriginStatus is the status
+  # the routed backend returned (0 when no router matched), so OriginStatus 200
+  # from a provider-defined backend is the application's own page. Traefik's API
+  # and dashboard are served by api@internal / dashboard@internal and still alert.
+  # The filter negates OriginStatus (present on every event), not ServiceName:
+  # Security Analytics adds an _exists_ clause to a negated field.
+  filter_backend_served:
+    traefik.OriginStatus: 200
+  selection_traefik_internal:
+    traefik.ServiceName|endswith: '@internal'
+  condition: selection_path and selection_status and (selection_traefik_internal or not filter_backend_served)
 falsepositives:
   - An operator or health check intentionally reading an enabled Traefik API
 level: critical
