@@ -1,0 +1,40 @@
+title: Authentik New MFA Device, Passkey Or Backup Codes Enrolled
+id: f1fcd71a-37da-487c-8100-500016b6d183
+status: experimental
+description: |
+    Detects Authentik creating a new authenticator for an account: TOTP device, WebAuthn
+    security key or passkey, static backup (recovery) codes, Duo, SMS or e-mail device.
+    Registering an attacker-controlled second factor right after obtaining a session
+    (MFA fatigue, AiTM phishing, stolen password) gives persistence that survives a
+    password reset. COLD RELIC (COLDRIVER / Star Blizzard) enrolled rogue MFA devices,
+    passkeys and backup codes immediately after a successful MFA-fatigue push in
+    Google Workspace intrusions; the same step applies to any self-hosted IdP.
+author: threat-intel-sigma-agent
+date: '2026/11/19'
+references:
+    - https://cloud.google.com/blog/topics/threat-intelligence/cold-relic-a-case-study-in-impersonation-and-compromise
+    - https://attack.mitre.org/techniques/T1098/005/
+tags:
+    - attack.persistence
+    - attack.t1098.005
+    - attack.credential-access
+    - attack.t1621
+logsource:
+    category: idp
+    product: authentik
+detection:
+    selection:
+        authentik.action: model_created
+        authentik.context.model.model_name:
+            - totpdevice
+            - webauthndevice
+            - staticdevice
+            - duodevice
+            - smsdevice
+            - emaildevice
+    condition: selection
+falsepositives:
+    - A user legitimately enrolling a new phone, security key or passkey, or regenerating
+      backup codes (confirm with the user out of band)
+    - Initial MFA enrollment during onboarding
+level: medium

@@ -1,0 +1,38 @@
+title: Java Process Writes A JSP Script File
+id: 3a179b8f-4ac3-4e7b-a2a2-8994db3e8320
+status: experimental
+description: |
+  Detects a Java virtual machine process (java, jsvc) creating a JSP or JSPX file. A
+  servlet container compiles JSPs it serves but does not author new JSP source, so a
+  .jsp/.jspx created by the JVM is the typical footprint of a webshell dropped after
+  remote code execution or an arbitrary file write in a Java application, as reported
+  for Java4Shell (CVE-2026-114938) exploitation where JSP webshells were written to the
+  application web root.
+references:
+  - https://www.cisa.gov/news-events/alerts/2026/11/17/critical-java-vulnerability-requires-immediate-patching
+  - https://attack.mitre.org/techniques/T1505/003/
+author: threat-intel-sigma-agent
+date: '2026/11/19'
+tags:
+  - attack.persistence
+  - attack.t1505.003
+  - attack.initial_access
+  - attack.t1190
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection_image:
+    Image|endswith:
+      - '/java'
+      - '/jsvc'
+  selection_file:
+    TargetFilename|endswith:
+      - '.jsp'
+      - '.jspx'
+  condition: selection_image and selection_file
+falsepositives:
+  - Tomcat/Jetty auto-deploy unpacking a WAR archive into the webapps directory (a WAR
+    upload through an exposed manager application is itself an attacker technique)
+  - Java-based CMS or build tools that generate JSP sources
+level: high
