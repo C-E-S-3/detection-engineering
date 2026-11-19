@@ -15,7 +15,7 @@ references:
   - https://attack.mitre.org/techniques/T1190/
 author: detection-engineering
 date: '2026/11/04'
-modified: '2026/11/05'
+modified: '2026/11/19'
 tags:
   - attack.initial_access
   - attack.t1190
@@ -33,8 +33,32 @@ detection:
       - '/api/entrypoints'
       - '/api/overview'
       - '/api/version'
-  condition: selection
+  # An application that serves its own UI or API under one of these prefixes
+  # (/dashboard and /api/version are common). traefik.OriginStatus is the status
+  # the routed backend returned; it is 0 when no router matched. A 2xx/3xx from
+  # a backend means the application answered with its own page, not Traefik's
+  # API. Still alerting: requests that matched no router, anything served by a
+  # Traefik-internal service (api@internal, dashboard@internal), and probes a
+  # backend answered with 4xx/5xx.
+  # The filter negates OriginStatus (present on every event), not ServiceName:
+  # Security Analytics adds an _exists_ clause to a negated field, and unrouted
+  # probes have no ServiceName.
+  filter_backend_served:
+    traefik.OriginStatus:
+      - 200
+      - 201
+      - 204
+      - 206
+      - 301
+      - 302
+      - 303
+      - 304
+      - 307
+      - 308
+  selection_traefik_internal:
+    traefik.ServiceName|endswith: '@internal'
+  condition: selection and (selection_traefik_internal or not filter_backend_served)
 falsepositives:
-  - An application intentionally mounted at one of these path prefixes
+  - An application that answers 4xx/5xx for a missing page under one of these prefixes
   - Operators checking a Traefik API that is deliberately exposed to them
 level: high

@@ -34,7 +34,10 @@ Field names:
   `process.command_line` / `process.exe` for process-creation style rules.
 - **windows:** standard Sigma Windows field names (`EventID`, `Image`, `CommandLine`, …).
 - **traefik:** ECS names — `url.path`, `url.domain`, `http.request.method`,
-  `http.response.status_code`, `source.ip`, `user_agent.original`.
+  `http.response.status_code`, `source.ip`, `user_agent.original`. The raw access-log
+  fields are kept under `traefik.*`: `traefik.ServiceName` / `traefik.RouterName`
+  (absent when no router matched) and `traefik.OriginStatus` (status the backend
+  returned, `0` when no backend answered; present on every event, so safe to negate).
 - **wazuh:** raw alerts.json names. FIM path is `syscheck.path`.
 - **pam:** ECS names shared by every product: `event.module` (`jumpserver`,
   `teleport`), `event.dataset`, `event.action`, `event.outcome`, `event.category`,
