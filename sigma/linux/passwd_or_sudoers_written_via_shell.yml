@@ -4,13 +4,17 @@ status: experimental
 description: |
   Detects a shell or tee command line that writes /etc/passwd, /etc/shadow,
   /etc/group, or a sudoers file. Covers echo-append and sudoers.d drops that
-  never call useradd. A Wazuh syscheck modification of the same paths is a
-  separate rule on the wazuh log type.
+  never call useradd. The command line must show the write itself: an output
+  redirect into one of the files, tee, or sed -i. A command that only names
+  one of the paths (reading it, testing it, a package script removing a
+  conffile) does not match. A Wazuh syscheck modification of the same paths
+  is a separate rule on the wazuh log type and also covers writes this rule
+  cannot see (cp, mv, an editor).
 references:
   - https://attack.mitre.org/techniques/T1136/001/
 author: SecOps Engineer
 date: '2026/11/07'
-modified: '2026/11/18'
+modified: '2026/11/20'
 tags:
   - attack.persistence
   - attack.privilege_escalation
@@ -34,14 +38,26 @@ detection:
       - /etc/shadow
       - /etc/group
       - /etc/sudoers
-  # Wazuh agent SCA (CIS duplicate user/group checks, e.g.
-  # `cut -f3 -d":" /etc/passwd | sort | uniq -dc`) runs from /var/ossec as
-  # root on every agent twice a day: read-only, ~90% of this rule's volume (30d).
-  filter_wazuh_sca:
-    process.working_directory: /var/ossec
-  condition: selection_shell and selection_target and not filter_wazuh_sca
+  # The write itself. Naming a path is not enough: Wazuh SCA checks, package
+  # maintainer scripts (dpkg-maintscript-helper rm_conffile), container
+  # entrypoints (`grep abc /etc/passwd`) and admin one-liners that read these
+  # files were ~80% of this rule's hits. `> path` also covers `>> path`.
+  selection_redirect:
+    process.command_line|contains:
+      - '> /etc/passwd'
+      - '>/etc/passwd'
+      - '> /etc/shadow'
+      - '>/etc/shadow'
+      - '> /etc/group'
+      - '>/etc/group'
+      - '> /etc/sudoers'
+      - '>/etc/sudoers'
+  selection_tee:
+    process.exe|endswith: /tee
+  selection_sed_inplace:
+    process.command_line|contains: 'sed -i'
+  condition: selection_shell and selection_target and (selection_redirect or selection_tee or selection_sed_inplace)
 falsepositives:
-  - An administrator editing sudoers or inspecting passwd with a command line that mentions the path
-  - Package scripts that rewrite /etc/passwd
-  - Container entrypoints that check for a service user (e.g. linuxserver.io `grep abc /etc/passwd`)
+  - An administrator or configuration management writing sudoers or passwd through a shell redirect
+  - Package scripts that rewrite /etc/passwd with a redirect or sed -i
 level: high
