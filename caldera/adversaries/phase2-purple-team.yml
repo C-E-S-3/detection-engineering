@@ -33,6 +33,7 @@ atomic_ordering:
   - a1190003-0000-4000-8003-000000000003  # Command injection probe
   - a1190004-0000-4000-8004-000000000004  # SSTI probe
   - a1190005-0000-4000-8005-000000000005  # XXE probe
+  - a1190008-0000-4000-8008-000000000008  # Unusual HTTP method (PUT/PATCH/DELETE) probe
   # Phase 2: T1078 - Valid accounts / credential use (attack.t1078, siem-linux-auditd)
   - a1078001-0000-4000-8001-000000000001  # SSH login from exercise host
   - a1078002-0000-4000-8002-000000000002  # Off-hours SSH login (schedule during 00:00-06:00 UTC)
