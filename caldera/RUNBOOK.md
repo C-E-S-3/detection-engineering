@@ -17,7 +17,7 @@ One Caldera operation runs detection probes for:
 
 | Technique | What the probe does | Sigma tag | Detector / streams |
 |---|---|---|---|
-| T1190 | HTTP probes (SQLi, traversal, command injection, SSTI, XXE, Nuclei UA, Traefik admin API) against `#{app.web_target}` | `attack.t1190` | traefik / `siem-traefik` |
+| T1190 | HTTP probes (SQLi, traversal, command injection, SSTI, XXE, Nuclei UA, Traefik admin API, unusual HTTP method) against `#{app.web_target}` | `attack.t1190` | traefik / `siem-traefik` |
 | T1078 | SSH logins, including an off-hours attempt and `svc_purpleteam` | `attack.t1078` | linux / `siem-linux-auditd` |
 | T1055 | ptrace, LD_PRELOAD, `/proc/PID/mem`, memfd_create, process_vm_writev. Syscalls are expected to fail | `attack.t1055` | linux / `siem-linux-auditd`, `siem-linux-sysmon` |
 | T1136 | Creates local account `pt_testuser`, then cleans it up. Touches passwd/sudoers paths the ability cleanup reverses | `attack.t1136` | linux / `siem-linux-auditd`, `siem-linux-sysmon` |

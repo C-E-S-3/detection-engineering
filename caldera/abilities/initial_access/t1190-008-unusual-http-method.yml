@@ -1,0 +1,24 @@
+- id: a1190008-0000-4000-8008-000000000008
+  name: T1190 Unusual HTTP Method Probe
+  description: >
+    Sends PUT, PATCH and DELETE requests to the web target for routes that do not
+    exist: a WebDAV-style upload outside any API prefix (PUT /pt-webdav-upload-test.txt),
+    a PATCH under an API prefix (/api/pt-method-probe/1) and a DELETE of the uploaded
+    name. Intended to trigger the Sigma rule "Unusual HTTP Method On Public Web
+    Request" (traefik, attack.t1190) through both of its branches: a state-changing
+    method outside the REST API prefixes, and one answered 404/405/501 under an API
+    prefix. The probes expect 404 and change nothing; no cleanup is needed.
+  tactic: initial_access
+  technique:
+    attack_id: T1190
+    name: Exploit Public-Facing Application
+  executors:
+  - platform: linux
+    name: sh
+    # NB: keep this a single line (Sandcat's `sh` executor mishandles multi-line
+    # compound commands; see t1190-007).
+    command: |
+      curl -sk -o /dev/null -w "method_probe PUT status=%{http_code}\n" -X PUT "https://#{app.web_target}/pt-webdav-upload-test.txt" -H "X-Purple-Team-Exercise: phase2-t1190-http-method" -H "Content-Type: text/plain" --data "purple-team phase2 PUT probe" --max-time 10 2>&1 || true; sleep 1; curl -sk -o /dev/null -w "method_probe PATCH status=%{http_code}\n" -X PATCH "https://#{app.web_target}/api/pt-method-probe/1" -H "X-Purple-Team-Exercise: phase2-t1190-http-method" -H "Content-Type: application/json" --data '{"probe":true}' --max-time 10 2>&1 || true; sleep 1; curl -sk -o /dev/null -w "method_probe DELETE status=%{http_code}\n" -X DELETE "https://#{app.web_target}/pt-webdav-upload-test.txt" -H "X-Purple-Team-Exercise: phase2-t1190-http-method" --max-time 10 2>&1 || true
+    cleanup:
+    - |
+      true

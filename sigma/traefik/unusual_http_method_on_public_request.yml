@@ -2,18 +2,23 @@ title: Unusual HTTP Method On Public Web Request
 id: 0917d74b-c764-4dd6-98cf-4b2406d69a7d
 status: experimental
 description: |
-  Detects PUT, DELETE, or PATCH in a Traefik access log. Public sites
-  normally answer GET, HEAD, POST, and OPTIONS. A state-changing method
-  on that front end is a probe for a writable route, WebDAV, or an
-  admin API left on the public proxy (T1190). Traefik records the method
-  in uppercase, so only those forms are listed. This rule does not count
-  repeats: Security Analytics drops Sigma aggregation, and a frequency
-  condition would match every request.
+  Detects PUT, DELETE, or PATCH in a Traefik access log where the method is
+  not ordinary API use: either the path is outside the usual REST API
+  prefixes (a write aimed at a site, WebDAV, or a file upload such as
+  PUT /shell.php), or the request was answered 404, 405 or 501 (a probe for
+  a route or method that is not there, including against an API prefix).
+  REST APIs behind the same proxy use these methods all the time, so a
+  request under an API prefix that the application accepted or refused on
+  its own terms (2xx, 400, 401, 403, 409) is not reported. Traefik records
+  the method in uppercase, so only those forms are listed. This rule does
+  not count repeats: Security Analytics drops Sigma aggregation, and a
+  frequency condition would match every request.
 references:
   - https://attack.mitre.org/techniques/T1190/
   - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/06-Test_HTTP_Methods
 author: detection-engineering
 date: '2026/11/05'
+modified: '2026/11/20'
 tags:
   - attack.initial_access
   - attack.t1190
@@ -26,8 +31,28 @@ detection:
       - PUT
       - DELETE
       - PATCH
-  condition: selection
+  # A route or method that does not exist: not found, method not allowed,
+  # not implemented. Requests that matched no router are answered 404.
+  selection_rejected:
+    http.response.status_code:
+      - 404
+      - 405
+      - 501
+  # Conventional REST API prefixes. Inventory syncs, configuration management
+  # and web UIs issue PUT/DELETE/PATCH under these constantly; every hit in
+  # 30 days of data was such a call. url.path is on every event, so negating
+  # it does not drop anything.
+  filter_api_path:
+    url.path|startswith:
+      - /api/
+      - /api2/
+      - /apis/
+      - /v1/
+      - /v2/
+      - /v3/
+  condition: selection and (selection_rejected or not filter_api_path)
 falsepositives:
-  - REST or WebDAV clients that legitimately use these methods through the same proxy
-  - Application APIs that accept PUT, DELETE, or PATCH on purpose
+  - WebDAV or file-sync clients that legitimately write outside an API prefix
+  - An application whose REST API lives under another prefix (add it to filter_api_path)
+  - API clients requesting an object that no longer exists (404 on PUT, DELETE or PATCH)
 level: medium
