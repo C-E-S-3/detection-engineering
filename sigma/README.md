@@ -66,6 +66,11 @@ read the **compiled query** from the backtest, not just the hit count.
   comparison and never match. List the values or express the logic another way.
 - **No aggregations.** `count() by x > N` is stored without the count, so the rule
   matches every event that hits the selection. Do not write frequency rules.
+- **Bare keywords match inside ordinary words.** `contains: 'drop'` fires on
+  `Backdrop`, `select` on `select2.js`. Anchor a keyword to what must surround it in
+  the attack (a separator, an operator, a path boundary).
+- **`*` and `?` in a value are wildcards.** `'DROP/*'` means "DROP/ then anything".
+  Write a literal asterisk as `\*` and check the compiled query shows `\*`.
 - **Prefix matches are greedy.** `url.path|startswith: '/dashboard'` also matches
   `/dashboards` and every application page under that prefix.
 - **Check the field exists in the data** before using it. A field the stream does not
