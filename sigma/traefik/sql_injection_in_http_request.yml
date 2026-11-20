@@ -9,13 +9,17 @@ description: |
   on ordinary URLs. An apostrophe followed by OR (and the same tokens joined
   by a plus) is listed so a decoded query such as `' OR 1=1--` still matches
   when the access log does not keep the raw percent-encoding.
+  UNION, SELECT, INSERT and DROP count only when a separator follows them
+  (space, %20, +, /*, an opening parenthesis, or an encoded tab or newline),
+  as they must in a working injection; on their own they are substrings of
+  everyday route and asset names.
   A 404 is still an attempt and is not filtered out.
 references:
   - https://attack.mitre.org/techniques/T1190/
   - https://owasp.org/www-community/attacks/SQL_Injection
 author: detection-engineering
 date: '2026/11/04'
-modified: '2026/11/04'
+modified: '2026/11/19'
 tags:
   - attack.initial_access
   - attack.t1190
@@ -33,14 +37,74 @@ detection:
       - '1=1--'
       - '%2D%2D'
       - '%2d%2d'
-      - 'UNION'
-      - 'union'
-      - 'SELECT'
-      - 'select'
-      - 'INSERT'
-      - 'insert'
-      - 'DROP'
-      - 'drop'
+      # UNION / SELECT / INSERT / DROP only when followed by a separator SQL needs
+      # after a keyword (space, %20, +, comment, parenthesis, encoded tab/newline).
+      # Bare keywords match ordinary words in application routes and asset
+      # names (backdrop, select2.js, insert-link.svg).
+      - 'UNION '
+      - 'UNION%20'
+      - 'UNION+'
+      - 'UNION/\*'
+      - 'UNION('
+      - 'UNION%09'
+      - 'UNION%0a'
+      - 'UNION%0A'
+      - 'union '
+      - 'union%20'
+      - 'union+'
+      - 'union/\*'
+      - 'union('
+      - 'union%09'
+      - 'union%0a'
+      - 'union%0A'
+      - 'SELECT '
+      - 'SELECT%20'
+      - 'SELECT+'
+      - 'SELECT/\*'
+      - 'SELECT('
+      - 'SELECT%09'
+      - 'SELECT%0a'
+      - 'SELECT%0A'
+      - 'select '
+      - 'select%20'
+      - 'select+'
+      - 'select/\*'
+      - 'select('
+      - 'select%09'
+      - 'select%0a'
+      - 'select%0A'
+      - 'INSERT '
+      - 'INSERT%20'
+      - 'INSERT+'
+      - 'INSERT/\*'
+      - 'INSERT('
+      - 'INSERT%09'
+      - 'INSERT%0a'
+      - 'INSERT%0A'
+      - 'insert '
+      - 'insert%20'
+      - 'insert+'
+      - 'insert/\*'
+      - 'insert('
+      - 'insert%09'
+      - 'insert%0a'
+      - 'insert%0A'
+      - 'DROP '
+      - 'DROP%20'
+      - 'DROP+'
+      - 'DROP/\*'
+      - 'DROP('
+      - 'DROP%09'
+      - 'DROP%0a'
+      - 'DROP%0A'
+      - 'drop '
+      - 'drop%20'
+      - 'drop+'
+      - 'drop/\*'
+      - 'drop('
+      - 'drop%09'
+      - 'drop%0a'
+      - 'drop%0A'
       - 'WAITFOR'
       - 'waitfor'
       - 'SLEEP('
@@ -52,5 +116,6 @@ detection:
   condition: selection
 falsepositives:
   - Applications whose real routes contain one of these tokens
+  - Free-text search terms that put a space after one of the keywords (e.g. q=select+a+film)
   - Authorised vulnerability scanning
 level: high
