@@ -1,0 +1,69 @@
+title: Systemd Unit File Written By Shell, Download Tool Or Writable-Dir Process
+id: 722e5087-987e-438f-a4cc-46879c588156
+status: experimental
+description: |
+  Detects a systemd unit file (.service or .timer) being created or rewritten in a
+  system or user unit directory by a Unix shell (echo/cat/tee redirection), a scripting
+  runtime, a download tool or a binary running from a temporary directory. Implants
+  commonly persist by dropping a unit that masquerades as a vendor service: ARMORY
+  CASTLE's LAZYBONES Go backdoor (/usr/bin/vmtoolscs, Slack C2) persists through a
+  systemd unit posing as VMware Tools. Packages install units through the package
+  manager and systemctl / systemd generators write overrides themselves, so a unit
+  written by an interactive-style writer is worth a look whatever the unit is called.
+  Configuration-management tooling (Python-based, e.g. Ansible) is deliberately not in
+  the selection to keep the rule quiet during routine deployments.
+references:
+  - https://cloud.google.com/blog/topics/threat-intelligence/armory-castle-exploits-vsphere
+  - https://attack.mitre.org/techniques/T1543/002/
+author: threat-intel-sigma-agent
+date: '2026/11/20'
+tags:
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.t1543.002
+  - attack.defense_evasion
+  - attack.t1036.004
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection_dir:
+    TargetFilename|contains:
+      - '/etc/systemd/system/'
+      - '/usr/lib/systemd/system/'
+      - '/lib/systemd/system/'
+      - '/run/systemd/system/'
+      - '/etc/systemd/user/'
+      - '/usr/lib/systemd/user/'
+      - '/.config/systemd/user/'
+  selection_ext:
+    TargetFilename|endswith:
+      - '.service'
+      - '.timer'
+  selection_writer_name:
+    Image|endswith:
+      - '/sh'
+      - '/bash'
+      - '/dash'
+      - '/zsh'
+      - '/ksh'
+      - '/busybox'
+      - '/tee'
+      - '/cp'
+      - '/mv'
+      - '/perl'
+      - '/ruby'
+      - '/php'
+      - '/node'
+      - '/curl'
+      - '/wget'
+  selection_writer_path:
+    Image|startswith:
+      - '/tmp/'
+      - '/var/tmp/'
+      - '/dev/shm/'
+  condition: selection_dir and selection_ext and 1 of selection_writer_*
+falsepositives:
+  - Administrators creating a unit by hand (cat > /etc/systemd/system/x.service, sudo tee)
+  - Vendor install scripts (curl | sh installers) that write their own unit files
+level: medium
