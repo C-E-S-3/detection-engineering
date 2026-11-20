@@ -1,0 +1,72 @@
+title: DNS Query To Public Blockchain JSON-RPC Endpoint
+id: 26c1a40b-580b-48f2-af8d-c558b9041da4
+status: experimental
+description: |
+  Detects DNS resolution of public blockchain JSON-RPC API endpoints (Solana, TRON,
+  Ethereum and BNB Smart Chain public nodes and the large hosted RPC providers).
+  Malware increasingly uses the blockchain as a takedown-resistant dead-drop resolver:
+  the implant reads a transaction memo, contract storage slot or account record to learn
+  its current C2 address or next-stage payload. UAT-12643 (suspected DPRK-aligned)
+  resolves its Go RAT's C2 from Solana transaction memos; EtherHiding reads payloads
+  from BNB Smart Chain contracts and other campaigns use TRON transactions. Blocking the
+  C2 domain does not help, but the implant still has to reach an RPC node, and ordinary
+  servers and workstations without a wallet or blockchain tooling have no reason to
+  resolve these API hosts. This is a service category, not campaign IOCs.
+references:
+  - https://blog.talosintelligence.com/uat-12643-suspected-north-korea-aligned-actor-blends-blockchain-resilience-with-targeted-infostealing/
+  - https://attack.mitre.org/techniques/T1102/001/
+author: threat-intel-sigma-agent
+date: '2026/11/20'
+tags:
+  - attack.command_and_control
+  - attack.t1102.001
+  - attack.t1071.001
+logsource:
+  category: dns
+detection:
+  selection_exact:
+    query:
+      # Solana
+      - 'api.mainnet-beta.solana.com'
+      - 'api.mainnet.solana.com'
+      - 'api.devnet.solana.com'
+      - 'api.testnet.solana.com'
+      - 'solana-api.projectserum.com'
+      - 'solana-rpc.publicnode.com'
+      # TRON
+      - 'api.trongrid.io'
+      - 'api.shasta.trongrid.io'
+      - 'nile.trongrid.io'
+      - 'apilist.tronscan.org'
+      - 'apilist.tronscanapi.com'
+      - 'api.tronstack.io'
+      # BNB Smart Chain / Ethereum public nodes
+      - 'bsc-dataseed.binance.org'
+      - 'bsc-dataseed1.binance.org'
+      - 'bsc-dataseed2.binance.org'
+      - 'bsc-dataseed3.binance.org'
+      - 'bsc-dataseed4.binance.org'
+      - 'bsc-dataseed1.defibit.io'
+      - 'bsc-dataseed1.ninicoin.io'
+      - 'data-seed-prebsc-1-s1.binance.org'
+      - 'bsc-rpc.publicnode.com'
+      - 'bsc-testnet-rpc.publicnode.com'
+      - 'ethereum-rpc.publicnode.com'
+      - 'eth.llamarpc.com'
+      - 'cloudflare-eth.com'
+      - 'rpc.ankr.com'
+      - 'eth.drpc.org'
+  selection_sub:
+    query|endswith:
+      # hosted multi-chain RPC providers (per-customer subdomains)
+      - '.helius-rpc.com'
+      - '.g.alchemy.com'
+      - '.quiknode.pro'
+      - '.infura.io'
+      - '.blastapi.io'
+      - '.trongrid.io'
+  condition: selection_exact or selection_sub
+falsepositives:
+  - Hosts that run a cryptocurrency wallet, blockchain node, dApp or web3 development tooling
+  - Browsing a web3 site whose front end calls a public RPC endpoint from the browser
+level: medium

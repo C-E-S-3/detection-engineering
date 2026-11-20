@@ -1,0 +1,80 @@
+title: Public Blockchain JSON-RPC Connection From Non-Browser Linux Process
+id: b4948e54-547a-490a-83c9-dc1f4fa5bfdc
+status: experimental
+description: |
+  Detects an outbound network connection from a Linux process (other than a web
+  browser) to a public blockchain JSON-RPC API endpoint (Solana, TRON, Ethereum and BNB
+  Smart Chain public nodes and the large hosted RPC providers). Malware uses the
+  blockchain as a takedown-resistant dead-drop resolver: the implant queries an RPC
+  node for a transaction memo, contract storage slot or account record that holds its
+  current C2 address or next-stage payload. UAT-12643 (suspected DPRK-aligned) resolves
+  its Go RAT's C2 from Solana transaction memos (getSignaturesForAddress /
+  getTransaction); EtherHiding and TRON-based loaders do the same on other chains.
+  Servers have no reason to talk to a blockchain RPC node unless they run blockchain
+  software, so the process making the call is the signal, whatever its name or hash.
+references:
+  - https://blog.talosintelligence.com/uat-12643-suspected-north-korea-aligned-actor-blends-blockchain-resilience-with-targeted-infostealing/
+  - https://attack.mitre.org/techniques/T1102/001/
+author: threat-intel-sigma-agent
+date: '2026/11/20'
+tags:
+  - attack.command_and_control
+  - attack.t1102.001
+  - attack.t1071.001
+logsource:
+  product: linux
+  category: network_connection
+detection:
+  selection_dest:
+    - DestinationHostname:
+        # Solana
+        - 'api.mainnet-beta.solana.com'
+        - 'api.mainnet.solana.com'
+        - 'api.devnet.solana.com'
+        - 'api.testnet.solana.com'
+        - 'solana-api.projectserum.com'
+        - 'solana-rpc.publicnode.com'
+        # TRON
+        - 'api.trongrid.io'
+        - 'api.shasta.trongrid.io'
+        - 'nile.trongrid.io'
+        - 'apilist.tronscan.org'
+        - 'apilist.tronscanapi.com'
+        - 'api.tronstack.io'
+        # BNB Smart Chain / Ethereum public nodes
+        - 'bsc-dataseed.binance.org'
+        - 'bsc-dataseed1.binance.org'
+        - 'bsc-dataseed2.binance.org'
+        - 'bsc-dataseed3.binance.org'
+        - 'bsc-dataseed4.binance.org'
+        - 'bsc-dataseed1.defibit.io'
+        - 'bsc-dataseed1.ninicoin.io'
+        - 'data-seed-prebsc-1-s1.binance.org'
+        - 'bsc-rpc.publicnode.com'
+        - 'bsc-testnet-rpc.publicnode.com'
+        - 'ethereum-rpc.publicnode.com'
+        - 'eth.llamarpc.com'
+        - 'cloudflare-eth.com'
+        - 'rpc.ankr.com'
+        - 'eth.drpc.org'
+    - DestinationHostname|endswith:
+        - '.helius-rpc.com'
+        - '.g.alchemy.com'
+        - '.quiknode.pro'
+        - '.infura.io'
+        - '.blastapi.io'
+        - '.trongrid.io'
+  # Image is present on every Sysmon network_connection event, so negating it is safe.
+  filter_browser:
+    Image|endswith:
+      - '/firefox'
+      - '/firefox-bin'
+      - '/chrome'
+      - '/chromium'
+      - '/chromium-browser'
+      - '/brave'
+      - '/msedge'
+  condition: selection_dest and not filter_browser
+falsepositives:
+  - Hosts that run a cryptocurrency wallet, blockchain node, indexer or web3 development tooling (node, python, foundry, solana CLI)
+level: high
