@@ -4,12 +4,15 @@ status: experimental
 description: |
   Detects a Wazuh syscheck event for /etc/passwd, /etc/shadow, /etc/group,
   /etc/sudoers or /etc/sudoers.d. These alerts are the Wazuh sensor copy of
-  account and privilege-file changes. They are indexed on siem-wazuh-alerts,
+  account and privilege-file changes. Every hit is a real change to one of
+  the files; whether it was expected is for the analyst (the alert carries
+  no process or user). They are indexed on siem-wazuh-alerts,
   not on the auditd stream. The field is the alerts.json path syscheck.path.
 references:
   - https://attack.mitre.org/techniques/T1136/001/
 author: SecOps Engineer
 date: '2026/11/07'
+modified: '2026/11/20'
 tags:
   - attack.persistence
   - attack.privilege_escalation
@@ -19,13 +22,18 @@ logsource:
   product: linux
   service: wazuh
 detection:
-  selection:
-    syscheck.path|startswith:
+  # Exact files, not prefixes: a prefix also matched the backup copies
+  # (/etc/passwd-, /etc/shadow-, /etc/group-) that are rewritten together
+  # with the real file and only repeat the alert.
+  selection_file:
+    syscheck.path:
       - /etc/passwd
       - /etc/shadow
       - /etc/group
       - /etc/sudoers
-  condition: selection
+  selection_sudoers_dropin:
+    syscheck.path|startswith: /etc/sudoers.d/
+  condition: selection_file or selection_sudoers_dropin
 falsepositives:
   - Package upgrades and configuration management that legitimately change these files
 level: high
