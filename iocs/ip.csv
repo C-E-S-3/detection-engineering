@@ -455,3 +455,13 @@ indicator,source,date_added,context
 222.108.77.44,https://cloud.google.com/blog/topics/threat-intelligence/armory-castle-exploits-vsphere,2026-11-20,ARMORY CASTLE (PRC-nexus UNC5221) obfuscation network proxy node; vCenter CVE-2026-123890 zero-day campaign; Google GTIG November 2026
 61.216.56.127,https://cloud.google.com/blog/topics/threat-intelligence/armory-castle-exploits-vsphere,2026-11-20,ARMORY CASTLE (PRC-nexus UNC5221) obfuscation network proxy node; vCenter CVE-2026-123890 zero-day campaign; Google GTIG November 2026
 81.45.89.43,https://cloud.google.com/blog/topics/threat-intelligence/armory-castle-exploits-vsphere,2026-11-20,ARMORY CASTLE (PRC-nexus UNC5221) obfuscation network proxy node; vCenter CVE-2026-123890 zero-day campaign; Google GTIG November 2026
+167.76.44.160,https://blackpointcyber.com/blog/romulus-cncmachinerms/,2026-11-21,ROMULUS ClickFix / CNCMachineRMS RAT C2 — Blackpoint Cyber APG November 2026 campaign analysis
+167.148.201.224,https://blackpointcyber.com/blog/romulus-cncmachinerms/,2026-11-21,ROMULUS ClickFix / CNCMachineRMS RAT C2 — Blackpoint Cyber APG November 2026 campaign analysis
+93.152.213.151,https://blackpointcyber.com/blog/romulus-cncmachinerms/,2026-11-21,ROMULUS ClickFix / CNCMachineRMS RAT C2 — Blackpoint Cyber APG November 2026 campaign analysis
+87.199.205.61,https://www.malware-traffic-analysis.net/2026/11/12/index.html,2026-11-21,SmartApeSG ClickFix campaign C2 (port 443) delivering CNCMachineRMS RAT — malware-traffic-analysis.net November 12 2026
+96.62.224.81,https://www.forescout.com/blog/romulus-analysis-of-a-new-multi-payload-clickfix-delivery-platform/,2026-11-21,ROMULUS ClickFix delivery infrastructure — Forescout analysis
+86.109.75.7,https://www.forescout.com/blog/romulus-analysis-of-a-new-multi-payload-clickfix-delivery-platform/,2026-11-21,ROMULUS ClickFix delivery infrastructure — Forescout analysis (link not fully confirmed)
+151.240.151.223,https://www.forescout.com/blog/romulus-analysis-of-a-new-multi-payload-clickfix-delivery-platform/,2026-11-21,ROMULUS ClickFix delivery infrastructure — Forescout analysis
+23.94.145.224,https://www.forescout.com/blog/romulus-analysis-of-a-new-multi-payload-clickfix-delivery-platform/,2026-11-21,ROMULUS ClickFix delivery infrastructure — Forescout analysis
+93.152.224.118,https://www.forescout.com/blog/romulus-analysis-of-a-new-multi-payload-clickfix-delivery-platform/,2026-11-21,ROMULUS ClickFix delivery infrastructure — Forescout analysis
+2.27.248.127,https://www.forescout.com/blog/romulus-analysis-of-a-new-multi-payload-clickfix-delivery-platform/,2026-11-21,ROMULUS ClickFix delivery infrastructure — Forescout analysis

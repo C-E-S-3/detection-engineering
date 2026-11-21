@@ -906,3 +906,5 @@ d32tpl7xt7175h.cloudfront[.]net,https://blog.talosintelligence.com/china-nexus-u
 eil786npto9u5bq[.]icu,https://unit42.paloaltonetworks.com/optimjack-supply-chain-attack/,2026-11-16,OPTIMJACK supply chain attack — additional payload staging and telemetry collection domain
 l7bcsnwc7nzr3uo[.]icu,https://unit42.paloaltonetworks.com/optimjack-supply-chain-attack/,2026-11-16,OPTIMJACK supply chain attack — telemetry POST endpoint; receives beacons from compromised pages
 linkforge[.]cc,https://unit42.paloaltonetworks.com/optimjack-supply-chain-attack/,2026-11-16,OPTIMJACK supply chain attack — supporting delivery infrastructure domain
+cashewminaret[.]org,https://www.malware-traffic-analysis.net/2026/11/12/index.html,2026-11-21,SmartApeSG ClickFix fake CAPTCHA domain delivering CNCMachineRMS RAT — malware-traffic-analysis.net November 12 2026
+novatrafficcore[.]lol,https://blackpointcyber.com/blog/romulus-cncmachinerms/,2026-11-21,ROMULUS ClickFix staging domain — Blackpoint Cyber analysis (unconfirmed association)

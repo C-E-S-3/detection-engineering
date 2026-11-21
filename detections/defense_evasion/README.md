@@ -48,6 +48,7 @@ Detections for techniques adversaries use to avoid detection, including abuse of
 | [PEERSTITCH FortiGate ptrace Daemon Injection](peerstitch_fortigate_ptrace_daemon_injection.md) | T1014, T1055.008, T1190 | Memory-resident ARM64 implant injected into FortiGate miglogd/iked daemons via ptrace after CVE-2024-47575 or CVE-2025-61624 exploitation; no disk artifact; C2 via hijacked daemon sockets; CL-STA-0954; Unit 42 October 2026 |
 | [Windows Shell MotW Zone.Identifier Bypass](windows_shell_motw_zone_identifier_bypass.md) | T1553.005 | PowerShell Unblock-File and Zone.Identifier ADS deletion stripping Mark-of-the-Web to bypass SmartScreen and Office Protected View; CVE-2026-96951 (CISA KEV, actively exploited) is third MotW bypass zero-day of 2026 |
 | [VMware ESXi Audit Log Disabled (Warp Panda / CVE-2026-41709)](vmware_esxi_audit_log_disabled_warp_panda_cve_2026_41709.md) | T1562.001, T1562.008 | VMware ESXi audit record or syslog configuration disabled/modified; CVE-2026-41709 exploited by Warp Panda (China-nexus) to suppress forensic visibility on hypervisors; CISA KEV Oct 28, 2026 |
+| [AuditTeam OpsAgent kvcore.sys BYOVD EDR Kill](auditteam_opsagent_kvcore_byovd_edr_kill.md) | T1562.001, T1543.003 | AuditTeam ransomware deploys legitimately signed Beijing Jiangmin Antivirus kvcore.sys kernel driver via BYOVD to terminate ~220 security tool processes (Defender, ESET, Kaspersky, Sysmon, Splunk) via \KvCorePortX0 filter port before ransomware deployment; Kaspersky GReAT November 2026 |
 
 ---
 
