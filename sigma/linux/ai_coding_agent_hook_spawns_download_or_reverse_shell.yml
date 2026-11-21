@@ -1,0 +1,80 @@
+title: AI Coding Agent Spawns Download, Reverse Shell Or Decoder Outside Its Shell Tool
+id: d95d9f74-d379-43bf-8fda-b9b64405b77b
+status: experimental
+description: |
+  Detects an AI coding agent CLI (Claude Code, OpenAI Codex CLI, Gemini CLI, Cursor
+  agent) directly starting a download tool, network relay, or a shell whose command
+  line downloads-and-executes, opens a reverse shell or decodes a payload, when the
+  command did not come through the agent's interactive shell tool. Project-level agent
+  configuration (e.g. .claude/settings.json "hooks") runs arbitrary commands on session
+  start or tool use; MIDNIGHT NEPTUNE (DPRK) committed such a hook to shared repositories
+  so that every developer opening the project downloaded the SOMBERMEME backdoor.
+  Commands the user asks the agent to run are wrapped by Claude Code in a shell that
+  sources ~/.claude/shell-snapshots/; those are excluded so the rule keys on commands
+  the agent runs on its own (hooks, status lines, MCP server launchers).
+references:
+  - https://cloud.google.com/blog/topics/threat-intelligence/agentic-threat-activity-crosses-a-significant-threshold
+  - https://attack.mitre.org/techniques/T1546/
+author: threat-intel-sigma-agent
+date: '2026/11/21'
+tags:
+  - attack.persistence
+  - attack.t1546
+  - attack.initial_access
+  - attack.t1195.002
+  - attack.execution
+  - attack.t1059.004
+  - attack.command_and_control
+  - attack.t1105
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection_parent_image:
+    ParentImage|contains: '/claude/versions/'
+  selection_parent_image_name:
+    ParentImage|endswith:
+      - '/claude'
+      - '/codex'
+      - '/gemini'
+      - '/cursor-agent'
+  selection_parent_cmdline:
+    ParentCommandLine|contains:
+      - '/bin/claude'
+      - '@anthropic-ai/claude-code'
+      - '/bin/codex'
+      - '@openai/codex'
+      - '/bin/gemini'
+      - '@google/gemini-cli'
+      - '/bin/cursor-agent'
+  child_image:
+    Image|endswith:
+      - '/curl'
+      - '/wget'
+      - '/nc'
+      - '/ncat'
+      - '/netcat'
+      - '/socat'
+      - '/gs-netcat'
+  child_cmdline:
+    CommandLine|contains:
+      - 'curl '
+      - 'wget '
+      - '/dev/tcp/'
+      - '/dev/udp/'
+      - 'base64 -d'
+      - 'base64 --decode'
+      - 'mkfifo '
+      - 'nc -e'
+      - 'python3 -c'
+      - 'python -c'
+      - 'chmod +x'
+  # the agent's own shell tool (commands the user approved) sources a shell snapshot;
+  # CommandLine is present on every process_creation event, so negating it is safe
+  filter_shell_tool:
+    CommandLine|contains: '/.claude/shell-snapshots/'
+  condition: 1 of selection_parent_* and 1 of child_* and not filter_shell_tool
+falsepositives:
+  - Legitimate project hooks or status-line scripts that call curl (e.g. posting a notification webhook)
+  - MCP servers launched by the agent that download their own runtime on first start
+level: high
