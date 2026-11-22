@@ -908,3 +908,12 @@ l7bcsnwc7nzr3uo[.]icu,https://unit42.paloaltonetworks.com/optimjack-supply-chain
 linkforge[.]cc,https://unit42.paloaltonetworks.com/optimjack-supply-chain-attack/,2026-11-16,OPTIMJACK supply chain attack — supporting delivery infrastructure domain
 cashewminaret[.]org,https://www.malware-traffic-analysis.net/2026/11/12/index.html,2026-11-21,SmartApeSG ClickFix fake CAPTCHA domain delivering CNCMachineRMS RAT — malware-traffic-analysis.net November 12 2026
 novatrafficcore[.]lol,https://blackpointcyber.com/blog/romulus-cncmachinerms/,2026-11-21,ROMULUS ClickFix staging domain — Blackpoint Cyber analysis (unconfirmed association)
+files-reader-view[.]com,https://unit42.paloaltonetworks.com/rrm-packages-pdf-reader-software/,2026-11-22,RRM phishing campaign Cluster A — fake PDF reader download lure page; delivers pdf_Reader_en_install.msi (FleetDeck installer)
+darksupport[.]shop,https://unit42.paloaltonetworks.com/rrm-packages-pdf-reader-software/,2026-11-22,RRM phishing campaign Cluster A — C2/RMM tenant coordination infrastructure
+docprivates[.]shop,https://unit42.paloaltonetworks.com/rrm-packages-pdf-reader-software/,2026-11-22,RRM phishing campaign Cluster A — fake PDF reader lure domain
+fitarno[.]cloud,https://unit42.paloaltonetworks.com/rrm-packages-pdf-reader-software/,2026-11-22,RRM phishing campaign Cluster A — fake PDF reader lure domain
+creenlines[.]site,https://unit42.paloaltonetworks.com/rrm-packages-pdf-reader-software/,2026-11-22,RRM phishing campaign Cluster A — fake PDF reader lure domain
+scalvesonixands[.]site,https://unit42.paloaltonetworks.com/rrm-packages-pdf-reader-software/,2026-11-22,RRM phishing campaign Cluster A — fake PDF reader lure domain
+betweenhea[.]click,https://unit42.paloaltonetworks.com/rrm-packages-pdf-reader-software/,2026-11-22,RRM phishing campaign Cluster A — fake PDF reader lure domain
+cosscon[.]site,https://unit42.paloaltonetworks.com/rrm-packages-pdf-reader-software/,2026-11-22,RRM phishing campaign Cluster B — ScreenConnect look-alike management host
+codesphsere[.]ru,https://unit42.paloaltonetworks.com/rrm-packages-pdf-reader-software/,2026-11-22,RRM phishing campaign Cluster B — fake PDF reader lure domain
