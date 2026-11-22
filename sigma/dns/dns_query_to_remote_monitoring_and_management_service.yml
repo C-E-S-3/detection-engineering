@@ -1,0 +1,60 @@
+title: DNS Query To Commercial Remote Monitoring And Management (RMM) Service
+id: a379af61-0594-4281-bc3e-5dc8a4b7a76f
+status: experimental
+description: |
+  Detects DNS resolution of the cloud relay / management domains of commercial remote
+  monitoring and management (RMM) and remote-support tools (FleetDeck, ScreenConnect cloud,
+  AnyDesk, Atera, Splashtop, RustDesk public relays, SimpleHelp, Zoho Assist, Pulseway,
+  Level, MeshCentral cloud). TeamViewer is deliberately left out: it is commonly installed
+  for legitimate home/desktop support and its background lookups would page constantly;
+  add it in a private copy where it is not sanctioned. Phishing and SEO-poisoning crews increasingly drop
+  a legitimate, signed RMM agent pre-enrolled in an attacker tenant instead of custom
+  malware (Unit 42 "RRM" campaign: fake PDF reader MSI installing FleetDeck or
+  ScreenConnect). The agent beacons to the vendor cloud, so in an environment that does not
+  use these tools, the first lookup of the vendor domain is a reliable signal of an
+  unauthorised remote-access install on any device, whatever installer delivered it.
+  Self-hosted ScreenConnect/MeshCentral instances on attacker domains are not covered.
+references:
+  - https://unit42.paloaltonetworks.com/rrm-packages-pdf-reader-software/
+  - https://attack.mitre.org/techniques/T1219/
+author: threat-intel-sigma-agent
+date: '2026/11/22'
+tags:
+  - attack.command_and_control
+  - attack.t1219
+  - attack.persistence
+logsource:
+  category: dns
+detection:
+  selection_exact:
+    query:
+      - 'fleetdeck.io'
+      - 'screenconnect.com'
+      - 'anydesk.com'
+      - 'atera.com'
+      - 'splashtop.com'
+      - 'rustdesk.com'
+      - 'simple-help.com'
+      - 'zohoassist.com'
+      - 'pulseway.com'
+      - 'level.io'
+      - 'meshcentral.com'
+  selection_sub:
+    query|endswith:
+      - '.fleetdeck.io'
+      - '.screenconnect.com'
+      - '.anydesk.com'
+      - '.atera.com'
+      - '.splashtop.com'
+      - '.rustdesk.com'
+      - '.simple-help.com'
+      - '.zohoassist.com'
+      - '.pulseway.com'
+      - '.level.io'
+      - '.meshcentral.com'
+  condition: selection_exact or selection_sub
+falsepositives:
+  - Sanctioned use of one of these tools (e.g. a family member's remote-support session); tune by
+    removing the vendor in a private copy rather than excluding hosts
+  - Browsing a vendor's marketing website from a workstation
+level: medium
