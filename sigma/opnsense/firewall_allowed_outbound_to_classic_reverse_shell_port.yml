@@ -1,0 +1,50 @@
+title: Firewall Allowed Outbound Connection To Classic Reverse Shell Port
+id: f08e97bf-0cba-4725-b882-5ee10f915af2
+status: experimental
+description: |
+  Detects firewall-permitted connections to a public address on TCP ports that are the
+  defaults of reverse-shell and exploit tooling (4444/4445 Metasploit handlers, 1337 and
+  31337) and have no common legitimate service. Compromised network appliances, routers and
+  IoT/KVM devices that cannot run an endpoint agent are only visible on the network; their
+  backdoors (e.g. the GL.iNet GoodCloud router/KVM backdoor, November 2026) call back to an
+  attacker-held shell listener on a non-HTTP port. Detects the callback independent of the
+  current C2 address.
+references:
+  - https://www.bleepingcomputer.com/news/security/hackers-exploit-glinet-cloud-flaw-to-infect-routers-kvm-devices/
+  - https://attack.mitre.org/techniques/T1095/
+  - https://attack.mitre.org/techniques/T1571/
+author: threat-intel-sigma-agent
+date: '2026/11/23'
+tags:
+  - attack.command_and_control
+  - attack.t1095
+  - attack.t1571
+  - attack.execution
+  - attack.t1059.004
+logsource:
+  product: opnsense
+  category: firewall
+detection:
+  selection:
+    destination.port:
+      - 4444
+      - 4445
+      - 1337
+      - 31337
+    event.action: 'pass'
+  filter_non_public:
+    destination.ip|cidr:
+      - '10.0.0.0/8'
+      - '172.16.0.0/12'
+      - '192.168.0.0/16'
+      - '100.64.0.0/10'
+      - '127.0.0.0/8'
+      - '169.254.0.0/16'
+      - '224.0.0.0/4'
+      - '255.255.255.255/32'
+  condition: selection and not filter_non_public
+falsepositives:
+  - Applications or games that happen to use one of these ports on a public server
+  - Inbound connections from the internet to a service published on one of these ports
+  - Authorised penetration tests
+level: high
