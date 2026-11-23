@@ -466,3 +466,4 @@ indicator,source,date_added,context
 93.152.224.118,https://www.forescout.com/blog/romulus-analysis-of-a-new-multi-payload-clickfix-delivery-platform/,2026-11-21,ROMULUS ClickFix delivery infrastructure — Forescout analysis
 2.27.248.127,https://www.forescout.com/blog/romulus-analysis-of-a-new-multi-payload-clickfix-delivery-platform/,2026-11-21,ROMULUS ClickFix delivery infrastructure — Forescout analysis
 41.216.188.11,https://github.com/Cisco-Talos/IOCs/blob/main/2026/11/UAT-12643.txt,2026-11-22,UAT-12643 (DPRK) C2 server — Cisco Talos supplemental IOC; Solana blockchain dead-drop campaign targeting crypto/Web3 developers
+170.39.226.219,https://www.bleepingcomputer.com/news/security/hackers-exploit-glinet-cloud-flaw-to-infect-routers-kvm-devices/,2026-11-23,GL.iNet GoodCloud reverse shell C2 — compromised routers and KVM devices beacon to this IP; unattributed November 2026 campaign
