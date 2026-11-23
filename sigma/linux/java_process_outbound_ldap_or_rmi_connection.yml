@@ -1,0 +1,51 @@
+title: Java Process Outbound LDAP Or RMI Connection (JNDI Injection Callback)
+id: f167594c-0d29-4ba6-901c-9868b2f0de31
+status: experimental
+description: |
+  Detects a Java virtual machine process (java, jsvc) opening an outbound connection to an
+  LDAP, LDAPS or Java RMI registry port (389, 636, 1099, 1389, 1388, 1636, 3268, 3269).
+  JNDI injection (SAP NetWeaver Enterprise Portal CVE-2025-42884, Log4Shell and similar)
+  makes the JVM resolve an attacker-supplied ldap:// or rmi:// URL and load a remote class
+  from it, so the first network trace of exploitation is the JVM itself connecting out to
+  an LDAP/RMI listener, typically on a public address or a non-standard port such as 1389
+  used by common JNDI exploit kits. Detects the technique independent of the vulnerable
+  application.
+references:
+  - https://www.cisa.gov/news-events/alerts/2026/11/20/cisa-adds-four-known-exploited-vulnerabilities-catalog
+  - https://attack.mitre.org/techniques/T1190/
+author: threat-intel-sigma-agent
+date: '2026/11/23'
+tags:
+  - attack.initial_access
+  - attack.t1190
+  - attack.execution
+  - attack.t1059
+  - attack.command_and_control
+  - attack.t1071
+logsource:
+  product: linux
+  category: network_connection
+detection:
+  selection_image:
+    Image|endswith:
+      - '/java'
+      - '/jsvc'
+  selection_port:
+    # outbound only: a Java LDAP server (ApacheDS, OpenDJ) accepting a client logs Initiated false
+    Initiated: 'true'
+    DestinationPort:
+      - '389'
+      - '636'
+      - '1099'
+      - '1388'
+      - '1389'
+      - '1636'
+      - '3268'
+      - '3269'
+  condition: selection_image and selection_port
+falsepositives:
+  - Java applications that authenticate users against a directory server (LDAP realm in
+    Tomcat, Keycloak/Jenkins/Confluence LDAP federation); tune by excluding the directory
+    server destination in a private copy
+  - Java applications using RMI/JMX for legitimate remote management
+level: high

@@ -1,0 +1,42 @@
+title: HTTP POST To Apache Roller XML-RPC Endpoint
+id: 0e8b18c3-3770-4092-a7e9-a679199a2f2f
+status: experimental
+description: |
+  Detects an HTTP POST to the Apache Roller XML-RPC servlet (/roller-services/xmlrpc).
+  Apache Roller 4.0.0-6.1.4 deserializes extension-typed XML-RPC parameters before the
+  session is validated (CVE-2026-129448, CISA KEV, actively exploited), so a single
+  unauthenticated POST to this endpoint gives remote code execution as the servlet
+  container user; disabling XML-RPC in the admin UI does not close it. Legitimate use
+  (blog clients posting through the MetaWeblog API) is rare, so a POST here that a backend
+  actually answered (anything but no backend / 404) is worth a look.
+  The request body is not logged, so the malicious extension type cannot be matched.
+references:
+  - https://www.cisa.gov/news-events/alerts/2026/11/20/cisa-adds-four-known-exploited-vulnerabilities-catalog
+  - https://attack.mitre.org/techniques/T1190/
+author: threat-intel-sigma-agent
+date: '2026/11/23'
+tags:
+  - attack.initial_access
+  - attack.t1190
+  - attack.execution
+  - attack.t1059.004
+logsource:
+  product: traefik
+  category: access
+detection:
+  selection:
+    http.request.method: 'POST'
+    url.path|contains: '/roller-services/xmlrpc'
+  # mass-scan probes for a path no backend serves (no router: OriginStatus 0, or 404) are
+  # dropped so only requests that reached an application handling the path page a human;
+  # OriginStatus is present on every event, so the negation does not drop events
+  filter_not_served:
+    traefik.OriginStatus:
+      - 0
+      - 404
+  condition: selection and not filter_not_served
+falsepositives:
+  - Catch-all backends (single-page apps, default vhosts) that answer every path with 200
+  - Desktop or mobile blog clients publishing to a Roller instance through the
+    MetaWeblog / Blogger XML-RPC API
+level: high
