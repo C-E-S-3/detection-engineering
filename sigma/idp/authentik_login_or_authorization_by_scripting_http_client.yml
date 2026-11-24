@@ -1,0 +1,53 @@
+title: Authentik Login Or Application Authorization By Scripting HTTP Client
+id: 82eb61c3-d696-4b93-bf58-d1c790ad945a
+status: experimental
+description: |
+    Detects a successful Authentik login or application authorization where the client
+    user-agent is a scripting HTTP library (python-httpx, python-requests, aiohttp,
+    Go-http-client, curl, wget, libwww-perl, okhttp, node-fetch, axios) rather than a
+    browser. A real person signs in through a browser. A scripting client completing a
+    login or OAuth/OIDC authorization means someone is automating access with stolen
+    credentials or a replayed session token. Bling Libra (ShinyHunters) and Com-affiliate
+    clusters used python-httpx scripts to replay AiTM-captured sessions and collect cloud
+    data in bulk. The same step against a self-hosted IdP looks like this.
+author: threat-intel-sigma-agent
+date: '2026/11/24'
+references:
+    - https://unit42.paloaltonetworks.com/com-affiliate-vishing-attacks/
+    - https://attack.mitre.org/techniques/T1550/004/
+tags:
+    - attack.defense-evasion
+    - attack.lateral-movement
+    - attack.t1550.004
+    - attack.initial-access
+    - attack.t1078
+    - attack.collection
+    - attack.t1119
+logsource:
+    category: idp
+    product: authentik
+detection:
+    selection_action:
+        authentik.action:
+            - login
+            - authorize_application
+    selection_ua:
+        authentik.context.http_request.user_agent|startswith:
+            - 'python-httpx/'
+            - 'python-requests/'
+            - 'Python-urllib/'
+            - 'Python/'
+            - 'aiohttp/'
+            - 'Go-http-client/'
+            - 'curl/'
+            - 'Wget/'
+            - 'libwww-perl/'
+            - 'okhttp/'
+            - 'node-fetch/'
+            - 'axios/'
+    condition: selection_action and selection_ua
+falsepositives:
+    - Scripts or integrations that deliberately complete a browser login flow with a
+      scripting library (prefer machine credentials or API tokens for those)
+    - Monitoring probes that run a full login flow
+level: high
