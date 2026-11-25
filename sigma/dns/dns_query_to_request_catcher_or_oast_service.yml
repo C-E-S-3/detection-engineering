@@ -15,11 +15,14 @@ references:
   - https://attack.mitre.org/techniques/T1567/
 author: threat-intel-sigma-agent
 date: '2026/11/02'
+modified: '2026/11/25'
 tags:
   - attack.command_and_control
   - attack.t1102.002
   - attack.exfiltration
   - attack.t1567
+  # Risk score: zero hits in 30 days; an out-of-band catcher lookup is suspicious, but developers and authorised tests use the same services.
+  - risk.score.55
 logsource:
   category: dns
 detection:

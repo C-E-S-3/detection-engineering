@@ -17,11 +17,14 @@ references:
   - https://attack.mitre.org/techniques/T1090/003/
 author: threat-intel-sigma-agent
 date: '2026/11/04'
+modified: '2026/11/25'
 tags:
   - attack.impact
   - attack.t1496
   - attack.command_and_control
   - attack.t1090.003
+  # Risk score: zero hits in 30 days; resolving a bandwidth-sharing service is suspicious, but visiting the vendor site is a known benign case.
+  - risk.score.55
 logsource:
   category: dns
 detection:

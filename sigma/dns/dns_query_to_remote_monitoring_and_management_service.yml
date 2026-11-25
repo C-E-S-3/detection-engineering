@@ -19,10 +19,13 @@ references:
   - https://attack.mitre.org/techniques/T1219/
 author: threat-intel-sigma-agent
 date: '2026/11/22'
+modified: '2026/11/25'
 tags:
   - attack.command_and_control
   - attack.t1219
   - attack.persistence
+  # Risk score: zero hits in 30 days; RMM relays are a common remote-support tool, so one lookup is anomalous rather than malicious.
+  - risk.score.40
 logsource:
   category: dns
 detection:
