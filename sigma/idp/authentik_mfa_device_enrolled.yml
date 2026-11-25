@@ -11,6 +11,7 @@ description: |
     Google Workspace intrusions; the same step applies to any self-hosted IdP.
 author: threat-intel-sigma-agent
 date: '2026/11/19'
+modified: '2026/11/25'
 references:
     - https://cloud.google.com/blog/topics/threat-intelligence/cold-relic-a-case-study-in-impersonation-and-compromise
     - https://attack.mitre.org/techniques/T1098/005/
@@ -19,6 +20,8 @@ tags:
     - attack.t1098.005
     - attack.credential-access
     - attack.t1621
+    # Risk score: zero hits in 30 days; enrolling a factor is usually the account owner, and is only decisive next to other signals.
+    - risk.score.35
 logsource:
     category: idp
     product: authentik

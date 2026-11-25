@@ -12,6 +12,7 @@ description: |
     data in bulk. The same step against a self-hosted IdP looks like this.
 author: threat-intel-sigma-agent
 date: '2026/11/24'
+modified: '2026/11/25'
 references:
     - https://unit42.paloaltonetworks.com/com-affiliate-vishing-attacks/
     - https://attack.mitre.org/techniques/T1550/004/
@@ -23,6 +24,8 @@ tags:
     - attack.t1078
     - attack.collection
     - attack.t1119
+    # Risk score: zero hits in 30 days; a scripting client completing login is strong, but deliberate integrations are a known benign case.
+    - risk.score.70
 logsource:
     category: idp
     product: authentik
