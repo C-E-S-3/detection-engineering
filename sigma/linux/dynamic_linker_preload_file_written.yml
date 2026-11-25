@@ -16,6 +16,7 @@ references:
   - https://attack.mitre.org/techniques/T1574/006/
 author: threat-intel-sigma-agent
 date: '2026/11/01'
+modified: '2026/11/25'
 tags:
   - attack.persistence
   - attack.privilege_escalation
@@ -23,6 +24,8 @@ tags:
   - attack.t1574.006
   - attack.t1055
   - attack.t1036.005
+  # Risk score: Rewriting the system preload file is a strong persistence signal and deliberate admin use is rare. No hits in 30 days, scored from the rule.
+  - risk.score.80
 logsource:
   product: linux
   category: file_event

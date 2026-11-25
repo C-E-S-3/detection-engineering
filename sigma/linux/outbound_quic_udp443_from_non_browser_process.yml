@@ -13,11 +13,14 @@ references:
   - https://attack.mitre.org/techniques/T1071/001/
 author: threat-intel-sigma-agent
 date: '2026/11/18'
+modified: '2026/11/25'
 tags:
   - attack.command_and_control
   - attack.t1071.001
   - attack.t1095
   - attack.t1573.002
+  # Risk score: Both hits were ordinary QUIC clients, a browser helper and the container runtime, not a tunnel.
+  - risk.score.20
 logsource:
   product: linux
   category: network_connection

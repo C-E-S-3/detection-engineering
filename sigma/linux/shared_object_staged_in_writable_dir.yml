@@ -13,11 +13,14 @@ references:
   - https://attack.mitre.org/techniques/T1574/006/
 author: SecOps Engineer
 date: '2026/11/05'
+modified: '2026/11/25'
 tags:
   - attack.defense_evasion
   - attack.t1055
   - attack.persistence
   - attack.t1574.006
+  # Risk score: Thousands of hits on 23 hosts are a shared object in a temp directory or a configuration-management chmod, so one firing must not add risk.
+  - risk.score.0
 logsource:
   product: linux
   category: file_event

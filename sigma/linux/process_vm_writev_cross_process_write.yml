@@ -12,10 +12,13 @@ references:
   - https://man7.org/linux/man-pages/man2/process_vm_writev.2.html
 author: SecOps Engineer
 date: '2026/11/05'
+modified: '2026/11/25'
 tags:
   - attack.defense_evasion
   - attack.privilege_escalation
   - attack.t1055
+  # Risk score: Hits are command lines that mention process_vm_writev, not the syscall.
+  - risk.score.10
 logsource:
   product: linux
   service: auditd

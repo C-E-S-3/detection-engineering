@@ -13,11 +13,14 @@ references:
   - https://attack.mitre.org/techniques/T1505/003/
 author: threat-intel-sigma-agent
 date: '2026/10/30'
+modified: '2026/11/25'
 tags:
   - attack.persistence
   - attack.t1505.003
   - attack.initial_access
   - attack.t1190
+  # Risk score: All 104 hits are one file under /var being rewritten, an application write rather than a dropped shell.
+  - risk.score.25
 logsource:
   product: linux
   category: file_event

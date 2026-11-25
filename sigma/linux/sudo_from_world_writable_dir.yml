@@ -10,9 +10,12 @@ references:
   - https://attack.mitre.org/techniques/T1548/003/
 author: detection-engineering
 date: 2026/10/21
+modified: '2026/11/25'
 tags:
   - attack.privilege_escalation
   - attack.t1548.003
+  # Risk score: Sudo from a world-writable directory is suspicious; building in /tmp is an unfiltered benign case. No hits in 30 days, scored from the rule.
+  - risk.score.55
 logsource:
   product: linux
   service: auditd

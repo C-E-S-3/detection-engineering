@@ -14,12 +14,15 @@ references:
   - https://attack.mitre.org/techniques/T1574/006/
 author: threat-intel-sigma-agent
 date: '2026/11/01'
+modified: '2026/11/25'
 tags:
   - attack.persistence
   - attack.privilege_escalation
   - attack.defense_evasion
   - attack.t1574.006
   - attack.t1055
+  # Risk score: Exercise tooling did set a preload, but command lines that only mention the string match as well.
+  - risk.score.50
 logsource:
   product: linux
   category: process_creation

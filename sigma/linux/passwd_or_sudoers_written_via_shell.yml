@@ -14,12 +14,14 @@ references:
   - https://attack.mitre.org/techniques/T1136/001/
 author: SecOps Engineer
 date: '2026/11/07'
-modified: '2026/11/20'
+modified: '2026/11/25'
 tags:
   - attack.persistence
   - attack.privilege_escalation
   - attack.t1136
   - attack.t1136.001
+  # Risk score: A shell writing an account file is suspicious; observed hits are exercise tooling, the same shape as package scripts.
+  - risk.score.60
 logsource:
   product: linux
   service: auditd
