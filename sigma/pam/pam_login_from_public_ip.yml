@@ -8,10 +8,13 @@ description: |
     tunnel, exposed port) was used and should match a known operator.
 author: homelab detection engineering
 date: '2026/11/11'
+modified: '2026/11/25'
 tags:
     - attack.initial-access
     - attack.t1078
     - attack.t1133
+    # Risk score: two successes from one client on one day; a remote operator login is a known benign case, so one firing is anomalous rather than malicious.
+    - risk.score.40
 logsource:
     category: pam
 detection:
