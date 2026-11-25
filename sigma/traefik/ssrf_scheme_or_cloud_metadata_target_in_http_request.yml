@@ -1,0 +1,68 @@
+title: SSRF Payload With Non-HTTP Scheme Or Cloud Metadata Target In HTTP Request
+id: a6c26cbb-aa01-44ec-a14d-670ef384c168
+status: experimental
+description: |
+  Detects server-side request forgery (SSRF) payloads in the request path or query string:
+  a URL parameter that points the server at a non-HTTP scheme used to reach internal
+  services or local files (gopher://, dict://, file://, ldap://, tftp://, sftp://) or at a
+  cloud instance metadata service (169.254.169.254, metadata.google.internal,
+  fd00:ec2::254). Browsers and normal API clients do not pass these as parameters. The
+  N-able MailAssure SSRF (CVE-2026-134624) is exploited by putting such a URL in the email
+  preview parameter, and the same payloads are used against many other "fetch a URL" features
+  (link previews, webhooks, PDF renderers, image proxies). Traefik v3 stores the raw query
+  in RequestPath (url.path), so plain and percent-encoded forms are both listed; hex is
+  listed in both cases because the match is case-sensitive.
+references:
+  - https://www.cisa.gov/news-events/alerts/2026/11/24/cisa-adds-five-known-exploited-vulnerabilities-catalog
+  - https://attack.mitre.org/techniques/T1190/
+  - https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+author: threat-intel-sigma-agent
+date: '2026/11/25'
+tags:
+  - attack.initial_access
+  - attack.t1190
+  - attack.discovery
+  - attack.t1046
+  - attack.credential_access
+  - attack.t1552.005
+logsource:
+  product: traefik
+  category: webserver
+detection:
+  selection:
+    url.path|contains:
+      # non-HTTP schemes inside a parameter value ("=" anchors them to a query value)
+      - '=gopher://'
+      - '=gopher%3A%2F%2F'
+      - '=gopher%3a%2f%2f'
+      - '=dict://'
+      - '=dict%3A%2F%2F'
+      - '=dict%3a%2f%2f'
+      - '=file://'
+      - '=file%3A%2F%2F'
+      - '=file%3a%2f%2f'
+      - '=ldap://'
+      - '=ldap%3A%2F%2F'
+      - '=ldap%3a%2f%2f'
+      - '=tftp://'
+      - '=tftp%3A%2F%2F'
+      - '=tftp%3a%2f%2f'
+      - '=sftp://'
+      - '=sftp%3A%2F%2F'
+      - '=sftp%3a%2f%2f'
+      # cloud instance metadata endpoints anywhere in the path/query
+      - '169.254.169.254'
+      - '%31%36%39%2e%32%35%34'
+      - '%31%36%39%2E%32%35%34'
+      - 'metadata.google.internal'
+      - '/latest/meta-data/'
+      - '/computeMetadata/v1'
+      - 'fd00:ec2::254'
+      - 'fd00%3Aec2%3A%3A254'
+      - 'fd00%3aec2%3a%3a254'
+  condition: selection
+falsepositives:
+  - Authorised vulnerability scanning
+  - Applications that legitimately accept file:// or ldap:// URLs as a parameter value
+    (rare; e.g. directory-integration settings pages)
+level: high
