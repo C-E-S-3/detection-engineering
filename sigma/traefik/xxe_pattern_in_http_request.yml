@@ -11,9 +11,12 @@ references:
   - https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing
 author: detection-engineering
 date: '2026/11/04'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.t1190
+  # Risk score: both hits are a DOCTYPE or ENTITY payload from one client on one day, both HTTP 404.
+  - risk.score.80
 logsource:
   product: traefik
   category: webserver

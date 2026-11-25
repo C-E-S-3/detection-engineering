@@ -18,10 +18,12 @@ references:
   - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/06-Test_HTTP_Methods
 author: detection-engineering
 date: '2026/11/05'
-modified: '2026/11/20'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.t1190
+  # Risk score: nine hits on one day, all HTTP 404 method probes across 3 clients; a rejected PUT, DELETE or PATCH is a weak signal.
+  - risk.score.35
 logsource:
   product: traefik
   category: webserver

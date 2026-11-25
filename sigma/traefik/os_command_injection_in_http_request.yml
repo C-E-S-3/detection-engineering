@@ -15,11 +15,14 @@ references:
   - https://owasp.org/www-community/attacks/Command_Injection
 author: detection-engineering
 date: '2026/11/04'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.t1190
   - attack.execution
   - attack.t1059
+  # Risk score: all 23 hits in 30 days are exploit-shaped passwd reads or shell payloads, all HTTP 404, across 3 clients.
+  - risk.score.75
 logsource:
   product: traefik
   category: webserver

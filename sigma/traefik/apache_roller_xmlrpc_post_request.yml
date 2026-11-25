@@ -15,11 +15,14 @@ references:
   - https://attack.mitre.org/techniques/T1190/
 author: threat-intel-sigma-agent
 date: '2026/11/23'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.t1190
   - attack.execution
   - attack.t1059.004
+  # Risk score: zero hits in 30 days; a POST a backend answered is a specific RCE path, but blog clients and catch-all 200s are known benign cases.
+  - risk.score.70
 logsource:
   product: traefik
   category: access

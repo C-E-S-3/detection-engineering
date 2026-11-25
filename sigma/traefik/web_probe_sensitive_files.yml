@@ -11,11 +11,14 @@ references:
   - https://attack.mitre.org/techniques/T1552/001/
 author: detection-engineering
 date: 2026/10/21
+modified: '2026/11/25'
 tags:
   - attack.reconnaissance
   - attack.t1595.003
   - attack.credential_access
   - attack.t1552.001
+  # Risk score: zero hits in 30 days; a request for a secret or config path is deliberate probing, not a confirmed exposure.
+  - risk.score.50
 logsource:
   product: traefik
   category: webserver

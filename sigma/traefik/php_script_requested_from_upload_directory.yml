@@ -14,6 +14,7 @@ references:
   - https://attack.mitre.org/techniques/T1505/003/
 author: threat-intel-sigma-agent
 date: '2026/10/29'
+modified: '2026/11/25'
 tags:
   - attack.persistence
   - attack.t1505.003
@@ -21,6 +22,8 @@ tags:
   - attack.t1059
   - attack.initial_access
   - attack.t1190
+  # Risk score: zero hits in 30 days; PHP under an upload directory is suspicious, but scanner 404s are not filtered out.
+  - risk.score.60
 logsource:
   product: traefik
   category: webserver
