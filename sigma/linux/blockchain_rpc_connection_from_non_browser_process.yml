@@ -17,10 +17,13 @@ references:
   - https://attack.mitre.org/techniques/T1102/001/
 author: threat-intel-sigma-agent
 date: '2026/11/20'
+modified: '2026/11/25'
 tags:
   - attack.command_and_control
   - attack.t1102.001
   - attack.t1071.001
+  # Risk score: A non-browser connection to a public chain API is suspicious; wallets and dev tooling are the benign case. No hits in 30 days, scored from the rule.
+  - risk.score.50
 logsource:
   product: linux
   category: network_connection

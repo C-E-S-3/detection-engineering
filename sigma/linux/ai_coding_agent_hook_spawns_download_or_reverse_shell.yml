@@ -17,6 +17,7 @@ references:
   - https://attack.mitre.org/techniques/T1546/
 author: threat-intel-sigma-agent
 date: '2026/11/21'
+modified: '2026/11/25'
 tags:
   - attack.persistence
   - attack.t1546
@@ -26,6 +27,8 @@ tags:
   - attack.t1059.004
   - attack.command_and_control
   - attack.t1105
+  # Risk score: An agent starting a download or relay is suspicious; webhook and first-run installer curls are benign cases. No hits in 30 days, scored from the rule.
+  - risk.score.55
 logsource:
   product: linux
   category: process_creation

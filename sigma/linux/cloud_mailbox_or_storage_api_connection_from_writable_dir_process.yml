@@ -18,12 +18,15 @@ references:
   - https://attack.mitre.org/techniques/T1567/002/
 author: threat-intel-sigma-agent
 date: '2026/11/12'
+modified: '2026/11/25'
 tags:
   - attack.command_and_control
   - attack.t1102.002
   - attack.t1102.001
   - attack.exfiltration
   - attack.t1567.002
+  # Risk score: A mailbox or storage API call from a world-writable path is suspicious; unpackers and local builds are the benign case. No hits in 30 days, scored from the rule.
+  - risk.score.60
 logsource:
   product: linux
   category: network_connection
