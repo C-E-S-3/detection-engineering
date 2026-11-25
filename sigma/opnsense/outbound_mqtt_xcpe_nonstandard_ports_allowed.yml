@@ -15,12 +15,15 @@ references:
   - https://attack.mitre.org/techniques/T1571/
 author: threat-intel-sigma-agent
 date: '2026/11/03'
+modified: '2026/11/25'
 tags:
   - attack.command_and_control
   - attack.t1095
   - attack.t1571
   - attack.impact
   - attack.t1496
+  # Risk score: 550 hits from one source over 5 days, all to private destinations in both directions, so one firing is not public C2.
+  - risk.score.25
 logsource:
   product: opnsense
   category: firewall

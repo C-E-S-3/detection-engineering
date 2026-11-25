@@ -14,12 +14,15 @@ references:
   - https://attack.mitre.org/techniques/T1187/
 author: threat-intel-sigma-agent
 date: '2026/11/11'
+modified: '2026/11/25'
 tags:
   - attack.credential_access
   - attack.t1187
   - attack.t1557.001
   - attack.exfiltration
   - attack.t1048
+  # Risk score: zero hits in 30 days; allowed SMB to a public address is rare and usually forced authentication or a lure.
+  - risk.score.80
 logsource:
   product: opnsense
   category: firewall
