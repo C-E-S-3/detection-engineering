@@ -16,11 +16,14 @@ references:
   - https://attack.mitre.org/techniques/T1505/004/
 author: threat-intel-sigma-agent
 date: '2026/11/16'
+modified: '2026/11/25'
 tags:
   - attack.persistence
   - attack.t1505.004
   - attack.command_and_control
   - attack.t1219
+  # Risk score: An sshd on another port or config is suspicious; spare-port debugging and service sshd are benign cases. No hits in 30 days, scored from the rule.
+  - risk.score.55
 logsource:
   product: linux
   category: process_creation

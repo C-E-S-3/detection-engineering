@@ -15,12 +15,15 @@ references:
   - https://attack.mitre.org/techniques/T1489/
 author: threat-intel-sigma-agent
 date: '2026/11/05'
+modified: '2026/11/25'
 tags:
   - attack.defense_evasion
   - attack.t1562.001
   - attack.t1562.012
   - attack.impact
   - attack.t1489
+  # Risk score: Stopping a security service is suspicious; maintenance and package upgrades are the benign case. No hits in 30 days, scored from the rule.
+  - risk.score.45
 logsource:
   product: linux
   category: process_creation

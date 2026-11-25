@@ -17,6 +17,7 @@ references:
   - https://attack.mitre.org/techniques/T1059/004/
 author: threat-intel-sigma-agent
 date: '2026/11/11'
+modified: '2026/11/25'
 tags:
   - attack.execution
   - attack.t1059.004
@@ -24,6 +25,8 @@ tags:
   - attack.command_and_control
   - attack.t1071
   - attack.t1095
+  # Risk score: The pattern is a strong indicator; a bash /dev/tcp reachability test is the benign case. No hits in 30 days, scored from the rule.
+  - risk.score.70
 logsource:
   product: linux
   category: process_creation

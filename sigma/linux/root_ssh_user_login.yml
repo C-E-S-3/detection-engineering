@@ -10,10 +10,13 @@ references:
   - https://attack.mitre.org/techniques/T1078/
 author: SecOps Engineer
 date: '2026/11/07'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.privilege_escalation
   - attack.t1078
+  # Risk score: A direct root SSH login is a strong signal; break-glass is the benign case. No hits in 30 days, scored from the rule.
+  - risk.score.70
 logsource:
   product: linux
   service: auditd

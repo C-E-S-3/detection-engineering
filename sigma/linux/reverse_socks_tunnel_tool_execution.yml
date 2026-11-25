@@ -13,6 +13,7 @@ references:
   - https://attack.mitre.org/techniques/T1090/001/
 author: threat-intel-sigma-agent
 date: '2026/10/26'
+modified: '2026/11/25'
 tags:
   - attack.command_and_control
   - attack.t1090.001
@@ -20,6 +21,8 @@ tags:
   - attack.t1572
   - attack.lateral_movement
   - attack.t1021
+  # Risk score: Those tunnel-tool command lines are a strong indicator; a sanctioned tunnel is the benign case. No hits in 30 days, scored from the rule.
+  - risk.score.75
 logsource:
   product: linux
   category: process_creation
