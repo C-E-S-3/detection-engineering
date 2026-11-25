@@ -15,12 +15,16 @@ references:
   - https://attack.mitre.org/techniques/T1082/
 author: threat-intel-sigma-agent
 date: '2026/11/11'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.t1078.003
   - attack.discovery
   - attack.t1082
   - attack.t1033
+  # Risk score (sigma/README.md): often benign admin or monitoring activity, so one
+  # firing adds a quarter of the alert threshold to the host and never alerts alone.
+  - risk.score.25
 logsource:
   product: linux
   category: process_creation

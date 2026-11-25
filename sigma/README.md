@@ -28,6 +28,7 @@ Every rule must have:
 | `status` | `experimental` → `test` → `stable` as the rule proves itself |
 | `level` | `informational` / `low` / `medium` / `high` / `critical` |
 | `tags` | ATT&CK tags (`attack.tXXXX`, tactic names); every tag must be `namespace.value` |
+| `tags`: `risk.score.N` | one per rule, `N` = 0-100: see [Risk score](#risk-score) |
 | `falsepositives` | known benign triggers |
 
 Field names:
@@ -51,6 +52,48 @@ Field names:
 
 Keep rules generic: no environment-specific hostnames, addresses or account names
 (those belong in a private rule set).
+
+## Risk score
+
+`level` decides whether one finding alerts by itself: detectors notify on `high` and
+`critical` only. The risk score is the second path. A rule states how much **one
+firing** adds to the risk of the entity it fired for (the host for host telemetry,
+the client address for network and proxy telemetry) with a tag:
+
+```yaml
+tags:
+  - attack.discovery
+  - attack.t1082
+  - risk.score.25
+```
+
+Every scored finding becomes a risk event. Risk is summed per entity over a rolling
+24 hours, and an entity whose sum reaches the threshold (100 by default) raises one
+alert. A rule counts once per entity per 24 hours however often it fires, so a noisy
+rule cannot reach the threshold alone: it takes several different rules on the same
+entity. This is what makes a `low` or `medium` rule worth keeping: silent alone,
+decisive in combination.
+
+Choosing `N` (the tiers of the repository guide, read as "how sure am I that one
+firing is malicious, and how bad is it if so"):
+
+| Score | Use for |
+|---|---|
+| 90-100 | near-certain malicious; one firing should alert (normally also `level: critical`) |
+| 75-89 | strong indicator; one more weak signal on the entity should alert |
+| 50-74 | suspicious; two of these on one entity in a day should alert |
+| 25-49 | anomalous but often benign (admin tooling, discovery commands); useful only with others |
+| 1-24 | context; many must coincide |
+| 0 | never contributes (say why in a comment) |
+
+- The score is independent of `level`. A `medium` rule with many benign backtest hits
+  belongs at 25, not 50. Lower the score for every benign hit class the backtest shows
+  that the rule cannot filter out.
+- Exactly one `risk.score.N` tag per rule, integer 0-100. `risk.40`, `risk.score.high`
+  or two score tags fail the lint and block the push.
+- A rule without the tag adds no risk. That is the right choice for a rule nobody has
+  scored yet; do not guess a number to fill the field.
+- Changing a score is a rule change: bump `modified` and say why in the PR.
 
 ## Security Analytics compile gotchas
 
