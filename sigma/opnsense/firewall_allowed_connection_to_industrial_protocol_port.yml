@@ -17,11 +17,14 @@ references:
   - https://attack.mitre.org/techniques/T1133/
 author: threat-intel-sigma-agent
 date: '2026/11/08'
+modified: '2026/11/25'
 tags:
   - attack.initial-access
   - attack.t1133
   - attack.reconnaissance
   - attack.t1595.001
+  # Risk score: zero hits in 30 days; an allowed ICS protocol flow is suspicious, but legitimate OT gear is a known benign case.
+  - risk.score.55
 logsource:
   product: opnsense
   category: firewall

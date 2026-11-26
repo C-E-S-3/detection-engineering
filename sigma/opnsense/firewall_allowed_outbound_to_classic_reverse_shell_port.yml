@@ -15,12 +15,15 @@ references:
   - https://attack.mitre.org/techniques/T1571/
 author: threat-intel-sigma-agent
 date: '2026/11/23'
+modified: '2026/11/25'
 tags:
   - attack.command_and_control
   - attack.t1095
   - attack.t1571
   - attack.execution
   - attack.t1059.004
+  # Risk score: zero hits in 30 days; these ports have no common service, but games and published listeners are known benign cases.
+  - risk.score.70
 logsource:
   product: opnsense
   category: firewall
