@@ -14,6 +14,7 @@ references:
   - https://attack.mitre.org/techniques/T1190/
 author: threat-intel-sigma-agent
 date: '2026/11/18'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.t1190
@@ -23,6 +24,8 @@ tags:
   - attack.t1505.003
   - attack.discovery
   - attack.t1033
+  # Risk score: CI servers and Java services shelling out are a common benign case. No hits in 30 days, scored from the rule.
+  - risk.score.35
 logsource:
   product: linux
   category: process_creation

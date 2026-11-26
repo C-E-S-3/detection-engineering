@@ -18,6 +18,7 @@ references:
   - https://attack.mitre.org/techniques/T1102/
 author: threat-intel-sigma-agent
 date: '2026/11/06'
+modified: '2026/11/25'
 tags:
   - attack.exfiltration
   - attack.t1567.002
@@ -25,6 +26,8 @@ tags:
   - attack.t1102
   - attack.collection
   - attack.t1005
+  # Risk score: A chat webhook from a world-writable path is suspicious; an ad-hoc bot is the benign case. No hits in 30 days, scored from the rule.
+  - risk.score.45
 logsource:
   product: linux
   category: network_connection

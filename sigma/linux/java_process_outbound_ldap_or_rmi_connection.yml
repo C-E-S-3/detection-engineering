@@ -15,6 +15,7 @@ references:
   - https://attack.mitre.org/techniques/T1190/
 author: threat-intel-sigma-agent
 date: '2026/11/23'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.t1190
@@ -22,6 +23,8 @@ tags:
   - attack.t1059
   - attack.command_and_control
   - attack.t1071
+  # Risk score: Standard directory ports are included, so Java LDAP authentication is an unfiltered benign class. No hits in 30 days, scored from the rule.
+  - risk.score.30
 logsource:
   product: linux
   category: network_connection
