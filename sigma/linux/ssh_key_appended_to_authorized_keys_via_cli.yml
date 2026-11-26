@@ -16,11 +16,14 @@ references:
   - https://attack.mitre.org/techniques/T1098/004/
 author: threat-intel-sigma-agent
 date: '2026/10/31'
+modified: '2026/11/25'
 tags:
   - attack.persistence
   - attack.t1098.004
   - attack.execution
   - attack.t1059.004
+  # Risk score: The remote side of ssh-copy-id is a normal key append and matches this rule. No hits in 30 days, scored from the rule.
+  - risk.score.35
 logsource:
   product: linux
   category: process_creation

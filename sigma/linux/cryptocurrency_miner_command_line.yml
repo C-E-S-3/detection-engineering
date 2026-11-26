@@ -16,11 +16,14 @@ references:
   - https://attack.mitre.org/techniques/T1496/001/
 author: threat-intel-sigma-agent
 date: '2026/11/13'
+modified: '2026/11/25'
 tags:
   - attack.impact
   - attack.t1496.001
   - attack.initial_access
   - attack.t1190
+  # Risk score: A stratum URL or miner option is a strong indicator; an intentional miner is the benign case. No hits in 30 days, scored from the rule.
+  - risk.score.75
 logsource:
   product: linux
   category: process_creation

@@ -17,12 +17,15 @@ references:
   - https://attack.mitre.org/techniques/T1543/002/
 author: threat-intel-sigma-agent
 date: '2026/11/20'
+modified: '2026/11/25'
 tags:
   - attack.persistence
   - attack.privilege_escalation
   - attack.t1543.002
   - attack.defense_evasion
   - attack.t1036.004
+  # Risk score: Hand-written units and installer scripts are the ordinary way a unit file appears. No hits in 30 days, scored from the rule.
+  - risk.score.30
 logsource:
   product: linux
   category: file_event

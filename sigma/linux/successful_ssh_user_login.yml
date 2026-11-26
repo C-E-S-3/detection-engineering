@@ -13,11 +13,14 @@ references:
   - https://attack.mitre.org/techniques/T1078/
 author: SecOps Engineer
 date: '2026/11/07'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.persistence
   - attack.privilege_escalation
   - attack.t1078
+  # Risk score: One firing is an ordinary login and would be most hosts on most days if the session test matched. No hits in 30 days, scored from the rule.
+  - risk.score.10
 logsource:
   product: linux
   service: auditd

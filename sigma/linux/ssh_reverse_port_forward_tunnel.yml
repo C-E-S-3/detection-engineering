@@ -14,11 +14,14 @@ references:
   - https://attack.mitre.org/techniques/T1572/
 author: threat-intel-sigma-agent
 date: '2026/10/31'
+modified: '2026/11/25'
 tags:
   - attack.command_and_control
   - attack.t1572
   - attack.persistence
   - attack.t1098.004
+  # Risk score: A reverse forward is suspicious; admin tunnels and a recursive flag in the command are benign cases. No hits in 30 days, scored from the rule.
+  - risk.score.55
 logsource:
   product: linux
   category: process_creation

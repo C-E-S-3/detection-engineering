@@ -17,10 +17,13 @@ references:
   - https://attack.mitre.org/techniques/T1561/001/
 author: threat-intel-sigma-agent
 date: '2026/11/14'
+modified: '2026/11/25'
 tags:
   - attack.impact
   - attack.t1485
   - attack.t1561.001
+  # Risk score: Deleting a disk image is often an admin or an image build, not only ransomware. No hits in 30 days, scored from the rule.
+  - risk.score.40
 logsource:
   product: linux
   category: process_creation
