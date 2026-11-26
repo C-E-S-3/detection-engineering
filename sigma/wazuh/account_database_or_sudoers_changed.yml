@@ -12,12 +12,14 @@ references:
   - https://attack.mitre.org/techniques/T1136/001/
 author: SecOps Engineer
 date: '2026/11/07'
-modified: '2026/11/20'
+modified: '2026/11/25'
 tags:
   - attack.persistence
   - attack.privilege_escalation
   - attack.t1136
   - attack.t1136.001
+  # Risk score: 91 file changes across at least 10 hosts; package and configuration management is a known benign case the rule cannot separate.
+  - risk.score.15
 logsource:
   product: linux
   service: wazuh
