@@ -13,12 +13,15 @@ references:
   - https://attack.mitre.org/techniques/T1546/018/
 author: threat-intel-sigma-agent
 date: '2026/10/24'
+modified: '2026/11/25'
 tags:
   - attack.persistence
   - attack.privilege_escalation
   - attack.t1546.018
   - attack.initial_access
   - attack.t1195.001
+  # Risk score: Package installs ship startup-hook files, so one firing is usually that. No hits in 30 days, scored from the rule.
+  - risk.score.20
 logsource:
   product: linux
   category: file_event

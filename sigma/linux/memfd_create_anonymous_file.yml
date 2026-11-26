@@ -14,9 +14,12 @@ references:
   - https://man7.org/linux/man-pages/man2/memfd_create.2.html
 author: SecOps Engineer
 date: '2026/11/05'
+modified: '2026/11/25'
 tags:
   - attack.defense_evasion
   - attack.t1055
+  # Risk score: Hits are command lines that mention memfd_create, not the syscall, so one firing is a text match.
+  - risk.score.10
 logsource:
   product: linux
   service: auditd

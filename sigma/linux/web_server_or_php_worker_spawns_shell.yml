@@ -12,6 +12,7 @@ references:
   - https://attack.mitre.org/techniques/T1505/003/
 author: threat-intel-sigma-agent
 date: '2026/10/24'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.t1190
@@ -19,6 +20,8 @@ tags:
   - attack.t1059.004
   - attack.persistence
   - attack.t1505.003
+  # Risk score: The six hits were a web server starting a script or another non-interactive command, the usual application shell-out.
+  - risk.score.35
 logsource:
   product: linux
   category: process_creation

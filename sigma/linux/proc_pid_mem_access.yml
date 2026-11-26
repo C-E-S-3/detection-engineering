@@ -12,11 +12,14 @@ references:
   - https://attack.mitre.org/techniques/T1055/009/
 author: SecOps Engineer
 date: '2026/11/05'
+modified: '2026/11/25'
 tags:
   - attack.defense_evasion
   - attack.privilege_escalation
   - attack.t1055
   - attack.t1055.009
+  # Risk score: Most hits are the memory-pressure file under /proc, or a command line that only mentions proc and mem.
+  - risk.score.10
 logsource:
   product: linux
   service: auditd

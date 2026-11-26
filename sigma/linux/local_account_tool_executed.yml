@@ -8,10 +8,13 @@ references:
   - https://attack.mitre.org/techniques/T1136/001/
 author: SecOps Engineer
 date: '2026/11/07'
+modified: '2026/11/25'
 tags:
   - attack.persistence
   - attack.t1136
   - attack.t1136.001
+  # Risk score: 66 of 70 hits are useradd printing its defaults, across 12 hosts, so one firing is usually not an account being created.
+  - risk.score.15
 logsource:
   product: linux
   service: auditd

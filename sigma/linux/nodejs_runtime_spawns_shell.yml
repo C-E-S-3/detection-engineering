@@ -15,6 +15,7 @@ references:
   - https://attack.mitre.org/techniques/T1190/
 author: threat-intel-sigma-agent
 date: '2026/10/29'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.t1190
@@ -24,6 +25,8 @@ tags:
   - attack.t1105
   - attack.discovery
   - attack.t1033
+  # Risk score: The one hit was a long shell script started by node that contained a decode step, which is also how installers look.
+  - risk.score.50
 logsource:
   product: linux
   category: process_creation
