@@ -9,9 +9,12 @@ description: |
     attacker using a hijacked bastion account probing what is allowed.
 author: homelab detection engineering
 date: '2026/11/11'
+modified: '2026/11/25'
 tags:
     - attack.execution
     - attack.t1059.004
+    # Risk score: zero hits in 30 days; a filter rejection means a forbidden command was attempted, but an admin testing the filter is a known benign case.
+    - risk.score.65
 logsource:
     category: pam
     product: jumpserver

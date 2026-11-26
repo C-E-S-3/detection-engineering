@@ -8,10 +8,13 @@ description: |
     that should always be expected.
 author: homelab detection engineering
 date: '2026/11/11'
+modified: '2026/11/25'
 tags:
     - attack.persistence
     - attack.privilege-escalation
     - attack.t1098
+    # Risk score: zero hits in 30 days; a system-wide role grant is a privilege change, but planned onboarding is a known benign case.
+    - risk.score.70
 logsource:
     category: pam
     product: jumpserver

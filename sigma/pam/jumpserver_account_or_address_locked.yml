@@ -7,9 +7,12 @@ description: |
     this is the point where repeated failed logins stopped being typos.
 author: homelab detection engineering
 date: '2026/11/11'
+modified: '2026/11/25'
 tags:
     - attack.credential-access
     - attack.t1110
+    # Risk score: both hits are lock notices after repeated failures, which is often a mistyped password or an out-of-sync OTP.
+    - risk.score.30
 logsource:
     category: pam
     product: jumpserver

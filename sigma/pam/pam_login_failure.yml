@@ -7,9 +7,12 @@ description: |
     user or one source address is a password-guessing attempt.
 author: homelab detection engineering
 date: '2026/11/11'
+modified: '2026/11/25'
 tags:
     - attack.credential-access
     - attack.t1110
+    # Risk score: 36 failures across 7 clients on 5 days, and the samples are invalid OTP codes, so one failure is standing noise.
+    - risk.score.15
 logsource:
     category: pam
 detection:

@@ -8,6 +8,7 @@ description: |
     anyone holding an editor-level Teleport session.
 author: homelab detection engineering
 date: '2026/11/11'
+modified: '2026/11/25'
 references:
     - https://goteleport.com/docs/reference/monitoring/audit/
 tags:
@@ -15,6 +16,8 @@ tags:
     - attack.privilege-escalation
     - attack.t1098
     - attack.t1136
+    # Risk score: two role-creation events from one client on one day; planned administration is a known benign case.
+    - risk.score.40
 logsource:
     category: pam
     product: teleport
