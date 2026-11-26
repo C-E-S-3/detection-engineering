@@ -11,6 +11,7 @@ description: |
     the second factor.
 author: threat-intel-sigma-agent
 date: '2026/11/07'
+modified: '2026/11/25'
 references:
     - https://www.cisa.gov/known-exploited-vulnerabilities-catalog
 tags:
@@ -18,6 +19,8 @@ tags:
     - attack.defense-evasion
     - attack.t1078
     - attack.t1562.010
+    # Risk score: the only hit in 30 days is a login whose context omits the MFA-device field, so one firing is not proof of a single factor.
+    - risk.score.20
 logsource:
     category: idp
     product: authentik
