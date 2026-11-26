@@ -11,9 +11,12 @@ references:
   - https://owasp.org/www-community/attacks/Path_Traversal
 author: detection-engineering
 date: '2026/11/04'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.t1190
+  # Risk score: all 10 hits in 30 days are traversal payloads, all HTTP 404, across 2 clients, with no benign class in the sample.
+  - risk.score.75
 logsource:
   product: traefik
   category: webserver

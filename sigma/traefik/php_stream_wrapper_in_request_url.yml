@@ -14,11 +14,14 @@ references:
   - https://attack.mitre.org/techniques/T1190/
 author: threat-intel-sigma-agent
 date: '2026/10/29'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.t1190
   - attack.persistence
   - attack.t1505.003
+  # Risk score: zero hits in 30 days; stream wrappers are not legitimate URLs, and HTTP 404 probes are already excluded.
+  - risk.score.80
 logsource:
   product: traefik
   category: webserver

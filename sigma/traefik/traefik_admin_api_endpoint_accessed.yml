@@ -15,10 +15,12 @@ references:
   - https://attack.mitre.org/techniques/T1190/
 author: detection-engineering
 date: '2026/11/04'
-modified: '2026/11/19'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.t1190
+  # Risk score: fires on 24 of 30 days, usually one client, and every hit is HTTP 404, so one firing is standing noise.
+  - risk.score.15
 logsource:
   product: traefik
   category: webserver

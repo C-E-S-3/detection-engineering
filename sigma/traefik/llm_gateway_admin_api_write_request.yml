@@ -16,6 +16,7 @@ references:
   - https://attack.mitre.org/techniques/T1496/
 author: threat-intel-sigma-agent
 date: '2026/11/03'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.t1190
@@ -23,6 +24,8 @@ tags:
   - attack.t1496
   - attack.persistence
   - attack.t1098
+  # Risk score: zero hits in 30 days; these admin writes are rare, but a legitimate gateway administrator is a known benign case.
+  - risk.score.65
 logsource:
   product: traefik
   category: webserver

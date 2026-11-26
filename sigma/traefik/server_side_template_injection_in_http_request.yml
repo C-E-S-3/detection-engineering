@@ -13,9 +13,12 @@ references:
   - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/18-Testing_for_Server-side_Template_Injection
 author: detection-engineering
 date: '2026/11/04'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.t1190
+  # Risk score: eight hits are template payloads, but one is a static asset whose name contains an engine token the rule does not filter.
+  - risk.score.50
 logsource:
   product: traefik
   category: webserver

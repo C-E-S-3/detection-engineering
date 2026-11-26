@@ -11,10 +11,12 @@ references:
   - https://attack.mitre.org/techniques/T1190/
 author: detection-engineering
 date: '2026/11/04'
-modified: '2026/11/19'
+modified: '2026/11/25'
 tags:
   - attack.initial_access
   - attack.t1190
+  # Risk score: zero hits in 30 days; HTTP 200 from the admin API is a successful config read, short of 90 because an operator check is a known benign case.
+  - risk.score.85
 logsource:
   product: traefik
   category: webserver
