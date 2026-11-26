@@ -17,11 +17,14 @@ references:
   - https://attack.mitre.org/techniques/T1496/001/
 author: threat-intel-sigma-agent
 date: '2026/11/13'
+modified: '2026/11/25'
 tags:
   - attack.impact
   - attack.t1496.001
   - attack.command_and_control
   - attack.t1071.001
+  # Risk score: zero hits in 30 days; a mining-pool lookup is a strong cryptojacking signal, but browsing a pool site is a known benign case.
+  - risk.score.70
 logsource:
   category: dns
 detection:
